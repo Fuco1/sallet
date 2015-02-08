@@ -27,8 +27,14 @@
 ;;; Code:
 (require 'dash)
 (require 'flx)
+(require 'eieio)
 
 (defun sallet-matcher-default (candidates prompt)
+  "Default matcher.
+
+The input string is split on whitespace, then candidate must
+match each constituent to pass the test.  Matches are not
+reordered."
   (let ((i 0)
         (re nil)
         (parts (split-string prompt)))
@@ -58,45 +64,90 @@
     (sort re (lambda (a b) (< (cadr a) (cadr b))))
     (--map (car it) re)))
 
-;; TODO: use eieio to represent the sources?
+(defmacro sallet-defsource (name parents &optional docstring &rest body)
+  (declare (docstring 3)
+           (debug (&define name (&rest arg) [&optional stringp] def-body))
+           (indent defun))
+  (unless (stringp docstring) (setq body (cons docstring body)))
+  `(defclass ,(intern (concat "sallet-source-" (symbol-name name)))
+     ,(--map (intern (concat "sallet-source-" (symbol-name it)))
+             (if (and (not (memq name '(-default default)))
+                      (not parents))
+                 (list 'default) parents))
+     ,(-map (lambda (arg)
+              (let (re)
+                (push (list (car arg) :initform (cadr arg)) re)
+                (when (plist-member arg :documentation)
+                  (push (list :documentation (plist-get arg :documentation)) re))
+                (apply '-concat (nreverse re))))
+            body)
+     ,@(when (stringp docstring) (list :documentation docstring))))
+
+(font-lock-add-keywords 'emacs-lisp-mode `(("(\\(sallet-defsource\\)\\>[[:blank:]]+\\(.*\\)[[:blank:]]"
+                                            (1 font-lock-keyword-face)
+                                            (2 font-lock-type-face))))
+
+(sallet-defsource -default ()
+  "The absolute parent of the source hierarchy.
+
+This is an internal class.
+
+This source defines internal variables used to hold state during
+the picking process."
+  (processed-candidates nil))
+
 ;; TODO: pass state instead of prompt everywhere
-(defvar sallet-source-default
-  '(;; function matching and ranking/sorting candidates
-    (matcher . sallet-matcher-default)
-    ;; rendered, is passed a candidate and the prompt
-    (renderer . (lambda (candidate prompt) candidate))
-    ;; a function generating candidates, a list or vector of candidates
-    (candidates . nil)
-    ;; function generating candidates, takes prompt, returns a vector
-    (generator . nil)
-    (header . "Select a candidate")
-    ;; action: TODO: (cons action-name action-function)
-    ;; TODO: pridat akciu ktora nevypne rozhranie
-    (action . identity)))
+(sallet-defsource default (-default)
+  "Default source.
 
-(defvar sallet-source-buffer
-  '((candidates . helm-buffer-list)
-    (matcher . sallet-matcher-flx)
-    (action . switch-to-buffer)
-    ;; (action . (lambda (c) (message "%S" c)))
-    (header . "Buffers")))
+Every user or package-defined source must inherit from this
+source.  If the user does not specify any source to inherit from,
+this is added automatically!
 
-(defvar sallet-source-bookmarks-file-only
-  '((candidates . bmkp-file-alist-only)
-    (matcher . sallet-matcher-default)
-    (renderer . (lambda (c _) (car c)))
-    (action . (lambda (bookmark-name)
-                (bmkp-jump-1 (cons "" bookmark-name) 'switch-to-buffer nil)))
-    (header . "Bookmarks")))
+Sets default matcher `sallet-matcher-default', identity renderer
+and identity action."
+  (matcher sallet-matcher-default
+           :documentation "write what a matcher is. function matching and ranking/sorting candidates")
+  (renderer (lambda (candidate state) candidate)
+            :documentation "write what a renderer is.")
+  ;; action: TODO: (cons action-name action-function)
+  ;; TODO: add support for actions which do not kill the session
+  (action identity)
+  ;; a function generating candidates, a list or vector of candidates
+  (candidates nil)
+  ;; function generating candidates, takes prompt, returns a vector
+  ;; The difference with `candidates' is that `candidates' run only
+  ;; when we first enter the session while `generator' takes input
+  ;; interactively.
+  (generator nil)
+  ;; header
+  (header "Select a candidate"))
 
-(defvar sallet-source-occur
-  '((candidates . nil)
-    (matcher . nil)
-    (renderer . (lambda (c _) (car c)))
-    (action . (lambda (c)
-                ;; TODO: preco nestaci goto-char? Asi treba nejak
-                ;; recovernut "selected-window" v action handlery
-                (set-window-point (selected-window) (cdr c))))))
+(sallet-defsource buffer nil
+  "Buffer source."
+  (candidates helm-buffer-list)
+  (matcher sallet-matcher-flx)
+  (action switch-to-buffer)
+  (header "Buffers"))
+
+(sallet-defsource bookmarks-file-only nil
+  "Bookmarks source, files only."
+  (candidates bmkp-file-alist-only)
+  (matcher sallet-matcher-default)
+  (renderer (lambda (c _) (car c)))
+  (action (lambda (bookmark-name)
+            (bmkp-jump-1 (cons "" bookmark-name) 'switch-to-buffer nil)))
+  (header "Bookmarks"))
+
+(sallet-defsource occur nil
+  "Occur source."
+  (candidates nil)
+  (matcher nil)
+  (renderer (lambda (c _) (car c)))
+  (action (lambda (c)
+            ;; TODO: preco nestaci goto-char? Asi treba nejak
+            ;; recovernut "selected-window" v action handlery
+            (set-window-point (selected-window) (cdr c)))))
 
 (defun sallet-source-get-matcher (source)
   (cdr (assq 'matcher source)))
