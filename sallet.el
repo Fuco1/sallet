@@ -255,7 +255,7 @@ Return number of rendered candidates."
                  (funcall
                   (sallet-source-get-renderer source)
                   (sallet-source-get-candidate source n)
-                  (sallet-state-get-prompt state))
+                  state)
                  "\n")
          (when (= coffset i)
            (set-window-point (get-buffer-window (sallet-state-get-candidate-buffer state)) (point)))
