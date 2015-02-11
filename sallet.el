@@ -150,39 +150,37 @@ and identity action."
             (set-window-point (selected-window) (cdr c)))))
 
 (defun sallet-source-get-matcher (source)
-  (cdr (assq 'matcher source)))
+  (oref source matcher))
 (defun sallet-source-get-renderer (source)
-  (cdr (assq 'renderer source)))
+  (oref source renderer))
 (defun sallet-source-get-candidates (source)
-  (cdr (assq 'candidates source)))
+  (oref source candidates))
 (defun sallet-source-get-generator (source)
-  (cdr (assq 'generator source)))
+  (oref source generator))
 (defun sallet-source-get-header (source)
-  (cdr (assq 'header source)))
+  (oref source header))
 (defun sallet-source-get-action (source)
-  (cdr (assq 'action source)))
+  (oref source action))
 (defun sallet-source-get-processed-candidates (source)
-  (cdr (assq 'processed-candidates source)))
+  (oref source processed-candidates))
 
 (defun sallet-source-set-candidates (source candidates)
-  (setf (cdr (assq 'candidates source)) candidates))
+  (oset source candidates candidates))
+(defun sallet-source-set-generator (source generator)
+  (oset source generator generator))
 (defun sallet-source-set-processed-candidates (source processed-candidates)
-  (setf (cdr (assq 'processed-candidates source)) processed-candidates))
+  (oset source processed-candidates processed-candidates))
 
 (defun sallet-source-get-candidate (source n)
   (elt (sallet-source-get-candidates source) n))
 
-;; TODO: get rid of default options, or require explicit inheritance?
-;; ... because setting something to `nil' won't disable it but force
-;; inheritance now
 (defun sallet-init-source (source)
   "Initiate the source."
-  (let ((cs nil))
-    ;; candidates
-    (let ((candidates (sallet-source-get-candidates source)))
+  (let ((instance (funcall source (symbol-name source))))
+    (let ((candidates (sallet-source-get-candidates instance)))
       (cond
        ((functionp candidates)
-        (setq candidates (funcall (sallet-source-get-candidates source))))
+        (setq candidates (funcall candidates)))
        ((or (listp candidates)
             (vectorp candidates)))
        ((functionp (sallet-source-get-generator source))
@@ -191,29 +189,13 @@ and identity action."
       (when (and candidates
                  (not (vectorp candidates)))
         (setq candidates (vconcat candidates)))
-      (push `(candidates . ,candidates) cs))
-    ;; generator
-    (-when-let (generator (sallet-source-get-generator source))
-      (push `(generator . ,generator) cs))
-    ;; matcher
-    ;; (-if-let (matcher (sallet-source-get-matcher source))
-    ;;     (push `(matcher . ,matcher) cs)
-    ;;   (push `(matcher . ,(sallet-source-get-matcher sallet-source-default)) cs))
-    (push `(matcher . ,(sallet-source-get-matcher source)) cs)
-    ;; renderer
-    (-if-let (renderer (sallet-source-get-renderer source))
-        (push `(renderer . ,renderer) cs)
-      (push `(renderer . ,(sallet-source-get-renderer sallet-source-default)) cs))
-    ;; action
-    (-if-let (action (sallet-source-get-action source))
-        (push `(action . ,action) cs)
-      (push `(action . ,(sallet-source-get-action sallet-source-default)) cs))
-    ;; header
-    (-if-let (header (sallet-source-get-header source))
-        (push `(header . ,header) cs)
-      (push `(header . ,(sallet-source-get-header sallet-source-default)) cs))
-    (push `(processed-candidates . ,(number-sequence 0 (1- (length (sallet-source-get-candidates cs))))) cs)
-    cs))
+      (sallet-source-set-candidates instance candidates)
+      ;; no filtering at start
+      (sallet-source-set-processed-candidates instance (number-sequence 0 (1- (length candidates)))))
+    (let ((generator (sallet-source-get-generator instance)))
+      (unless (functionp generator)
+        (sallet-source-set-generator instance (eval generator t))))
+    instance))
 
 (defvar sallet-state nil
   "Current state.
@@ -311,6 +293,8 @@ Return number of rendered candidates."
          (when (= coffset i)
            (set-window-point (get-buffer-window (sallet-state-get-candidate-buffer state)) (point)))
          (setq i (1+ i)))
+       ;; if we matched nothing, this still gives us the entire
+       ;; selection. Wee need to distinguish what state are we at.
        (or (sallet-source-get-processed-candidates source)
            (number-sequence 0 (1- (length (sallet-source-get-candidates source))))))
       i)))
@@ -389,9 +373,7 @@ Return number of rendered candidates."
 
 (defun sallet-buffer ()
   (interactive)
-  (sallet (list
-             sallet-source-buffer
-             sallet-source-bookmarks-file-only)))
+  (sallet (list 'sallet-source-buffer 'sallet-source-bookmarks-file-only)))
 
 (defun sallet-occur ()
   (interactive)
