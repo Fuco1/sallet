@@ -288,25 +288,26 @@ this source.
 
 Return number of rendered candidates."
   (with-current-buffer (sallet-state-get-candidate-buffer state)
-    (insert "=== " (sallet-source-get-header source) " ===\n")
     (let* ((selected (sallet-state-get-selected-candidate state))
+           (prompt (sallet-state-get-prompt state))
+           (candidates (or (sallet-source-get-processed-candidates source)
+                           (and (equal prompt "")
+                                (number-sequence 0 (1- (length (sallet-source-get-candidates source)))))
+                           nil))
            (coffset (- selected offset))
            (i 0))
-      (mapc
-       (lambda (n)
-         (insert (if (= coffset i) ">>" "  ")
-                 (funcall
-                  (sallet-source-get-renderer source)
-                  (sallet-source-get-candidate source n)
-                  state)
-                 "\n")
-         (when (= coffset i)
-           (set-window-point (get-buffer-window (sallet-state-get-candidate-buffer state)) (point)))
-         (setq i (1+ i)))
-       ;; if we matched nothing, this still gives us the entire
-       ;; selection. Wee need to distinguish what state are we at.
-       (or (sallet-source-get-processed-candidates source)
-           (number-sequence 0 (1- (length (sallet-source-get-candidates source))))))
+      (when candidates (insert "=== " (sallet-source-get-header source) " ===\n"))
+      (-each candidates
+        (lambda (n)
+          (insert (if (= coffset i) ">>" "  ")
+                  (funcall
+                   (sallet-source-get-renderer source)
+                   (sallet-source-get-candidate source n)
+                   state)
+                  "\n")
+          (when (= coffset i)
+            (set-window-point (get-buffer-window (sallet-state-get-candidate-buffer state)) (point)))
+          (setq i (1+ i))))
       i)))
 
 (defun sallet-render-state (state)
