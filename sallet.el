@@ -29,6 +29,7 @@
 (require 'flx)
 (require 'eieio)
 
+;; TODO: make this better
 (defun sallet-matcher-default (candidates state)
   "Default matcher.
 
@@ -48,6 +49,7 @@ reordered."
      candidates)
     (nreverse re)))
 
+;; TODO: make this better
 (defun sallet-matcher-flx (candidates state)
   (let* ((i 0)
          (re nil)
@@ -68,6 +70,7 @@ reordered."
       (setq re (sort re (lambda (a b) (> (cadr a) (cadr b)))))
       (--map (car it) re))))
 
+;; TODO: add docs
 (defmacro sallet-defsource (name parents &optional docstring &rest body)
   (declare (docstring 3)
            (debug (&define name (&rest arg) [&optional stringp] def-body))
@@ -116,7 +119,11 @@ and identity action."
   ;; action: TODO: (cons action-name action-function)
   ;; TODO: add support for actions which do not kill the session
   (action identity)
-  ;; a function generating candidates, a list or vector of candidates
+  ;; A function generating candidates, a list or vector of candidates.
+  ;; Candidates can be either strings or any lists with first element
+  ;; being used for matching (usually a string, but can be anything as
+  ;; long as the matcher and renderer and action know how to handle
+  ;; it).
   (candidates nil)
   ;; function generating candidates, takes state, returns a vector
   ;; The difference with `candidates' is that `candidates' run only
@@ -126,6 +133,7 @@ and identity action."
   ;; header
   (header "Select a candidate"))
 
+;; TODO: add better renderer
 (sallet-defsource buffer nil
   "Buffer source."
   (candidates helm-buffer-list)
@@ -139,6 +147,7 @@ and identity action."
   (matcher sallet-matcher-default)
   (renderer (lambda (c _) (car c)))
   (action (lambda (bookmark-name)
+            ;; TODO: doesn't seem to work
             (bmkp-jump-1 (cons "" bookmark-name) 'switch-to-buffer nil)))
   (header "Bookmarks"))
 
