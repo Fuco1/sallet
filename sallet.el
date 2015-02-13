@@ -148,15 +148,16 @@ and identity action."
   (matcher nil)
   (renderer (lambda (c _) (car c)))
   (generator '(let ((buffer (current-buffer)))
-                (lambda (prompt)
-                  (when (>= (length prompt) 2)
-                    (let (re)
-                      (with-current-buffer buffer
-                        (goto-char (point-min))
-                        (while (search-forward prompt nil t)
-                          (push (cons (buffer-substring-no-properties (line-beginning-position) (line-end-position))
-                                      (point)) re))
-                        (vconcat (nreverse re))))))))
+                (lambda (state)
+                  (let ((prompt (sallet-state-get-prompt state)))
+                    (when (>= (length prompt) 2)
+                      (let (re)
+                        (with-current-buffer buffer
+                          (goto-char (point-min))
+                          (while (search-forward prompt nil t)
+                            (push (cons (buffer-substring-no-properties (line-beginning-position) (line-end-position))
+                                        (point)) re))
+                          (vconcat (nreverse re)))))))))
   (action (lambda (c)
             ;; TODO: preco nestaci goto-char? Asi treba nejak
             ;; recovernut "selected-window" v action handlery
