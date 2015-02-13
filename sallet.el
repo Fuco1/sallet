@@ -61,7 +61,7 @@ reordered."
        (setq i (1+ i)))
      candidates)
     ;; sort by score
-    (sort re (lambda (a b) (> (cadr a) (cadr b))))
+    (setq re (sort re (lambda (a b) (> (cadr a) (cadr b)))))
     (--map (car it) re)))
 
 (defmacro sallet-defsource (name parents &optional docstring &rest body)
