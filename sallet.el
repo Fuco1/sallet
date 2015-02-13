@@ -269,12 +269,6 @@ SELECTED-CANDIDATE is the currently selected candidate.")
       ;; TODO: abstract the `or' here... we just want to get some
       ;; candidates.  Search for it everywhere, it is used all over
       ;; the source
-      ;; TODO: there's a bug when the matcher returns no processed
-      ;; candiadates => it shows all of them.  We need to determine if
-      ;; we filtered out everything or no matcher is present---maybe
-      ;; the generator should also simply generate the processed
-      ;; list... or make a "super-default" matcher that always matches
-      ;; everything by returning just the proper number-sequence.
       (setq total (+ total (length (or (sallet-source-get-processed-candidates it)
                                        (sallet-source-get-candidates it)))))
       (setq re it))
