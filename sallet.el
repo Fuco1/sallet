@@ -29,15 +29,16 @@
 (require 'flx)
 (require 'eieio)
 
-(defun sallet-matcher-default (candidates prompt)
+(defun sallet-matcher-default (candidates state)
   "Default matcher.
 
 The input string is split on whitespace, then candidate must
 match each constituent to pass the test.  Matches are not
 reordered."
-  (let ((i 0)
-        (re nil)
-        (parts (split-string prompt)))
+  (let* ((i 0)
+         (re nil)
+         (prompt (sallet-state-get-prompt state))
+         (parts (split-string prompt)))
     (mapc
      (lambda (c)
        (let ((c-str (if (stringp c) c (car c))))
@@ -47,22 +48,25 @@ reordered."
      candidates)
     (nreverse re)))
 
-(defun sallet-matcher-flx (candidates prompt)
-  (let ((i 0)
-        (re nil)
-        (parts (split-string prompt)))
+(defun sallet-matcher-flx (candidates state)
+  (let* ((i 0)
+         (re nil)
+         (prompt (sallet-state-get-prompt state))
+         (parts (split-string prompt)))
     ;; first fuzzy score/filter by first input
     ;; TODO: add a function modifier that would transform any function into "first item matcher"
-    (mapc
-     (lambda (c)
-       (let ((c-str (if (stringp c) c (car c))))
-         (-when-let (score (flx-score c-str (car parts)))
-           (push (cons i score) re)))
-       (setq i (1+ i)))
-     candidates)
-    ;; sort by score
-    (setq re (sort re (lambda (a b) (> (cadr a) (cadr b)))))
-    (--map (car it) re)))
+    (if (= (length prompt) 0)
+        (number-sequence 0 (1- (length candidates)))
+      (mapc
+       (lambda (c)
+         (let ((c-str (if (stringp c) c (car c))))
+           (-when-let (score (flx-score c-str (car parts)))
+             (push (cons i score) re)))
+         (setq i (1+ i)))
+       candidates)
+      ;; sort by score
+      (setq re (sort re (lambda (a b) (> (cadr a) (cadr b)))))
+      (--map (car it) re))))
 
 (defmacro sallet-defsource (name parents &optional docstring &rest body)
   (declare (docstring 3)
@@ -96,7 +100,6 @@ This source defines internal variables used to hold state during
 the picking process."
   (processed-candidates nil))
 
-;; TODO: pass state instead of prompt everywhere
 (sallet-defsource default (-default)
   "Default source.
 
@@ -115,7 +118,7 @@ and identity action."
   (action identity)
   ;; a function generating candidates, a list or vector of candidates
   (candidates nil)
-  ;; function generating candidates, takes prompt, returns a vector
+  ;; function generating candidates, takes state, returns a vector
   ;; The difference with `candidates' is that `candidates' run only
   ;; when we first enter the session while `generator' takes input
   ;; interactively.
@@ -290,14 +293,13 @@ Return number of rendered candidates."
   (with-current-buffer (sallet-state-get-candidate-buffer state)
     (let* ((selected (sallet-state-get-selected-candidate state))
            (prompt (sallet-state-get-prompt state))
-           (candidates (or (sallet-source-get-processed-candidates source)
-                           (and (equal prompt "")
-                                (number-sequence 0 (1- (length (sallet-source-get-candidates source)))))
-                           nil))
+           (selected-candidates (sallet-source-get-processed-candidates source))
            (coffset (- selected offset))
            (i 0))
-      (when candidates (insert "=== " (sallet-source-get-header source) " ===\n"))
-      (-each candidates
+      (when (and selected-candidates
+                 (> (length selected-candidates) 0))
+        (insert "=== " (sallet-source-get-header source) " ===\n"))
+      (-each selected-candidates
         (lambda (n)
           (insert (if (= coffset i) ">>" "  ")
                   (funcall
@@ -333,27 +335,21 @@ Return number of rendered candidates."
               ;; TODO: figure out where to do which updates... this currently doesn't work
               (add-hook 'post-command-hook
                         (lambda ()
-                          (sallet-state-set-prompt state (buffer-substring-no-properties 5 (point-max)))
-                          (-each (sallet-state-get-sources state)
-                            (lambda (source)
-                              (-if-let (matcher (sallet-source-get-matcher source))
-                                  (sallet-source-set-processed-candidates
-                                   source
-                                   (funcall matcher
-                                            (sallet-source-get-candidates source)
-                                            (sallet-state-get-prompt state)))
-                                (sallet-source-set-processed-candidates source nil))))
+                          (let ((old-prompt (sallet-state-get-prompt state))
+                                (new-prompt (buffer-substring-no-properties 5 (point-max))))
+                            (when (not (equal old-prompt new-prompt))
+                              (sallet-state-set-selected-candidate state 0))
+                            (sallet-state-set-prompt state new-prompt)
+                            (-each (sallet-state-get-sources state)
+                              (lambda (source)
+                                (-when-let (generator (sallet-source-get-generator source))
+                                  (sallet-source-set-candidates source (funcall generator state)))
+                                (let* ((candidates (sallet-source-get-candidates source)))
+                                  (-if-let (matcher (sallet-source-get-matcher source))
+                                      (let ((selected-candidates (funcall matcher candidates state)))
+                                        (sallet-source-set-processed-candidates source selected-candidates))
+                                    (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates)))))))))
                           (sallet-render-state state))
-                        nil t)
-              (add-hook 'after-change-functions
-                        (lambda (_ _ _)
-                          (sallet-state-set-selected-candidate state 0)
-                          (-each (sallet-state-get-sources state)
-                            (lambda (source)
-                              (-when-let (generator (sallet-source-get-generator source))
-                                (sallet-source-set-candidates
-                                 source
-                                 (funcall generator (sallet-state-get-prompt state)))))))
                         nil t))
           (read-from-minibuffer ">>> " nil (let ((map (make-sparse-keymap)))
                                              (set-keymap-parent map minibuffer-local-map)
