@@ -295,6 +295,7 @@ Return number of rendered candidates."
     (let* ((selected (sallet-state-get-selected-candidate state))
            (prompt (sallet-state-get-prompt state))
            (selected-candidates (sallet-source-get-processed-candidates source))
+           (renderer (sallet-source-get-renderer source))
            (coffset (- selected offset))
            (i 0))
       (when (and selected-candidates
@@ -303,10 +304,7 @@ Return number of rendered candidates."
       (-each selected-candidates
         (lambda (n)
           (insert (if (= coffset i) ">>" "  ")
-                  (funcall
-                   (sallet-source-get-renderer source)
-                   (sallet-source-get-candidate source n)
-                   state)
+                  (funcall renderer (sallet-source-get-candidate source n) state)
                   "\n")
           (when (= coffset i)
             (set-window-point (get-buffer-window (sallet-state-get-candidate-buffer state)) (point)))
