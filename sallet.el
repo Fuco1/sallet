@@ -90,7 +90,7 @@ reordered."
             body)
      ,@(when (stringp docstring) (list :documentation docstring))))
 
-(font-lock-add-keywords 'emacs-lisp-mode `(("(\\(sallet-defsource\\)\\>[[:blank:]]+\\(.*\\)[[:blank:]]"
+(font-lock-add-keywords 'emacs-lisp-mode `(("(\\(sallet-defsource\\)\\>[[:blank:]]+\\(.*?\\)[[:blank:]]"
                                             (1 font-lock-keyword-face)
                                             (2 font-lock-type-face))))
 
