@@ -235,6 +235,7 @@ See `ido-use-virtual-buffers'."
         (sallet-source-set-generator instance (eval generator t))))
     instance))
 
+;; TODO: make this into eieio object?
 (defvar sallet-state nil
   "Current state.
 
@@ -273,6 +274,8 @@ SELECTED-CANDIDATE is the currently selected candidate.")
                (sallet-state-get-sources state))))
 
 ;; TODO: make this function better, it's a mess
+;; TODO: if some source has no displayed candidates at all, it is
+;; skipped but index is not raised
 (defun sallet-state-get-selected-source (state)
   (let* ((offset (sallet-state-get-selected-candidate state))
          (sources (sallet-state-get-sources state))
@@ -352,6 +355,7 @@ Return number of rendered candidates."
               ;; TODO: figure out where to do which updates... this currently doesn't work
               (add-hook 'post-command-hook
                         (lambda ()
+                          ;; TODO: add old-prompt to state
                           (let ((old-prompt (sallet-state-get-prompt state))
                                 (new-prompt (buffer-substring-no-properties 5 (point-max))))
                             (when (not (equal old-prompt new-prompt))
@@ -368,6 +372,7 @@ Return number of rendered candidates."
                                     (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates)))))))))
                           (sallet-render-state state))
                         nil t))
+          ;; TODO: add support to pass maps
           (read-from-minibuffer ">>> " nil (let ((map (make-sparse-keymap)))
                                              (set-keymap-parent map minibuffer-local-map)
                                              (define-key map (kbd "C-n") 'sallet-candidate-up)
