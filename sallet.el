@@ -142,17 +142,19 @@ and identity action."
   (action switch-to-buffer)
   (header "Buffers"))
 
-(sallet-defsource ido-virtual-buffer nil
-  "Ido virtual buffer source.
-
-Virtual buffers are created from `recentf-list'.
-
-See `ido-use-virtual-buffers'."
-  (candidates ido-virtual-buffers)
+(sallet-defsource recentf nil
+  "Files saved on `recentf-list'."
+  (candidates (lambda ()
+                (unless recentf-mode (recentf-mode 1))
+                (--keep
+                 (let ((name (file-name-nondirectory it)))
+                   (unless (get-file-buffer name)
+                     (cons name it)))
+                 recentf-list)))
   (matcher sallet-matcher-flx)
   (renderer (-lambda ((name) _) name))
   (action (-lambda ((_ . file)) (find-file file)))
-  (header "Virtual buffers"))
+  (header "Recently opened files"))
 
 ;; TODO: this depends on bookmark+ (`bmkp-file-alist-only',
 ;; `bmkp-jump-1'), should probably be moved to a different file.
@@ -405,7 +407,7 @@ Return number of rendered candidates."
 
 (defun sallet-buffer ()
   (interactive)
-  (sallet (list 'sallet-source-buffer 'sallet-source-ido-virtual-buffer 'sallet-source-bookmarks-file-only)))
+  (sallet (list 'sallet-source-buffer 'sallet-source-recentf 'sallet-source-bookmarks-file-only)))
 
 (defun sallet-occur ()
   (interactive)
