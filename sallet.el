@@ -134,6 +134,7 @@ and identity action."
   (header "Select a candidate"))
 
 ;; TODO: add better renderer
+;; TODO: get rid of dependence on helm (`helm-buffer-list')
 (sallet-defsource buffer nil
   "Buffer source."
   (candidates helm-buffer-list)
@@ -153,6 +154,8 @@ See `ido-use-virtual-buffers'."
   (action (-lambda ((_ . file)) (find-file file)))
   (header "Virtual buffers"))
 
+;; TODO: this depends on bookmark+ (`bmkp-file-alist-only',
+;; `bmkp-jump-1'), should probably be moved to a different file.
 (sallet-defsource bookmarks-file-only nil
   "Bookmarks source, files only."
   (candidates bmkp-file-alist-only)
@@ -409,6 +412,8 @@ Return number of rendered candidates."
   ;; TODO: find a way how to define this right in the source, this is a but clumsy
   ;; do we want to pass the entire state instead?
   (sallet (list sallet-source-occur)))
+
+;; TODO: write sallet for opening files
 
 (provide 'sallet)
 ;;; sallet.el ends here
