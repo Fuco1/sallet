@@ -343,6 +343,7 @@ SELECTED-CANDIDATE is the currently selected candidate.")
     (setq sallet-state state)
     state))
 
+;; TODO propertize the interesting stuff, define faces
 (defun sallet-render-source (state source offset)
   "Render.
 
@@ -411,6 +412,7 @@ Return number of rendered candidates."
                           (sallet-render-state state))
                         nil t))
           ;; TODO: add support to pass maps
+          ;; TODO propertize prompt
           (read-from-minibuffer ">>> " nil (let ((map (make-sparse-keymap)))
                                              (set-keymap-parent map minibuffer-local-map)
                                              (define-key map (kbd "C-n") 'sallet-candidate-up)
