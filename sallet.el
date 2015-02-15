@@ -172,26 +172,55 @@ and identity action."
             (bmkp-jump-1 (cons "" bookmark-name) 'switch-to-buffer nil)))
   (header "Bookmarks"))
 
+;; TODO: write docstring
+(defun sallet-occur-generator (buffer state &optional mode)
+  "Mode: :normal, :fuzzy, :regexp (default)"
+  (let ((prompt (sallet-state-get-prompt state)))
+    (when (>= (length prompt) 2)
+      (let ((pattern
+             (concat "^.*?\\("
+                     (cond
+                      ((eq mode :normal)
+                       (regexp-quote prompt))
+                      ((eq mode :fuzzy)
+                       (mapconcat 'identity
+                                  (mapcar 'char-to-string (string-to-list prompt))
+                                  ".*"))
+                      (t prompt))
+                     "\\).*$"))
+            re)
+        (with-current-buffer buffer
+          (goto-char (point-min))
+          (while (re-search-forward pattern nil t)
+            (let* ((lb (line-beginning-position))
+                   (le (line-end-position))
+                   (line (save-excursion
+                           (font-lock-fontify-region lb le)
+                           (buffer-substring lb le))))
+              (push (list line (point) (line-number-at-pos)) re)))
+          (vconcat (nreverse re)))))))
+
 (sallet-defsource occur nil
   "Occur source."
   (candidates nil)
   (matcher nil)
-  (renderer (lambda (c _) (car c)))
+  (renderer (-lambda ((line-string _ line-number) _)
+              (format "%d:%s" line-number line-string)))
   (generator '(let ((buffer (current-buffer)))
-                (lambda (state)
-                  (let ((prompt (sallet-state-get-prompt state)))
-                    (when (>= (length prompt) 2)
-                      (let (re)
-                        (with-current-buffer buffer
-                          (goto-char (point-min))
-                          (while (search-forward prompt nil t)
-                            (push (cons (buffer-substring-no-properties (line-beginning-position) (line-end-position))
-                                        (point)) re))
-                          (vconcat (nreverse re)))))))))
+                (lambda (state) (sallet-occur-generator buffer state :normal))))
   (action (lambda (c)
-            ;; TODO: preco nestaci goto-char? Asi treba nejak
-            ;; recovernut "selected-window" v action handlery
-            (set-window-point (selected-window) (cdr c)))))
+            ;; TODO: why isn't it enough to use `goto-char'?  Probably
+            ;; active window is badly re-set after candidate window is
+            ;; disposed
+            (set-window-point (selected-window) (cadr c)))))
+
+(sallet-defsource occur-fuzzy (occur)
+  "Fuzzy occur source."
+  ;; matcher is used to rank & reorder best matches on top ...
+  (matcher sallet-matcher-flx)
+  ;; ... while generator is the stupidest matcher possible
+  (generator '(let ((buffer (current-buffer)))
+                (lambda (state) (sallet-occur-generator buffer state :fuzzy)))))
 
 (defun sallet-source-get-matcher (source)
   (oref source matcher))
@@ -415,9 +444,11 @@ Return number of rendered candidates."
 
 (defun sallet-occur ()
   (interactive)
-  ;; TODO: find a way how to define this right in the source, this is a but clumsy
-  ;; do we want to pass the entire state instead?
   (sallet (list sallet-source-occur)))
+
+(defun sallet-occur-fuzzy ()
+  (interactive)
+  (sallet (list sallet-source-occur-fuzzy)))
 
 ;; TODO: write sallet for opening files
 
