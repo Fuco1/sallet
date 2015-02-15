@@ -134,10 +134,14 @@ and identity action."
   (header "Select a candidate"))
 
 ;; TODO: add better renderer
-;; TODO: get rid of dependence on helm (`helm-buffer-list')
+;; TODO: add some version supporting filtering? is it even worth
+;; having if we have narrowing built-in?
 (sallet-defsource buffer nil
   "Buffer source."
-  (candidates helm-buffer-list)
+  (candidates (lambda ()
+                (--keep (let ((name (buffer-name it)))
+                          (unless (string-match-p "^ " name) name))
+                        (buffer-list))))
   (matcher sallet-matcher-flx)
   (action switch-to-buffer)
   (header "Buffers"))
