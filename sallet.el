@@ -249,7 +249,7 @@ and identity action."
 
 (defun sallet-init-source (source)
   "Initiate the source."
-  (let ((instance (funcall source (symbol-name source))))
+  (-when-let (instance (funcall source (symbol-name source)))
     (let ((candidates (sallet-source-get-candidates instance)))
       (cond
        ((functionp candidates)
@@ -259,7 +259,7 @@ and identity action."
             (-when-let (sv (ignore-errors (symbol-value candidates)))
               (when (or (listp sv) (vectorp sv))
                 (setq candidates sv)))))
-       ((functionp (sallet-source-get-generator source))
+       ((functionp (sallet-source-get-generator instance))
         (setq candidates nil))
        (t (error "Invalid source: no way to generate candidates")))
       (when (and candidates
@@ -335,7 +335,7 @@ SELECTED-CANDIDATE is the currently selected candidate.")
                 (- offset total-old))))))
 
 (defun sallet-init-state (sources candidate-buffer)
-  (let ((state (list (cons 'sources (-map 'sallet-init-source sources))
+  (let ((state (list (cons 'sources (-keep 'sallet-init-source sources))
                      (cons 'current-buffer (current-buffer))
                      (cons 'prompt "")
                      (cons 'selected-candidate 0)
