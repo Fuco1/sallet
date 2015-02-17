@@ -445,12 +445,33 @@ Return number of rendered candidates."
   (sallet (list 'sallet-source-buffer 'sallet-source-recentf 'sallet-source-bookmarks-file-only)))
 
 (defun sallet-occur ()
-  (interactive)
-  (sallet (list sallet-source-occur)))
+  "Show all lines in current buffer matching the fuzzy pattern.
 
-(defun sallet-occur-fuzzy ()
+First, all lines matching the input pattern \"fuzzily\" are
+collected.  They are then scored and ordered to bring the most
+interesting lines at the top.  Therefore, the results are not in
+the same order as they appear in the buffer.  If you want that,
+use `salet-occur-nonfuzzy'.
+
+The scoring algorithm is from the package `flx'.
+
+If you want to customize the matching algorithm, you can extend
+sallet source `sallet-source-occur-fuzzy'."
   (interactive)
   (sallet (list sallet-source-occur-fuzzy)))
+
+(defun sallet-occur-nonfuzzy ()
+  "Show all lines in current buffer matching pattern.
+
+The lines are presented in the same order as they appear in the
+file.  The lines are matched against each word in the input
+separately.
+
+See also `sallet-occur' for a fuzzy variant.  If you want to
+customize the matching algorithm, you can extend sallet source
+`sallet-source-occur'."
+  (interactive)
+  (sallet (list sallet-source-occur)))
 
 ;; TODO: write sallet for opening files
 
