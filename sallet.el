@@ -445,9 +445,22 @@ Return number of rendered candidates."
   (-when-let ((source . cand) (sallet-state-get-selected-source sallet-state))
     (funcall (sallet-source-get-action source) cand)))
 
+;; TODO: create a customize group just for sources
+(defcustom sallet-buffer-sources '(sallet-source-buffer)
+  "Sources for `sallet-buffer'.
+
+Since `sallet' does not make any artificial distinctions between
+sources, you can put any source here.  However, keeping it
+thematic and related to buffers is probably a good idea."
+  :group 'sallet
+  :type '(repeat symbol))
+
 (defun sallet-buffer ()
+  "Display buffer-like candidates.
+
+Takes the list of used sources from `sallet-buffer-sources'."
   (interactive)
-  (sallet (list 'sallet-source-buffer 'sallet-source-recentf 'sallet-source-bookmarks-file-only)))
+  (sallet sallet-buffer-sources))
 
 (defun sallet-occur ()
   "Show all lines in current buffer matching the fuzzy pattern.
