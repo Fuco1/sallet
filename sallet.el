@@ -400,31 +400,32 @@ Return number of rendered candidates."
         (minibuffer-with-setup-hook
             (lambda ()
               ;; TODO: figure out where to do which updates... this currently doesn't work
-              (add-hook 'post-command-hook
-                        (lambda ()
-                          ;; TODO: add old-prompt to state
-                          (let ((old-prompt (sallet-state-get-prompt state))
-                                (new-prompt (buffer-substring-no-properties 5 (point-max))))
-                            (unless (equal old-prompt new-prompt)
-                              (sallet-state-set-selected-candidate state 0)
-                              (sallet-state-set-prompt state new-prompt)
-                              (-each (sallet-state-get-sources state)
-                                (lambda (source)
-                                  (-when-let (generator (sallet-source-get-generator source))
-                                    (sallet-source-set-candidates source (funcall generator state)))
-                                  (let* ((candidates (sallet-source-get-candidates source)))
-                                    (-if-let (matcher (sallet-source-get-matcher source))
-                                        (let ((selected-candidates (funcall matcher candidates state)))
-                                          (sallet-source-set-processed-candidates source selected-candidates))
-                                      (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates))))))))))
-                          ;; TODO: we shouldn't need to re-render if
-                          ;; no change happened... currently this only
-                          ;; handles scrolling (the >> indicator).
-                          ;; That should be done with a sliding
-                          ;; overlay instead.  Change in
-                          ;; `sallet-render-state'.
-                          (sallet-render-state state))
-                        nil t))
+              (add-hook
+               'post-command-hook
+               (lambda ()
+                 ;; TODO: add old-prompt to state
+                 (let ((old-prompt (sallet-state-get-prompt state))
+                       (new-prompt (buffer-substring-no-properties 5 (point-max))))
+                   (unless (equal old-prompt new-prompt)
+                     (sallet-state-set-selected-candidate state 0)
+                     (sallet-state-set-prompt state new-prompt)
+                     (-each (sallet-state-get-sources state)
+                       (lambda (source)
+                         (-when-let (generator (sallet-source-get-generator source))
+                           (sallet-source-set-candidates source (funcall generator state)))
+                         (let* ((candidates (sallet-source-get-candidates source)))
+                           (-if-let (matcher (sallet-source-get-matcher source))
+                               (let ((selected-candidates (funcall matcher candidates state)))
+                                 (sallet-source-set-processed-candidates source selected-candidates))
+                             (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates))))))))))
+                 ;; TODO: we shouldn't need to re-render if
+                 ;; no change happened... currently this only
+                 ;; handles scrolling (the >> indicator).
+                 ;; That should be done with a sliding
+                 ;; overlay instead.  Change in
+                 ;; `sallet-render-state'.
+                 (sallet-render-state state))
+               nil t))
           ;; TODO: add support to pass maps
           ;; TODO propertize prompt
           (read-from-minibuffer ">>> " nil (let ((map (make-sparse-keymap)))
