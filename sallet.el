@@ -326,7 +326,7 @@ SELECTED-CANDIDATE is the currently selected candidate.")
                (sallet-state-get-sources state))))
 
 ;; TODO: make this function better, it's a mess
-;; TODO: if some source has no displayed candidates at all, it is
+;; TODO: FIX: if some source has no displayed candidates at all, it is
 ;; skipped but index is not raised
 (defun sallet-state-get-selected-source (state)
   (let* ((offset (sallet-state-get-selected-candidate state))
@@ -372,11 +372,14 @@ Return number of rendered candidates."
            (renderer (sallet-source-get-renderer source))
            (coffset (- selected offset))
            (i 0))
+      ;; TODO: abstract header rendering
       (when (and selected-candidates
                  (> (length selected-candidates) 0))
         (insert "=== " (sallet-source-get-header source) " ===\n"))
       (-each selected-candidates
         (lambda (n)
+          ;; TODO: The >> marker should be handled with an
+          ;; overlay. See the note in `sallet'.
           (insert (if (= coffset i) ">>" "  ")
                   (funcall renderer (sallet-source-get-candidate source n) state)
                   "\n")
