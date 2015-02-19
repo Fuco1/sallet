@@ -180,32 +180,30 @@ and identity action."
   (header "Bookmarks"))
 
 ;; TODO: write docstring
-(defun sallet-occur-generator (buffer state &optional mode)
+(defun sallet-occur-get-lines (buffer prompt &optional mode)
   "Mode: :normal, :fuzzy, :regexp (default)"
-  (let ((prompt (sallet-state-get-prompt state)))
-    (when (>= (length prompt) 2)
-      (let ((pattern
-             (concat "^.*?\\("
-                     (cond
-                      ((eq mode :normal)
-                       (regexp-quote prompt))
-                      ((eq mode :fuzzy)
-                       (mapconcat 'identity
-                                  (mapcar 'char-to-string (string-to-list prompt))
-                                  ".*"))
-                      (t prompt))
-                     "\\).*$"))
-            re)
-        (with-current-buffer buffer
-          (goto-char (point-min))
-          (while (re-search-forward pattern nil t)
-            (let* ((lb (line-beginning-position))
-                   (le (line-end-position))
-                   (line (save-excursion
-                           (font-lock-fontify-region lb le)
-                           (buffer-substring lb le))))
-              (push (list line (point) (line-number-at-pos)) re)))
-          (vconcat (nreverse re)))))))
+  (let ((pattern
+         (concat "^.*?\\("
+                 (cond
+                  ((eq mode :normal)
+                   (regexp-quote prompt))
+                  ((eq mode :fuzzy)
+                   (mapconcat 'identity
+                              (mapcar 'char-to-string (string-to-list prompt))
+                              ".*"))
+                  (t prompt))
+                 "\\).*$"))
+        re)
+    (with-current-buffer buffer
+      (goto-char (point-min))
+      (while (re-search-forward pattern nil t)
+        (let* ((lb (line-beginning-position))
+               (le (line-end-position))
+               (line (save-excursion
+                       (font-lock-fontify-region lb le)
+                       (buffer-substring lb le))))
+          (push (list line (point) (line-number-at-pos)) re)))
+      (vconcat (nreverse re)))))
 
 (sallet-defsource occur nil
   "Occur source."
@@ -214,7 +212,13 @@ and identity action."
   (renderer (-lambda ((line-string _ line-number) _)
               (format "%d:%s" line-number line-string)))
   (generator '(let ((buffer (current-buffer)))
-                (lambda (state) (sallet-occur-generator buffer state :normal))))
+                (lambda (state)
+                  (let ((prompt (sallet-state-get-prompt state)))
+                    ;; TODO: move this into a separate setting... this
+                    ;; is going to be quite common for "computing"
+                    ;; sources
+                    (when (>= (length prompt) 2)
+                      (sallet-occur-get-lines buffer prompt :normal))))))
   (action (lambda (c)
             ;; TODO: why isn't it enough to use `goto-char'?  Probably
             ;; active window is badly re-set after candidate window is
@@ -227,7 +231,10 @@ and identity action."
   (matcher sallet-matcher-flx)
   ;; ... while generator is the stupidest matcher possible
   (generator '(let ((buffer (current-buffer)))
-                (lambda (state) (sallet-occur-generator buffer state :fuzzy)))))
+                (lambda (state)
+                  (let ((prompt (sallet-state-get-prompt state)))
+                    (when (>= (length prompt) 2)
+                      (sallet-occur-get-lines buffer prompt :fuzzy)))))))
 
 (defun sallet-source-get-matcher (source)
   (oref source matcher))
