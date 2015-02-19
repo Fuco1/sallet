@@ -55,6 +55,8 @@ reordered."
     (nreverse re)))
 
 ;; TODO: make this better
+;; TODO: split sorting and matching---with buffers, we want to flx
+;; match but sort by recency
 (defun sallet-matcher-flx (candidates state)
   (let* ((i 0)
          (re nil)
