@@ -417,6 +417,12 @@ Return number of rendered candidates."
                                         (let ((selected-candidates (funcall matcher candidates state)))
                                           (sallet-source-set-processed-candidates source selected-candidates))
                                       (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates))))))))))
+                          ;; TODO: we shouldn't need to re-render if
+                          ;; no change happened... currently this only
+                          ;; handles scrolling (the >> indicator).
+                          ;; That should be done with a sliding
+                          ;; overlay instead.  Change in
+                          ;; `sallet-render-state'.
                           (sallet-render-state state))
                         nil t))
           ;; TODO: add support to pass maps
