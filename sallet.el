@@ -390,8 +390,11 @@ Return number of rendered candidates."
   (let* ((buffer (get-buffer-create "*Candidates*"))
          ;; make this lexically scoped
          (state (sallet-init-state sources buffer)))
+    (with-current-buffer buffer
+      (kill-all-local-variables)
+      (buffer-disable-undo)
+      (setq cursor-type nil))
     (pop-to-buffer buffer)
-    (setq cursor-type nil)
     (sallet-render-state state)
     (condition-case var
         (minibuffer-with-setup-hook
