@@ -1,4 +1,4 @@
-;;; sallet.el --- Select candidates in a buffer. -*- lexical-binding: t -*-
+;;; sallet.el --- Select candidates in a buffer -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2014-2015 Matúš Goljer <matus.goljer@gmail.com>
 
@@ -28,6 +28,11 @@
 (require 'dash)
 (require 'flx)
 (require 'eieio)
+
+(defgroup sallet ()
+  "Select candidates in a buffer."
+  :group 'convenience
+  :prefix "sallet-")
 
 ;; TODO: make this better
 (defun sallet-matcher-default (candidates state)
