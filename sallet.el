@@ -398,6 +398,8 @@ Return number of rendered candidates."
           (setq offset (+ offset (sallet-render-source state source offset)))))
       (insert "\n\n"))))
 
+;; Add user-facing documentation as docstring and developer
+;; documentation in code.
 (defun sallet (sources)
   (let* ((buffer (get-buffer-create "*Candidates*"))
          ;; make this lexically scoped

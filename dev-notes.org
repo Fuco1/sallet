@@ -1,0 +1,22 @@
+* The pipeline
+
+The main pipeline consists of these steps:
+
+1. Generator or candidate list
+2. Matcher
+3. Sorter
+4. Renderer
+
+Next we describe the inputs and outputs of each stage.
+
+** Generator
+
+** Matcher
+
+** Sorter
+
+** Renderer
+
+** Data flow
+
+The output of one step is funneled  into the next one using these conventions:
