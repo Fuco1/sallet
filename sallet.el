@@ -59,8 +59,6 @@ reordered."
     (nreverse re)))
 
 ;; TODO: make this better
-;; TODO: split sorting and matching---with buffers, we want to flx
-;; match but sort by recency
 (defun sallet-matcher-flx (candidates state)
   (let* ((i 0)
          (re nil)
@@ -77,9 +75,11 @@ reordered."
              (push (cons i score) re)))
          (setq i (1+ i)))
        candidates)
-      ;; sort by score
-      (setq re (sort re (lambda (a b) (> (cadr a) (cadr b)))))
-      (--map (car it) re))))
+      (nreverse re))))
+
+(defun sallet-sorter-flx (candidates state)
+  ;; sort by score
+  (sort candidates (lambda (a b) (> (cadr a) (cadr b)))))
 
 ;; TODO: add docs
 (defmacro sallet-defsource (name parents &optional docstring &rest body)
@@ -236,6 +236,7 @@ and identity action."
   "Fuzzy occur source."
   ;; matcher is used to rank & reorder best matches on top ...
   (matcher sallet-matcher-flx)
+  (sorter sallet-sorter-flx)
   ;; ... while generator is the stupidest matcher possible
   (generator '(let ((buffer (current-buffer)))
                 (lambda (state)
