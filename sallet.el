@@ -125,6 +125,8 @@ Sets default matcher `sallet-matcher-default', identity renderer
 and identity action."
   (matcher sallet-matcher-default
            :documentation "write what a matcher is. function matching and ranking/sorting candidates")
+  (sorter (lambda (x _) x)
+          :documentation "Sorter.")
   (renderer (lambda (candidate state) candidate)
             :documentation "write what a renderer is.")
   ;; action: TODO: (cons action-name action-function)
@@ -243,6 +245,8 @@ and identity action."
 
 (defun sallet-source-get-matcher (source)
   (oref source matcher))
+(defun sallet-source-get-sorter (source)
+  (oref source sorter))
 (defun sallet-source-get-renderer (source)
   (oref source renderer))
 (defun sallet-source-get-candidates (source)
@@ -449,7 +453,12 @@ Return number of rendered candidates."
                            (-if-let (matcher (sallet-source-get-matcher source))
                                (let ((selected-candidates (funcall matcher candidates state)))
                                  (sallet-source-set-processed-candidates source selected-candidates))
-                             (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates))))))))))
+                             (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates))))))
+                         (let* ((candidates (sallet-source-get-processed-candidates source)))
+                           (-when-let (sorter (sallet-source-get-sorter source))
+                             (sallet-source-set-processed-candidates
+                              source
+                              (funcall sorter candidates state))))))))
                  ;; TODO: we shouldn't need to re-render if
                  ;; no change happened... currently this only
                  ;; handles scrolling (the >> indicator).
