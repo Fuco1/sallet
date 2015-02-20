@@ -210,7 +210,8 @@ and identity action."
   (candidates nil)
   (matcher nil)
   (renderer (-lambda ((line-string _ line-number) _)
-              (format "%d:%s" line-number line-string)))
+              ;; TODO: add face to the number
+              (format "%5d:%s" line-number line-string)))
   (generator '(let ((buffer (current-buffer)))
                 (lambda (state)
                   (let ((prompt (sallet-state-get-prompt state)))
