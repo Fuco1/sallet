@@ -34,6 +34,10 @@
   :group 'convenience
   :prefix "sallet-")
 
+(defun sallet-car-maybe (cons-or-thing)
+  "Return `car' of CONS-OR-THING if it is a cons or itself otherwise."
+  (if (consp cons-or-thing) (car cons-or-thing) cons-or-thing))
+
 ;; TODO: make this better
 (defun sallet-matcher-default (candidates state)
   "Default matcher.
@@ -345,9 +349,10 @@ SELECTED-CANDIDATE is the currently selected candidate.")
       (setq re it))
     (cons re (sallet-source-get-candidate
               re
-              (-if-let (proc (sallet-source-get-processed-candidates re))
-                  (nth (- offset total-old) proc)
-                (- offset total-old))))))
+              (sallet-car-maybe
+               (-if-let (proc (sallet-source-get-processed-candidates re))
+                   (nth (- offset total-old) proc)
+                 (- offset total-old)))))))
 
 (defun sallet-init-state (sources candidate-buffer)
   (let ((state (list (cons 'sources (-keep 'sallet-init-source sources))
@@ -379,11 +384,16 @@ Return number of rendered candidates."
         (insert "=== " (sallet-source-get-header source) " ===\n"))
       (-each selected-candidates
         (lambda (n)
-          ;; TODO: The >> marker should be handled with an
-          ;; overlay. See the note in `sallet'.
-          (insert (if (= coffset i) ">>" "  ")
-                  (funcall renderer (sallet-source-get-candidate source n) state)
-                  "\n")
+          ;; `n' can be a number or a list returned from the
+          ;; matcher---the `car' of which is then the index, the rest
+          ;; is arbitrary meta data ignored at this stage (it is
+          ;; useful when at the sorter stage)
+          (let* ((candidate (sallet-source-get-candidate source (sallet-car-maybe n))))
+            ;; TODO: The >> marker should be handled with an
+            ;; overlay. See the note in `sallet'.
+            (insert (if (= coffset i) ">>" "  ")
+                    (funcall renderer candidate state)
+                    "\n"))
           (when (= coffset i)
             (set-window-point (get-buffer-window (sallet-state-get-candidate-buffer state)) (point)))
           (setq i (1+ i))))
