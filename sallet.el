@@ -183,7 +183,7 @@ and identity action."
 (defun sallet-occur-get-lines (buffer prompt &optional mode)
   "Mode: :normal, :fuzzy, :regexp (default)"
   (let ((pattern
-         (concat "^.*?\\("
+         (concat "\\("
                  (cond
                   ((eq mode :normal)
                    (regexp-quote prompt))
@@ -192,7 +192,7 @@ and identity action."
                               (mapcar 'char-to-string (string-to-list prompt))
                               ".*"))
                   (t prompt))
-                 "\\).*$"))
+                 "\\)"))
         re)
     (with-current-buffer buffer
       (goto-char (point-min))
