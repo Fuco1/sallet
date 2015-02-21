@@ -71,6 +71,7 @@ reordered."
     (nreverse re)))
 
 ;; TODO: figure out how the caching works
+;; TODO: rewrite in a style of "processed candidates" filter
 (defun sallet-flx-match (prompt candidates)
   "Match PROMPT against CANDIDATES.
 
@@ -334,7 +335,7 @@ Any other non-prefixed pattern is matched using the following rules:
         ;; if non-empty pattern
         ;; TODO: abstract the matching "procedures" into separate,
         ;; reusable filters (we might want to use the same rules
-        ;; elsewhere too)
+        ;; elsewhere too).  See also `sallet-flx-match'
         (cond
          ;; test major-mode
          ((string-match-p "\\`\\*" pattern)
