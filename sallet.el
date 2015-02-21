@@ -404,9 +404,13 @@ Any other non-prefixed pattern is matched using the following rules:
 (sallet-defsource buffer nil
   "Buffer source."
   (candidates (lambda ()
-                (--keep (let ((name (buffer-name it)))
-                          (unless (string-match-p "^ " name) name))
-                        (buffer-list))))
+                (let ((buffers
+                       (--keep (let ((name (buffer-name it)))
+                                 (unless (string-match-p "^ " name) name))
+                               (buffer-list))))
+                  (if (< 1 (length buffers))
+                      (-cons* (cadr buffers) (car buffers) (cddr buffers))
+                    buffers))))
   (matcher sallet-buffer-matcher)
   (action switch-to-buffer)
   (header "Buffers")
