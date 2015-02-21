@@ -250,6 +250,23 @@ Directory buffers are those whose major mode is `dired-mode'."
   (header "Buffers")
   (renderer sallet-buffer-renderer))
 
+(defface sallet-recentf-buffer-name
+  '((t (:inherit font-lock-builtin-face)))
+  "Face used to fontify recentf buffer name."
+  :group 'sallet-faces)
+
+(defface sallet-recentf-file-path
+  '((t (:inherit sallet-buffer-default-directory)))
+  "Face used to fontify recentf file path."
+  :group 'sallet-faces)
+
+(defun sallet-recentf-renderer (candidate _)
+  "Render a recentf candidate."
+  (-let (((name . file) candidate))
+    (format "%-50s%s"
+            (propertize name 'face 'sallet-recentf-buffer-name)
+            (propertize (abbreviate-file-name file) 'face 'sallet-recentf-file-path))))
+
 (sallet-defsource recentf nil
   "Files saved on `recentf-list'."
   (candidates (lambda ()
@@ -260,7 +277,7 @@ Directory buffers are those whose major mode is `dired-mode'."
                      (cons name it)))
                  recentf-list)))
   (matcher sallet-matcher-flx)
-  (renderer (-lambda ((name) _) name))
+  (renderer sallet-recentf-renderer)
   (action (-lambda ((_ . file)) (find-file file)))
   (header "Recently opened files"))
 
