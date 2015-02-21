@@ -396,8 +396,7 @@ Any other non-prefixed pattern is matched using the following rules:
                                       (plist-put
                                        (cdr-safe it)
                                        :flx-matches
-                                        (-concat (cdr flx-data) matches))))
-                              )
+                                        (-concat (cdr flx-data) matches)))))
                             indices))))))))
     indices))
 
