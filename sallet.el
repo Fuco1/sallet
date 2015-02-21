@@ -52,8 +52,8 @@ reordered."
          (parts (split-string prompt)))
     (mapc
      (lambda (c)
-       (let ((c-str (if (stringp c) c (car c))))
-         (when (--all? (string-match-p (regexp-quote it) c-str) parts)
+       (let ((c (sallet-car-maybe c)))
+         (when (--all? (string-match-p (regexp-quote it) c) parts)
            (push i re)))
        (setq i (1+ i)))
      candidates)
@@ -71,8 +71,8 @@ reordered."
         (number-sequence 0 (1- (length candidates)))
       (mapc
        (lambda (c)
-         (let ((c-str (if (stringp c) c (car c))))
-           (-when-let (score (flx-score c-str (car parts)))
+         (let ((c (sallet-car-maybe c)))
+           (-when-let (score (flx-score c prompt))
              (push (cons i score) re)))
          (setq i (1+ i)))
        candidates)
