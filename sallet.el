@@ -615,6 +615,12 @@ Return number of rendered candidates."
           (setq offset (+ offset (sallet-render-source state source offset)))))
       (insert "\n\n"))))
 
+(defun sallet-cleanup-candidate-window ()
+  "Cleanup the candidates buffer."
+  (let* ((buffer (get-buffer-create "*Sallet candidates*")))
+    (pop-to-buffer buffer)
+    (kill-buffer-and-window)))
+
 ;; Add user-facing documentation as docstring and developer
 ;; documentation in code.
 (defun sallet (sources)
@@ -678,8 +684,8 @@ Return number of rendered candidates."
                                              map))
           (sallet-default-action))
       ;; TODO: do we want `kill-buffer-and-window?'
-      (quit (kill-buffer-and-window))
-      (error (kill-buffer-and-window)))))
+      (quit (sallet-cleanup-candidate-window))
+      (error (sallet-cleanup-candidate-window)))))
 
 ;; TODO: figure out how to avoid the global state here: sallet-state
 (defun sallet-candidate-up ()
@@ -694,7 +700,7 @@ Return number of rendered candidates."
     (sallet-state-decf-selected-candidate sallet-state)))
 
 (defun sallet-default-action ()
-  (kill-buffer-and-window)
+  (sallet-cleanup-candidate-window)
   (-when-let ((source . cand) (sallet-state-get-selected-source sallet-state))
     (funcall (sallet-source-get-action source) cand)))
 
