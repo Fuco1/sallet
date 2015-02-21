@@ -264,6 +264,8 @@ classes, functions, variables defined in the file.
 A pattern starting with # does a full-text regexp search inside
 the buffer.
 
+A pattern starting with / flx-matches against the default directory.
+
 Any other non-prefixed pattern is matched using the following rules:
 
 - If the pattern is first of this type at the prompt, it is
@@ -307,6 +309,14 @@ Any other non-prefixed pattern is matched using the following rules:
                                 (save-excursion
                                   (goto-char (point-min))
                                   (re-search-forward pattern nil t)))
+                              indices)))))
+         ;; default directory match
+         ((string-match-p "\\`/" pattern)
+          (let ((pattern (substring pattern 1)))
+            (unless (equal pattern "")
+              (setq indices
+                    (--filter (with-current-buffer (aref candidates it)
+                                (flx-score default-directory pattern))
                               indices)))))
          (t
           ;; fuzzy match on first non-special sequence, then substring match later
