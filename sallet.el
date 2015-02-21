@@ -71,36 +71,39 @@ reordered."
     (nreverse re)))
 
 ;; TODO: figure out how the caching works
-;; TODO: rewrite in a style of "processed candidates" filter
-(defun sallet-flx-match (prompt candidates)
-  "Match PROMPT against CANDIDATES.
+(defun sallet-flx-match (pattern candidates indices)
+  "Match PATTERN against CANDIDATES at INDICES.
 
-CANDIDATES is a list or vector of candidates.
+CANDIDATES is a vector of candidates.
+
+INDICES is a list of processed candidates.
 
 Uses the `flx' algorithm."
-  (let* ((i 0)
-         (re nil))
-    (if (= (length prompt) 0)
-        (number-sequence 0 (1- (length candidates)))
-      (mapc
-       (lambda (c)
-         (let ((c (sallet-car-maybe c)))
-           (-when-let (score (flx-score c prompt))
-             (push (cons i score) re)))
-         (setq i (1+ i)))
-       candidates)
-      (nreverse re))))
+  ;; TODO: abstract the car-maybe . aref . car-maybe chain
+  (--keep (-when-let (flx-data (flx-score (sallet-car-maybe (aref candidates (sallet-car-maybe it))) pattern))
+            ;; TODO: abstract the "append to property" thing
+            (let ((matches (plist-get (cdr-safe it) :flx-matches)))
+              (cons (sallet-car-maybe it)
+                    (plist-put
+                     (plist-put
+                      (cdr-safe it)
+                      :flx-matches
+                       (-concat (cdr flx-data) matches))
+                     :flx-score (car flx-data)))))
+          indices))
 
-;; TODO: add a function modifier that would transform any function
-;; into "first item matcher" or a "non-special-prefixed" matcher
-;; etc. to make it composable.
 (defun sallet-matcher-flx (candidates state)
-  (let ((prompt (sallet-state-get-prompt state)))
-    (sallet-flx-match prompt candidates)))
+  "Match candidates using flx matching."
+  (let ((prompt (sallet-state-get-prompt state))
+        (indices (number-sequence 0 (1- (length candidates)))))
+    (sallet-flx-match prompt candidates indices)))
 
-(defun sallet-sorter-flx (candidates state)
-  ;; sort by score
-  (sort candidates (lambda (a b) (> (cadr a) (cadr b)))))
+(defun sallet-sorter-flx (processed-candidates _)
+  "Sort PROCESSED-CANDIDATES by :flx-score."
+  (sort processed-candidates
+        (-lambda ((_ . (&plist :flx-score a))
+                  (_ . (&plist :flx-score b)))
+          (> a b))))
 
 ;; TODO: add docs
 (defmacro sallet-defsource (name parents &optional docstring &rest body)
