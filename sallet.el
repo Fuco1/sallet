@@ -278,12 +278,16 @@ input pattern."
       (add-text-properties it (1+ it) (list 'face 'sallet-flx-match) new-string))
     new-string))
 
-(defun sallet-buffer-renderer (candidate _ _)
+(defun sallet-buffer-renderer (candidate _ user-data)
   "Render a buffer CANDIDATE."
   (with-current-buffer candidate
     (let ((dd (abbreviate-file-name default-directory)))
       (format "%-50s%10s  %20s  %s"
-              (sallet-buffer-fontify-buffer-name candidate)
+              (sallet-fontify-flx-matches
+               (sallet-fontify-substring-matches
+                (sallet-buffer-fontify-buffer-name candidate)
+                (plist-get user-data :substring-matches))
+               (plist-get user-data :flx-matches))
               (propertize (file-size-human-readable (buffer-size)) 'face 'sallet-buffer-size)
               major-mode
               (propertize
@@ -373,16 +377,27 @@ Any other non-prefixed pattern is matched using the following rules:
           ;; fuzzy match on first non-special sequence, then substring match later
           (let ((quoted-pattern (regexp-quote pattern)))
             (setq indices
+                  ;; TODO: abstract the user-data update/passing
                   (if fuzzy-matched
-                      ;; TODO: figure out how to pass the matched part
-                      ;; to the renderer so we can highlight it
-                      (--filter (string-match-p quoted-pattern (sallet-aref candidates it)) indices)
+                      (--keep (save-match-data
+                                (when (string-match quoted-pattern (sallet-aref candidates it))
+                                  (let ((matches (plist-get (cdr-safe it) :substring-matches)))
+                                    (cons (sallet-car-maybe it)
+                                          (plist-put
+                                           (cdr-safe it)
+                                           :substring-matches
+                                            (cons (cons (match-beginning 0) (match-end 0)) matches))))))
+                              indices)
                     (setq fuzzy-matched t)
-                    ;; TODO: We don't care about the sorting
-                    ;; information, but we would like to channel the
-                    ;; matched indices into the renderer.  Think about
-                    ;; how to do that
-                    (--filter (flx-score (sallet-aref candidates it) quoted-pattern) indices))))))))
+                    (--keep (-when-let (flx-data (flx-score (sallet-aref candidates it) quoted-pattern))
+                              (let ((matches (plist-get (cdr-safe it) :flx-matches)))
+                                (cons (sallet-car-maybe it)
+                                      (plist-put
+                                       (cdr-safe it)
+                                       :flx-matches
+                                        (-concat (cdr flx-data) matches))))
+                              )
+                            indices))))))))
     indices))
 
 (sallet-defsource buffer nil
