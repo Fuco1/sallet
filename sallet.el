@@ -537,8 +537,7 @@ SELECTED-CANDIDATE is the currently selected candidate.")
   (decf (cdr (assoc 'selected-candidate state))))
 
 (defun sallet-state-get-number-of-all-candidates (state)
-  (-sum (--map (length (or (sallet-source-get-processed-candidates it)
-                           (sallet-source-get-candidates it)))
+  (-sum (--map (length (sallet-source-get-processed-candidates it))
                (sallet-state-get-sources state))))
 
 ;; TODO: make this function better, it's a mess
@@ -552,11 +551,7 @@ SELECTED-CANDIDATE is the currently selected candidate.")
          (total-old total))
     (--each-while sources (< total offset)
       (setq total-old total)
-      ;; TODO: abstract the `or' here... we just want to get some
-      ;; candidates.  Search for it everywhere, it is used all over
-      ;; the source
-      (setq total (+ total (length (or (sallet-source-get-processed-candidates it)
-                                       (sallet-source-get-candidates it)))))
+      (setq total (+ total (length (sallet-source-get-processed-candidates it))))
       (setq re it))
     (cons re (sallet-source-get-candidate
               re
