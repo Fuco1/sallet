@@ -249,6 +249,8 @@ Directory buffers are those whose major mode is `dired-mode'."
                'face
                'sallet-buffer-default-directory)))))
 
+;; TODO: add syntax to turn flx matching into substring matching.
+;; Maybe when the prefix is twice repeated?
 (defun sallet-buffer-matcher (candidates state)
   "Match a buffer candidate using special rules.
 
