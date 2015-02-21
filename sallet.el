@@ -137,7 +137,7 @@ and identity action."
            :documentation "write what a matcher is. function matching and ranking/sorting candidates")
   (sorter (lambda (x _) x)
           :documentation "Sorter.")
-  (renderer (lambda (candidate state) candidate)
+  (renderer (lambda (candidate state user-data) candidate)
             :documentation "write what a renderer is.")
   ;; action: TODO: (cons action-name action-function)
   ;; TODO: add support for actions which do not kill the session
@@ -232,7 +232,7 @@ Directory buffers are those whose major mode is `dired-mode'."
                  (t 'sallet-buffer-ordinary))))
       (propertize (buffer-name) 'face face))))
 
-(defun sallet-buffer-renderer (candidate _)
+(defun sallet-buffer-renderer (candidate _ _)
   "Render a buffer CANDIDATE."
   (with-current-buffer candidate
     (let ((dd (abbreviate-file-name default-directory)))
@@ -360,7 +360,7 @@ Any other non-prefixed pattern is matched using the following rules:
   "Face used to fontify recentf file path."
   :group 'sallet-faces)
 
-(defun sallet-recentf-renderer (candidate _)
+(defun sallet-recentf-renderer (candidate _ _)
   "Render a recentf candidate."
   (-let (((name . file) candidate))
     (format "%-50s%s"
@@ -387,7 +387,7 @@ Any other non-prefixed pattern is matched using the following rules:
   "Bookmarks source, files only."
   (candidates bmkp-file-alist-only)
   (matcher sallet-matcher-flx)
-  (renderer (lambda (c _) (car c)))
+  (renderer (lambda (c _ _) (car c)))
   (action (lambda (bookmark-name)
             ;; TODO: doesn't seem to work
             (bmkp-jump-1 (cons "" bookmark-name) 'switch-to-buffer nil)))
@@ -423,7 +423,7 @@ Any other non-prefixed pattern is matched using the following rules:
   "Occur source."
   (candidates nil)
   (matcher nil)
-  (renderer (-lambda ((line-string _ line-number) _)
+  (renderer (-lambda ((line-string _ line-number) _ _)
               ;; TODO: add face to the number
               (format "%5d:%s" line-number line-string)))
   (generator '(let ((buffer (current-buffer)))
@@ -601,7 +601,7 @@ Return number of rendered candidates."
             ;; TODO: The >> marker should be handled with an
             ;; overlay. See the note in `sallet'.
             (insert (if (= coffset i) ">>" "  ")
-                    (funcall renderer candidate state)
+                    (funcall renderer candidate state (cdr-safe n))
                     "\n"))
           (when (= coffset i)
             (set-window-point (get-buffer-window (sallet-state-get-candidate-buffer state)) (point)))
