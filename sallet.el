@@ -40,6 +40,16 @@
   "Return `car' of CONS-OR-THING if it is a cons or itself otherwise."
   (if (consp cons-or-thing) (car cons-or-thing) cons-or-thing))
 
+(defun sallet-aref (candidates index)
+  "Return element of CANDIDATES at INDEX.
+
+If INDEX is a number behaves just like `aref'.
+
+If INDEX is a cons, take its `car' and then behaves like `aref'."
+  (if (numberp index)
+      (aref candidates index)
+    (aref candidates (car index))))
+
 ;; TODO: make this better
 (defun sallet-matcher-default (candidates state)
   "Default matcher.
@@ -291,7 +301,7 @@ Any other non-prefixed pattern is matched using the following rules:
           (let ((mm (substring pattern 1)))
             (unless (equal mm "")
               (setq indices
-                    (--filter (with-current-buffer (aref candidates it)
+                    (--filter (with-current-buffer (sallet-aref candidates it)
                                 (flx-score (symbol-name major-mode) mm))
                               indices)))))
          ;; match imenu entries inside buffer
@@ -299,7 +309,7 @@ Any other non-prefixed pattern is matched using the following rules:
           (let ((pattern (substring pattern 1)))
             (unless (equal pattern "")
               (setq indices
-                    (--filter (with-current-buffer (aref candidates it)
+                    (--filter (with-current-buffer (sallet-aref candidates it)
                                 (let ((imenu-alist-flat
                                        (-flatten (--tree-map (if (stringp it) nil (car it))
                                                              imenu--index-alist))))
@@ -310,7 +320,7 @@ Any other non-prefixed pattern is matched using the following rules:
           (let ((pattern (substring pattern 1)))
             (unless (equal pattern "")
               (setq indices
-                    (--filter (with-current-buffer (aref candidates it)
+                    (--filter (with-current-buffer (sallet-aref candidates it)
                                 (save-excursion
                                   (goto-char (point-min))
                                   (re-search-forward pattern nil t)))
@@ -320,7 +330,7 @@ Any other non-prefixed pattern is matched using the following rules:
           (let ((pattern (substring pattern 1)))
             (unless (equal pattern "")
               (setq indices
-                    (--filter (with-current-buffer (aref candidates it)
+                    (--filter (with-current-buffer (sallet-aref candidates it)
                                 (flx-score default-directory pattern))
                               indices)))))
          (t
@@ -330,13 +340,13 @@ Any other non-prefixed pattern is matched using the following rules:
                   (if fuzzy-matched
                       ;; TODO: figure out how to pass the matched part
                       ;; to the renderer so we can highlight it
-                      (--filter (string-match-p quoted-pattern (aref candidates it)) indices)
+                      (--filter (string-match-p quoted-pattern (sallet-aref candidates it)) indices)
                     (setq fuzzy-matched t)
                     ;; TODO: We don't care about the sorting
                     ;; information, but we would like to channel the
                     ;; matched indices into the renderer.  Think about
                     ;; how to do that
-                    (--filter (flx-score (aref candidates it) quoted-pattern) indices))))))))
+                    (--filter (flx-score (sallet-aref candidates it) quoted-pattern) indices))))))))
     indices))
 
 (sallet-defsource buffer nil
