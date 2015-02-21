@@ -59,14 +59,12 @@ reordered."
      candidates)
     (nreverse re)))
 
-;; TODO: make this better
-(defun sallet-matcher-flx (candidates state)
+(defun sallet-flx-match (prompt candidates)
+  "Match PROMPT against CANDIDATES.
+
+Uses the `flx' algorithm."
   (let* ((i 0)
-         (re nil)
-         (prompt (sallet-state-get-prompt state))
-         (parts (split-string prompt)))
-    ;; first fuzzy score/filter by first input
-    ;; TODO: add a function modifier that would transform any function into "first item matcher"
+         (re nil))
     (if (= (length prompt) 0)
         (number-sequence 0 (1- (length candidates)))
       (mapc
@@ -77,6 +75,13 @@ reordered."
          (setq i (1+ i)))
        candidates)
       (nreverse re))))
+
+;; TODO: add a function modifier that would transform any function
+;; into "first item matcher" or a "non-special-prefixed" matcher
+;; etc. to make it composable.
+(defun sallet-matcher-flx (candidates state)
+  (let ((prompt (sallet-state-get-prompt state)))
+    (sallet-flx-match prompt candidates)))
 
 (defun sallet-sorter-flx (candidates state)
   ;; sort by score
