@@ -384,7 +384,7 @@ Any other non-prefixed pattern is matched using the following rules:
 (sallet-defsource bookmarks-file-only nil
   "Bookmarks source, files only."
   (candidates bmkp-file-alist-only)
-  (matcher sallet-matcher-default)
+  (matcher sallet-matcher-flx)
   (renderer (lambda (c _) (car c)))
   (action (lambda (bookmark-name)
             ;; TODO: doesn't seem to work
