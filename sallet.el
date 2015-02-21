@@ -60,8 +60,11 @@ reordered."
      candidates)
     (nreverse re)))
 
+;; TODO: figure out how the caching works
 (defun sallet-flx-match (prompt candidates)
   "Match PROMPT against CANDIDATES.
+
+CANDIDATES is a list or vector of candidates.
 
 Uses the `flx' algorithm."
   (let* ((i 0)
