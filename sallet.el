@@ -542,25 +542,26 @@ SELECTED-CANDIDATE is the currently selected candidate.")
   (-sum (--map (length (sallet-source-get-processed-candidates it))
                (sallet-state-get-sources state))))
 
-;; TODO: make this function better, it's a mess
-;; TODO: FIX: if some source has no displayed candidates at all, it is
-;; skipped but index is not raised
 (defun sallet-state-get-selected-source (state)
-  (let* ((offset (sallet-state-get-selected-candidate state))
-         (sources (sallet-state-get-sources state))
-         (re (car sources))
-         (total 0)
-         (total-old total))
-    (--each-while sources (< total offset)
-      (setq total-old total)
-      (setq total (+ total (length (sallet-source-get-processed-candidates it))))
-      (setq re it))
-    (cons re (sallet-source-get-candidate
-              re
-              (sallet-car-maybe
-               (-if-let (proc (sallet-source-get-processed-candidates re))
-                   (nth (- offset total-old) proc)
-                 (- offset total-old)))))))
+  "Return the currently selected source and candidate.
+
+STATE is sallet state."
+  (-when-let (sources
+              (--filter (< 0 (length (sallet-source-get-processed-candidates it)))
+                        (sallet-state-get-sources state)))
+    (let* ((offset (sallet-state-get-selected-candidate state))
+           (re (car sources))
+           (total 0)
+           (total-old total))
+      (--each-while sources (<= total offset)
+        (setq total-old total)
+        (setq total (+ total (length (sallet-source-get-processed-candidates it))))
+        (setq re it))
+      (cons re (sallet-source-get-candidate
+                re
+                (sallet-car-maybe
+                 (let ((proc (sallet-source-get-processed-candidates re)))
+                   (nth (- offset total-old) proc))))))))
 
 (defun sallet-init-state (sources candidate-buffer)
   (let ((state (list (cons 'sources (-keep 'sallet-init-source sources))
