@@ -400,17 +400,8 @@ Any other non-prefixed pattern is matched using the following rules:
           ;; fuzzy match on first non-special sequence, then substring match later
           (let ((quoted-pattern (regexp-quote pattern)))
             (setq indices
-                  ;; TODO: abstract the user-data update/passing
                   (if fuzzy-matched
-                      (--keep (save-match-data
-                                (when (string-match quoted-pattern (sallet-aref candidates it))
-                                  (let ((matches (plist-get (cdr-safe it) :substring-matches)))
-                                    (cons (sallet-car-maybe it)
-                                          (plist-put
-                                           (cdr-safe it)
-                                           :substring-matches
-                                            (cons (cons (match-beginning 0) (match-end 0)) matches))))))
-                              indices)
+                      (sallet-subword-match quoted-pattern candidates indices)
                     (setq fuzzy-matched t)
                     (sallet-flx-match quoted-pattern candidates indices))))))))
     indices))
