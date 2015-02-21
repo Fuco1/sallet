@@ -76,8 +76,8 @@ The output are processed candidates.
 ** Renderer
 Renders the candidates in the candidate window.
 
-It is a function with two mandatory input arguments: the [[*Candidate][candidate]] and the current state.
+It is a function with two mandatory input arguments: a [[*Candidate][candidate]] and the current state.
 
 Additionally, any extra user data produced by matcher and/or sorter
-(that is, the ~cdr~ of this candidate's candidate index) is passed as
+(that is, the ~cdr~ of this candidate's candidate index) are passed as
 an optional third argument.
