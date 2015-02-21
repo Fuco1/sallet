@@ -1,22 +1,83 @@
+* Basic terminology
+** Candidate
+A candidate is some value which is ultimately returned to the user as
+the selected item.  A candidate can be any scalar (number, string,
+vector, ...) or a list of values.
+
+** Prompt
+The text that user input into the minibuffer.
+
+** Candidates
+Vector of all available [[*Candidate][candidates]].
+
+** Candidate index
+Index of a particular candidate in the [[*Candidates][candidates]] vector.
+
+Instead of only being a number, it can be a cons or list where the
+~car~ is the index and the rest is arbitrary user data.
+
+** Processed candidates
+A list of [[*Candidate%20index][candidate indices]] which are eligible for further processing
+(display, selection...).  Instead of modifying the candidate list
+(which can possibly be static for the entire session) with each input
+change, we only change the list of indices.
+
+For example, if we changed the candidate list itself, on cleaning up
+the prompt we would need to recompute the candidate list.
+
+This list is passed through the [[*The%20pipeline][pipeline]].
+
 * The pipeline
 
 The main pipeline consists of these steps:
 
-1. Generator or candidate list
+1. Generator or candidate list (exactly one of these must be provided)
 2. Matcher
 3. Sorter
 4. Renderer
 
 Next we describe the inputs and outputs of each stage.
 
+** Candidates
+Candidates can be a list or vector of candidates (static), or a
+function taking zero arguments which generates a new list or vector of
+candidates for each session (can depend on current environment).
+
+When given/created, lists are coerced into vectors.
+
 ** Generator
+Generator is responsible for generating new set of possible
+/candidates/ with each change of the user input (prompt).  Think
+/dynamic candidates/.
+
+It is a function of one argument: the current sallet state.
+
+The return value is a *vector* of candidates, each candidate can be
+either a value or a list of values.
 
 ** Matcher
+Matcher filters the available candidates and produces [[*Processed%20candidates][processed candidates]].
+
+It is a function with two input arguments: the vector of candidates
+and the current state.
+
+The output are processed candidates.
 
 ** Sorter
+Sorter further processes the [[*Processed%20candidates][processed candidates]] by sorting
+them---which is the most expected action, but really, arbitrary
+transformation is available.
+
+It is a function with two input arguments: the list of processed candidates
+and the current state.
+
+The output are processed candidates.
 
 ** Renderer
+Renders the candidates in the candidate window.
 
-** Data flow
+It is a function with two mandatory input arguments: the [[*Candidate][candidate]] and the current state.
 
-The output of one step is funneled  into the next one using these conventions:
+Additionally, any extra user data produced by matcher and/or sorter
+(that is, the ~cdr~ of this candidate's candidate index) is passed as
+an optional third argument.
