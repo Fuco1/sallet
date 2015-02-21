@@ -583,15 +583,15 @@ Return number of rendered candidates."
   (with-current-buffer (sallet-state-get-candidate-buffer state)
     (let* ((selected (sallet-state-get-selected-candidate state))
            (prompt (sallet-state-get-prompt state))
-           (selected-candidates (sallet-source-get-processed-candidates source))
+           (processed-candidates (sallet-source-get-processed-candidates source))
            (renderer (sallet-source-get-renderer source))
            (coffset (- selected offset))
            (i 0))
       ;; TODO: abstract header rendering
-      (when (and selected-candidates
-                 (> (length selected-candidates) 0))
+      (when (and processed-candidates
+                 (> (length processed-candidates) 0))
         (insert "=== " (sallet-source-get-header source) " ===\n"))
-      (-each selected-candidates
+      (-each processed-candidates
         (lambda (n)
           ;; `n' can be a number or a list returned from the
           ;; matcher---the `car' of which is then the index, the rest
@@ -662,14 +662,14 @@ Return number of rendered candidates."
                            (sallet-source-set-candidates source (funcall generator state)))
                          (let* ((candidates (sallet-source-get-candidates source)))
                            (-if-let (matcher (sallet-source-get-matcher source))
-                               (let ((selected-candidates (funcall matcher candidates state)))
-                                 (sallet-source-set-processed-candidates source selected-candidates))
+                               (let ((processed-candidates (funcall matcher candidates state)))
+                                 (sallet-source-set-processed-candidates source processed-candidates))
                              (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates))))))
-                         (let* ((candidates (sallet-source-get-processed-candidates source)))
+                         (let* ((processed-candidates (sallet-source-get-processed-candidates source)))
                            (-when-let (sorter (sallet-source-get-sorter source))
                              (sallet-source-set-processed-candidates
                               source
-                              (funcall sorter candidates state))))))))
+                              (funcall sorter processed-candidates state))))))))
                  ;; TODO: we shouldn't need to re-render if
                  ;; no change happened... currently this only
                  ;; handles scrolling (the >> indicator).
