@@ -280,6 +280,9 @@ Any other non-prefixed pattern is matched using the following rules:
       (lambda (pattern)
         ;; TODO: abstract the "get substring sans first char", proceed
         ;; if non-empty pattern
+        ;; TODO: abstract the matching "procedures" into separate,
+        ;; reusable filters (we might want to use the same rules
+        ;; elsewhere too)
         (cond
          ;; test major-mode
          ((string-match-p "\\`\\*" pattern)
