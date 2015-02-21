@@ -393,14 +393,7 @@ Any other non-prefixed pattern is matched using the following rules:
                                             (cons (cons (match-beginning 0) (match-end 0)) matches))))))
                               indices)
                     (setq fuzzy-matched t)
-                    (--keep (-when-let (flx-data (flx-score (sallet-aref candidates it) quoted-pattern))
-                              (let ((matches (plist-get (cdr-safe it) :flx-matches)))
-                                (cons (sallet-car-maybe it)
-                                      (plist-put
-                                       (cdr-safe it)
-                                       :flx-matches
-                                        (-concat (cdr flx-data) matches)))))
-                            indices))))))))
+                    (sallet-flx-match quoted-pattern candidates indices))))))))
     indices))
 
 (sallet-defsource buffer nil
