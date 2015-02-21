@@ -28,6 +28,7 @@
 (require 'dash)
 (require 'flx)
 (require 'eieio)
+(require 'ibuffer)
 
 (defgroup sallet ()
   "Select candidates in a buffer."
@@ -146,9 +147,98 @@ and identity action."
   ;; header
   (header "Select a candidate"))
 
-;; TODO: add better renderer
-;; TODO: add some version supporting filtering? is it even worth
-;; having if we have narrowing built-in?
+(defgroup sallet-faces nil
+  "Sallet faces."
+  :group 'sallet)
+
+(defface sallet-buffer-ordinary
+  '((t (:inherit font-lock-type-face)))
+  "Face used to fontify ordinary buffers."
+  :group 'sallet-faces)
+
+(defface sallet-buffer-modified
+  '((t (:inherit font-lock-warning-face)))
+  "Face used to fontify modified (unsaved) buffers."
+  :group 'sallet-faces)
+
+(defface sallet-buffer-compressed
+  '((t (:inherit font-lock-doc-face)))
+  "Face used to fontify buffers representing compressed files.
+
+Compressed files are those matching
+`ibuffer-compressed-file-name-regexp'."
+  :group 'sallet-faces)
+
+(defface sallet-buffer-read-only
+  '((t (:inherit font-lock-constant-face)))
+  "Face used to fontify read-only buffers."
+  :group 'sallet-faces)
+
+(defface sallet-buffer-special
+  '((t (:inherit font-lock-keyword-face)))
+  "Face used to fontify special buffers.
+
+Special buffers are those prefixed by *."
+  :group 'sallet-faces)
+
+(defface sallet-buffer-help
+  '((t (:inherit font-lock-comment-face)))
+  "Face used to fontify help buffers.
+
+Help buffers are those whose major mode matches
+`ibuffer-help-buffer-modes'."
+  :group 'sallet-faces)
+
+(defface sallet-buffer-directory
+  '((t (:inherit font-lock-function-name-face)))
+  "Face used to fontify directory buffers.
+
+Directory buffers are those whose major mode is `dired-mode'."
+  :group 'sallet-faces)
+
+(defface sallet-buffer-size
+  '((t (:foreground "RosyBrown")))
+  "Face used to fontify buffer size."
+  :group 'sallet-faces)
+
+(defface sallet-buffer-default-directory
+  '((t (:foreground "Sienna3")))
+  "Face used to fontify buffer's default directory or process."
+  :group 'sallet-faces)
+
+(defun sallet-buffer-fontify-buffer-name (candidate)
+  "Fontify buffer name."
+  (with-current-buffer candidate
+    (let ((face (cond
+                 ((and (buffer-file-name)
+                       (buffer-modified-p))
+                  'sallet-buffer-modified)
+                 ((eq major-mode (quote dired-mode)) 'sallet-buffer-directory)
+                 ((memq major-mode ibuffer-help-buffer-modes) 'sallet-buffer-help)
+                 ((string-match-p "^*" (buffer-name)) 'sallet-buffer-special)
+                 ((and buffer-file-name
+                       (string-match-p ibuffer-compressed-file-name-regexp buffer-file-name))
+                  'sallet-buffer-compressed)
+                 (buffer-read-only 'sallet-buffer-read-only)
+                 (t 'sallet-buffer-ordinary))))
+      (propertize (buffer-name) 'face face))))
+
+(defun sallet-buffer-renderer (candidate _)
+  "Render a buffer CANDIDATE."
+  (with-current-buffer candidate
+    (let ((dd (abbreviate-file-name default-directory)))
+      (format "%-50s%10s  %20s  %s"
+              (sallet-buffer-fontify-buffer-name candidate)
+              (propertize (file-size-human-readable (buffer-size)) 'face 'sallet-buffer-size)
+              major-mode
+              (propertize
+               (concat "(" (or (and (buffer-file-name) (concat "in " dd))
+                               (-when-let (process (get-buffer-process (current-buffer)))
+                                 (concat (process-name process)
+                                         " run in " dd))
+                               dd) ")")
+               'face
+               'sallet-buffer-default-directory)))))
 (sallet-defsource buffer nil
   "Buffer source."
   (candidates (lambda ()
@@ -157,7 +247,8 @@ and identity action."
                         (buffer-list))))
   (matcher sallet-matcher-flx)
   (action switch-to-buffer)
-  (header "Buffers"))
+  (header "Buffers")
+  (renderer sallet-buffer-renderer))
 
 (sallet-defsource recentf nil
   "Files saved on `recentf-list'."
