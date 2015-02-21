@@ -242,6 +242,42 @@ Directory buffers are those whose major mode is `dired-mode'."
                  (t 'sallet-buffer-ordinary))))
       (propertize (buffer-name) 'face face))))
 
+(defface sallet-substring-match
+  '((t (:inherit font-lock-variable-name-face :weight bold)))
+  "Face used to fontify substring matches."
+  :group 'sallet-faces)
+
+(defface sallet-flx-match
+  '((t (:inherit font-lock-variable-name-face :weight bold
+        :underline (:color foreground-color :style line))))
+  "Face used to fontify flx matches."
+  :group 'sallet-faces)
+
+(defun sallet-fontify-substring-matches (string matches)
+  "Highlight substring matches.
+
+STRING is the string we want to fontify.
+
+MATCHES is a list of conses (BEG . END) where each cons delimit
+the matched region."
+  (let ((new-string (copy-sequence string)))
+    (-each matches
+      (-lambda ((beg . end))
+        (add-text-properties beg end (list 'face 'sallet-substring-match) new-string)))
+    new-string))
+
+(defun sallet-fontify-flx-matches (string matches)
+  "Highlight flx matches.
+
+STRING is the string we want to fontify.
+
+MATCHES is a list of indices where flx matched a letter to the
+input pattern."
+  (let ((new-string (copy-sequence string)))
+    (--each matches
+      (add-text-properties it (1+ it) (list 'face 'sallet-flx-match) new-string))
+    new-string))
+
 (defun sallet-buffer-renderer (candidate _ _)
   "Render a buffer CANDIDATE."
   (with-current-buffer candidate
