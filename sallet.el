@@ -29,6 +29,7 @@
 (require 'flx)
 (require 'eieio)
 (require 'ibuffer)
+(require 'imenu)
 
 (defgroup sallet ()
   "Select candidates in a buffer."
@@ -244,13 +245,89 @@ Directory buffers are those whose major mode is `dired-mode'."
                                dd) ")")
                'face
                'sallet-buffer-default-directory)))))
+
+(defun sallet-buffer-matcher (candidates state)
+  "Match a buffer candidate using special rules.
+
+First, the prompt is split on whitespace.  This creates a list of
+patterns.
+
+A pattern starting with * is flx-matched against the `major-mode'.
+
+A pattern starting with @ is flx-matched against the
+`imenu--index-alist' entries.  These are usually names of
+classes, functions, variables defined in the file.
+
+A pattern starting with # does a full-text regexp search inside
+the buffer.
+
+Any other non-prefixed pattern is matched using the following rules:
+
+- If the pattern is first of this type at the prompt, it is
+  flx-matched against the buffer name.
+- All the following patterns are substring matched against the
+  buffer name."
+  (let* ((prompt (sallet-state-get-prompt state))
+         (input (split-string prompt))
+         (fuzzy-matched nil)
+         (indices (number-sequence 0 (1- (length candidates)))))
+    (-each input
+      (lambda (pattern)
+        ;; TODO: abstract the "get substring sans first char", proceed
+        ;; if non-empty pattern
+        (cond
+         ;; test major-mode
+         ((string-match-p "\\`\\*" pattern)
+          (let ((mm (substring pattern 1)))
+            (unless (equal mm "")
+              (setq indices
+                    (--filter (with-current-buffer (aref candidates it)
+                                (flx-score (symbol-name major-mode) mm))
+                              indices)))))
+         ;; match imenu entries inside buffer
+         ((string-match-p "\\`@" pattern)
+          (let ((pattern (substring pattern 1)))
+            (unless (equal pattern "")
+              (setq indices
+                    (--filter (with-current-buffer (aref candidates it)
+                                (let ((imenu-alist-flat
+                                       (-flatten (--tree-map (if (stringp it) nil (car it))
+                                                             imenu--index-alist))))
+                                  (--any? (flx-score it pattern) imenu-alist-flat)))
+                              indices)))))
+         ;; fulltext match
+         ((string-match-p "\\`#" pattern)
+          (let ((pattern (substring pattern 1)))
+            (unless (equal pattern "")
+              (setq indices
+                    (--filter (with-current-buffer (aref candidates it)
+                                (save-excursion
+                                  (goto-char (point-min))
+                                  (re-search-forward pattern nil t)))
+                              indices)))))
+         (t
+          ;; fuzzy match on first non-special sequence, then substring match later
+          (let ((quoted-pattern (regexp-quote pattern)))
+            (setq indices
+                  (if fuzzy-matched
+                      ;; TODO: figure out how to pass the matched part
+                      ;; to the renderer so we can highlight it
+                      (--filter (string-match-p quoted-pattern (aref candidates it)) indices)
+                    (setq fuzzy-matched t)
+                    ;; TODO: We don't care about the sorting
+                    ;; information, but we would like to channel the
+                    ;; matched indices into the renderer.  Think about
+                    ;; how to do that
+                    (--filter (flx-score (aref candidates it) quoted-pattern) indices))))))))
+    indices))
+
 (sallet-defsource buffer nil
   "Buffer source."
   (candidates (lambda ()
                 (--keep (let ((name (buffer-name it)))
                           (unless (string-match-p "^ " name) name))
                         (buffer-list))))
-  (matcher sallet-matcher-flx)
+  (matcher sallet-buffer-matcher)
   (action switch-to-buffer)
   (header "Buffers")
   (renderer sallet-buffer-renderer))
