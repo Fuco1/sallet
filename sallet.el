@@ -92,6 +92,25 @@ Uses the `flx' algorithm."
                      :flx-score (car flx-data)))))
           indices))
 
+(defun sallet-subword-match (pattern candidates indices)
+  "Match PATTERN against CANDIDATES at INDICES.
+
+CANDIDATES is a vector of candidates.
+
+INDICES is a list of processed candidates.
+
+Uses substring matching."
+  (--keep (save-match-data
+            (when (string-match pattern (sallet-car-maybe (aref candidates (sallet-car-maybe it))))
+              ;; TODO: abstract, see `sallet-flx-match'
+              (let ((matches (plist-get (cdr-safe it) :substring-matches)))
+                (cons (sallet-car-maybe it)
+                      (plist-put
+                       (cdr-safe it)
+                       :substring-matches
+                        (cons (cons (match-beginning 0) (match-end 0)) matches))))))
+          indices))
+
 (defun sallet-matcher-flx (candidates state)
   "Match candidates using flx matching."
   (let ((prompt (sallet-state-get-prompt state))
