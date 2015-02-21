@@ -618,7 +618,7 @@ Return number of rendered candidates."
 ;; Add user-facing documentation as docstring and developer
 ;; documentation in code.
 (defun sallet (sources)
-  (let* ((buffer (get-buffer-create "*Candidates*"))
+  (let* ((buffer (get-buffer-create "*Sallet candidates*"))
          ;; make this lexically scoped
          (state (sallet-init-state sources buffer)))
     (with-current-buffer buffer
