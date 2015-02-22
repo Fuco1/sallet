@@ -73,6 +73,8 @@ reordered."
     (nreverse re)))
 
 ;; TODO: figure out how the caching works
+;; TODO: we'd also need some candidate transformer instead of
+;; hardcoded `sallet-car-maybe' (which can be default)
 (defun sallet-flx-match (pattern candidates indices)
   "Match PATTERN against CANDIDATES at INDICES.
 
@@ -82,6 +84,9 @@ INDICES is a list of processed candidates.
 
 Uses the `flx' algorithm."
   ;; TODO: abstract the car-maybe . aref . car-maybe chain
+  ;; TODO: write a version of `flx-score' that would automatically
+  ;; update the index properties `:flx-matches' and `:flx-score', so
+  ;; that we can easily "loop (-keep)" it through lists of candidates
   (--keep (-when-let (flx-data (flx-score (sallet-car-maybe (aref candidates (sallet-car-maybe it))) pattern))
             ;; TODO: abstract the "append to property" thing
             (let ((matches (plist-get (cdr-safe it) :flx-matches)))
@@ -94,8 +99,6 @@ Uses the `flx' algorithm."
                      :flx-score (car flx-data)))))
           indices))
 
-;; TODO: these matchers are monads! Write some simple interface to
-;; compose them
 (defun sallet-subword-match (pattern candidates indices)
   "Match PATTERN against CANDIDATES at INDICES.
 
@@ -285,8 +288,6 @@ Directory buffers are those whose major mode is `dired-mode'."
   "Face used to fontify flx matches."
   :group 'sallet-faces)
 
-;; TODO: these fontifiers are a monad! Let them take the user-data
-;; instead and thread automatically?
 (defun sallet-fontify-substring-matches (matches string)
   "Highlight substring matches.
 
@@ -317,6 +318,7 @@ STRING is the string we want to fontify."
   (with-current-buffer candidate
     (let ((dd (abbreviate-file-name default-directory)))
       (format "%-50s%10s  %20s  %s"
+              ;; TODO: rewrite with ->>
               (sallet-fontify-flx-matches
                (plist-get user-data :flx-matches)
                (sallet-fontify-substring-matches
