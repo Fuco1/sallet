@@ -436,11 +436,13 @@ Any other non-prefixed pattern is matched using the following rules:
   "Face used to fontify recentf file path."
   :group 'sallet-faces)
 
-(defun sallet-recentf-renderer (candidate _ _)
+(defun sallet-recentf-renderer (candidate _ user-data)
   "Render a recentf candidate."
   (-let (((name . file) candidate))
     (format "%-50s%s"
-            (propertize name 'face 'sallet-recentf-buffer-name)
+            (sallet-fontify-flx-matches
+             (propertize name 'face 'sallet-recentf-buffer-name)
+             (plist-get user-data :flx-matches))
             (propertize (abbreviate-file-name file) 'face 'sallet-recentf-file-path))))
 
 (sallet-defsource recentf nil
@@ -463,7 +465,10 @@ Any other non-prefixed pattern is matched using the following rules:
   "Bookmarks source, files only."
   (candidates bmkp-file-alist-only)
   (matcher sallet-matcher-flx)
-  (renderer (lambda (c _ _) (car c)))
+  (renderer (lambda (c _ user-data)
+              (sallet-fontify-flx-matches
+               (car c)
+               (plist-get user-data :flx-matches))))
   (action (lambda (bookmark-name)
             ;; TODO: doesn't seem to work
             (bmkp-jump-1 (cons "" bookmark-name) 'switch-to-buffer nil)))
