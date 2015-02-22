@@ -281,26 +281,26 @@ Directory buffers are those whose major mode is `dired-mode'."
   "Face used to fontify flx matches."
   :group 'sallet-faces)
 
-(defun sallet-fontify-substring-matches (string matches)
+(defun sallet-fontify-substring-matches (matches string)
   "Highlight substring matches.
 
-STRING is the string we want to fontify.
-
 MATCHES is a list of conses (BEG . END) where each cons delimit
-the matched region."
+the matched region.
+
+STRING is the string we want to fontify."
   (let ((new-string (copy-sequence string)))
     (-each matches
       (-lambda ((beg . end))
         (add-text-properties beg end (list 'face 'sallet-substring-match) new-string)))
     new-string))
 
-(defun sallet-fontify-flx-matches (string matches)
+(defun sallet-fontify-flx-matches (matches string)
   "Highlight flx matches.
 
-STRING is the string we want to fontify.
-
 MATCHES is a list of indices where flx matched a letter to the
-input pattern."
+input pattern.
+
+STRING is the string we want to fontify."
   (let ((new-string (copy-sequence string)))
     (--each matches
       (add-text-properties it (1+ it) (list 'face 'sallet-flx-match) new-string))
@@ -312,10 +312,10 @@ input pattern."
     (let ((dd (abbreviate-file-name default-directory)))
       (format "%-50s%10s  %20s  %s"
               (sallet-fontify-flx-matches
+               (plist-get user-data :flx-matches)
                (sallet-fontify-substring-matches
-                (sallet-buffer-fontify-buffer-name candidate)
-                (plist-get user-data :substring-matches))
-               (plist-get user-data :flx-matches))
+                (plist-get user-data :substring-matches)
+                (sallet-buffer-fontify-buffer-name candidate)))
               (propertize (file-size-human-readable (buffer-size)) 'face 'sallet-buffer-size)
               major-mode
               (propertize
@@ -441,8 +441,8 @@ Any other non-prefixed pattern is matched using the following rules:
   (-let (((name . file) candidate))
     (format "%-50s%s"
             (sallet-fontify-flx-matches
-             (propertize name 'face 'sallet-recentf-buffer-name)
-             (plist-get user-data :flx-matches))
+             (plist-get user-data :flx-matches)
+             (propertize name 'face 'sallet-recentf-buffer-name))
             (propertize (abbreviate-file-name file) 'face 'sallet-recentf-file-path))))
 
 (sallet-defsource recentf nil
@@ -468,11 +468,12 @@ Any other non-prefixed pattern is matched using the following rules:
   (matcher sallet-matcher-flx)
   ;; TODO: extract into generic "flx fontify string candidate"
   ;; renderer
-  (renderer (lambda (c _ user-data)
-              (sallet-fontify-flx-matches
-               (car c)
-               (plist-get user-data :flx-matches))))
-  (action (lambda (bookmark-name)
+  (renderer sallet-recentf-renderer ;; TODO: directory bookmarks should have different color
+            ;; (lambda (c _ user-data)
+            ;;   (sallet-fontify-flx-matches
+            ;;    (plist-get user-data :flx-matches)
+            ;;    (car c)))
+            )
             ;; TODO: doesn't seem to work
             (bmkp-jump-1 (cons "" bookmark-name) 'switch-to-buffer nil)))
   (header "Bookmarks"))
