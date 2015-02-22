@@ -372,11 +372,11 @@ Any other non-prefixed pattern is matched using the following rules:
         (cond
          ;; test major-mode
          ((string-match-p "\\`\\*" pattern)
-          (let ((mm (substring pattern 1)))
-            (unless (equal mm "")
+          (let ((pattern (substring pattern 1)))
+            (unless (equal pattern "")
               (setq indices
                     (--filter (with-current-buffer (sallet-aref candidates it)
-                                (flx-score (symbol-name major-mode) mm))
+                                (flx-score (symbol-name major-mode) pattern))
                               indices)))))
          ;; match imenu entries inside buffer
          ((string-match-p "\\`@" pattern)
