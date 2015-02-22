@@ -465,7 +465,7 @@ Any other non-prefixed pattern is matched using the following rules:
   (header "Bookmarks"))
 
 ;; TODO: write docstring
-(defun sallet-occur-get-lines (buffer prompt &optional mode)
+(defun sallet-occur-get-lines (buffer prompt &optional mode no-font-lock)
   "Mode: :normal, :fuzzy, :regexp (default)"
   (let ((pattern
          (concat "\\("
@@ -485,8 +485,10 @@ Any other non-prefixed pattern is matched using the following rules:
         (let* ((lb (line-beginning-position))
                (le (line-end-position))
                (line (save-excursion
-                       (font-lock-fontify-region lb le)
-                       (buffer-substring lb le))))
+                       (if no-font-lock
+                           (buffer-substring-no-properties lb le)
+                         (font-lock-fontify-region lb le)
+                         (buffer-substring lb le)))))
           (push (list line (point) (line-number-at-pos)) re)))
       (vconcat (nreverse re)))))
 
