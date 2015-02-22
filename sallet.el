@@ -6,7 +6,7 @@
 ;; Maintainer: Matúš Goljer <matus.goljer@gmail.com>
 ;; Version: 0.0.1
 ;; Created: 31st December 2014
-;; Package-requires: ((dash "2.10.0") (flx "0.4"))
+;; Package-requires: ((dash "2.10.0") (flx "0.4") (async "1.2") (shut-up "0.3.2"))
 ;; Keywords: convenience
 
 ;; This program is free software; you can redistribute it and/or
@@ -26,7 +26,9 @@
 
 ;;; Code:
 (require 'dash)
+(require 'async)
 (require 'flx)
+
 (require 'eieio)
 (require 'ibuffer)
 (require 'imenu)
@@ -186,6 +188,9 @@ and identity action."
   ;; when we first enter the session while `generator' takes input
   ;; interactively.
   (generator nil)
+  ;; If t, this source is asynchronous and processing takes place in a
+  ;; different emacs instance.  The source must be written with this in mind.
+  (async nil)
   ;; header
   (header "Select a candidate"))
 
@@ -541,6 +546,8 @@ Any other non-prefixed pattern is matched using the following rules:
   (oref source action))
 (defun sallet-source-get-processed-candidates (source)
   (oref source processed-candidates))
+(defun sallet-source-is-async (source)
+  (oref source async))
 
 (defun sallet-source-set-candidates (source candidates)
   (oset source candidates candidates))
@@ -600,11 +607,17 @@ SELECTED-CANDIDATE is the currently selected candidate.")
   (cdr (assoc 'selected-candidate state)))
 (defun sallet-state-get-candidate-buffer (state)
   (cdr (assoc 'candidate-buffer state)))
+(defun sallet-state-get-processes (state)
+  (cdr (assoc 'processes state)))
 
+(defun sallet-state-set-sources (state sources)
+  (setf (cdr (assoc 'sources state)) sources))
 (defun sallet-state-set-prompt (state prompt)
   (setf (cdr (assoc 'prompt state)) prompt))
 (defun sallet-state-set-selected-candidate (state selected-candidate)
   (setf (cdr (assoc 'selected-candidate state)) selected-candidate))
+(defun sallet-state-set-processes (state processes)
+  (setf (cdr (assoc 'processes state)) processes))
 
 (defun sallet-state-incf-selected-candidate (state)
   (incf (cdr (assoc 'selected-candidate state))))
@@ -641,6 +654,7 @@ STATE is sallet state."
                      (cons 'current-buffer (current-buffer))
                      (cons 'prompt "")
                      (cons 'selected-candidate 0)
+                     (cons 'processes nil)
                      (cons 'candidate-buffer candidate-buffer))))
     (setq sallet-state state)
     state))
@@ -708,33 +722,83 @@ Return number of rendered candidates."
   ;; man's threads)
   (add-hook 'post-command-hook (lambda () (sallet-minibuffer-post-command-hook state)) nil t))
 
-(defun sallet-minibuffer-post-command-hook (state)
+;; TODO: figure out how to do the buffer passing fast
+(defun sallet-process-source-async (state source)
+  "Process SOURCE asynchronously in separate emacs."
+  (let ((sallet-async-state (--remove
+                             (memq (car it) '(sources
+                                              processes
+                                              current-buffer
+                                              candidate-buffer)) state))
+        (sallet-async-source source))
+    (async-start
+     `(lambda ()
+        (push ,(file-name-directory (locate-library "dash")) load-path)
+        (push ,(file-name-directory (locate-library "flx")) load-path)
+        (push ,(file-name-directory (locate-library "shut-up")) load-path)
+        (push ,(file-name-directory (locate-library "sallet")) load-path)
+        (require 'shut-up)
+        (require 'sallet)
+        (with-temp-buffer
+          (shut-up
+            ;; TODO: this isn't always necessary, should be part of the
+            ;; async source generator?
+            (insert ,(with-current-buffer (sallet-state-get-current-buffer state)
+                       (buffer-substring-no-properties (point-min) (point-max))))
+            (setq sallet-async-state (read ,(format "%S" sallet-async-state)))
+            (setq sallet-async-source (read ,(format "%S" sallet-async-source)))
+            (sallet-process-source sallet-async-state sallet-async-source))
+          (list :candidates (sallet-source-get-candidates sallet-async-source)
+                :processed-candidates (sallet-source-get-processed-candidates sallet-async-source))))
+     (lambda (result)
+       (-when-let ((&plist :candidates candidates
+                           :processed-candidates processed-candidates)
+                   result)
+         (sallet-source-set-candidates source candidates)
+         (sallet-source-set-processed-candidates source processed-candidates)
+         (sallet-render-state state))))))
+
+(defun sallet-process-source (state source)
+  (-when-let (generator (sallet-source-get-generator source))
+    (sallet-source-set-candidates source (funcall generator state)))
+  (let* ((candidates (sallet-source-get-candidates source)))
+    (-if-let (matcher (sallet-source-get-matcher source))
+        (let ((processed-candidates (funcall matcher candidates state)))
+          (sallet-source-set-processed-candidates source processed-candidates))
+      (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates))))))
+  (let* ((processed-candidates (sallet-source-get-processed-candidates source)))
+    (-when-let (sorter (sallet-source-get-sorter source))
+      (sallet-source-set-processed-candidates
+       source
+       (funcall sorter processed-candidates state)))))
+
+(defun sallet-process-sources (state)
   ;; TODO: add old-prompt to state
+  (-each (sallet-state-get-sources state)
+    (lambda (source)
+      (if (not (sallet-source-is-async source))
+          (sallet-process-source state source)
+        (let ((processes (sallet-state-get-processes state))
+              (source-id (aref source 2)))
+          (-when-let ((&plist source-id process) processes)
+            (ignore-errors
+              (let ((buffer (process-buffer process)))
+                (kill-process process)
+                (kill-buffer buffer))))
+          (let ((proc (sallet-process-source-async state source)))
+            (sallet-state-set-processes state (plist-put processes source-id proc))))))))
+
+(defun sallet-minibuffer-post-command-hook (state)
   (let ((old-prompt (sallet-state-get-prompt state))
         (new-prompt (buffer-substring-no-properties 5 (point-max))))
     (unless (equal old-prompt new-prompt)
       (sallet-state-set-selected-candidate state 0)
       (sallet-state-set-prompt state new-prompt)
-      (-each (sallet-state-get-sources state)
-        (lambda (source)
-          (-when-let (generator (sallet-source-get-generator source))
-            (sallet-source-set-candidates source (funcall generator state)))
-          (let* ((candidates (sallet-source-get-candidates source)))
-            (-if-let (matcher (sallet-source-get-matcher source))
-                (let ((processed-candidates (funcall matcher candidates state)))
-                  (sallet-source-set-processed-candidates source processed-candidates))
-              (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates))))))
-          (let* ((processed-candidates (sallet-source-get-processed-candidates source)))
-            (-when-let (sorter (sallet-source-get-sorter source))
-              (sallet-source-set-processed-candidates
-               source
-               (funcall sorter processed-candidates state))))))))
-  ;; TODO: we shouldn't need to re-render if
-  ;; no change happened... currently this only
-  ;; handles scrolling (the >> indicator).
-  ;; That should be done with a sliding
-  ;; overlay instead.  Change in
-  ;; `sallet-render-state'.
+      (sallet-process-sources state)))
+  ;; TODO: we shouldn't need to re-render if no change
+  ;; happened... currently this only handles scrolling (the >>
+  ;; indicator).  That should be done with a sliding overlay instead.
+  ;; Change in `sallet-render-state'.
   (sallet-render-state state))
 
 ;; Add user-facing documentation as docstring and developer
