@@ -712,13 +712,12 @@ Return number of rendered candidates."
     (kill-buffer-and-window)))
 
 (defun sallet-minibuffer-setup (state)
-  ;; TODO: figure out where to do which updates... this currently doesn't work
-  ;; The problem is that this lags the minibuffer input
-  ;; reading every time it changes and some recomputation
-  ;; happens.  We want to be able to type in a word
-  ;; without sallet recomputing the full candidate list
-  ;; after every letter.  Helm solves this with timers,
-  ;; which we will probably have to opt for too (aka poor
+  ;; TODO: figure out where to do which updates... this currently
+  ;; doesn't work The problem is that this lags the minibuffer input
+  ;; reading every time it changes and some recomputation happens.  We
+  ;; want to be able to type in a word without sallet recomputing the
+  ;; full candidate list after every letter.  Helm solves this with
+  ;; timers, which we will probably have to opt for too (aka poor
   ;; man's threads)
   (add-hook 'post-command-hook (lambda () (sallet-minibuffer-post-command-hook state)) nil t))
 
