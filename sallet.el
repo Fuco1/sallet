@@ -695,6 +695,46 @@ Return number of rendered candidates."
     (pop-to-buffer buffer)
     (kill-buffer-and-window)))
 
+(defun sallet-minibuffer-setup (state)
+  ;; TODO: figure out where to do which updates... this currently doesn't work
+  ;; The problem is that this lags the minibuffer input
+  ;; reading every time it changes and some recomputation
+  ;; happens.  We want to be able to type in a word
+  ;; without sallet recomputing the full candidate list
+  ;; after every letter.  Helm solves this with timers,
+  ;; which we will probably have to opt for too (aka poor
+  ;; man's threads)
+  (add-hook 'post-command-hook (lambda () (sallet-minibuffer-post-command-hook state)) nil t))
+
+(defun sallet-minibuffer-post-command-hook (state)
+  ;; TODO: add old-prompt to state
+  (let ((old-prompt (sallet-state-get-prompt state))
+        (new-prompt (buffer-substring-no-properties 5 (point-max))))
+    (unless (equal old-prompt new-prompt)
+      (sallet-state-set-selected-candidate state 0)
+      (sallet-state-set-prompt state new-prompt)
+      (-each (sallet-state-get-sources state)
+        (lambda (source)
+          (-when-let (generator (sallet-source-get-generator source))
+            (sallet-source-set-candidates source (funcall generator state)))
+          (let* ((candidates (sallet-source-get-candidates source)))
+            (-if-let (matcher (sallet-source-get-matcher source))
+                (let ((processed-candidates (funcall matcher candidates state)))
+                  (sallet-source-set-processed-candidates source processed-candidates))
+              (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates))))))
+          (let* ((processed-candidates (sallet-source-get-processed-candidates source)))
+            (-when-let (sorter (sallet-source-get-sorter source))
+              (sallet-source-set-processed-candidates
+               source
+               (funcall sorter processed-candidates state))))))))
+  ;; TODO: we shouldn't need to re-render if
+  ;; no change happened... currently this only
+  ;; handles scrolling (the >> indicator).
+  ;; That should be done with a sliding
+  ;; overlay instead.  Change in
+  ;; `sallet-render-state'.
+  (sallet-render-state state))
+
 ;; Add user-facing documentation as docstring and developer
 ;; documentation in code.
 (defun sallet (sources)
@@ -708,47 +748,7 @@ Return number of rendered candidates."
     (pop-to-buffer buffer)
     (sallet-render-state state)
     (condition-case var
-        (minibuffer-with-setup-hook
-            (lambda ()
-              ;; TODO: figure out where to do which updates... this currently doesn't work
-              ;; The problem is that this lags the minibuffer input
-              ;; reading every time it changes and some recomputation
-              ;; happens.  We want to be able to type in a word
-              ;; without sallet recomputing the full candidate list
-              ;; after every letter.  Helm solves this with timers,
-              ;; which we will probably have to opt for too (aka poor
-              ;; man's threads)
-              (add-hook
-               'post-command-hook
-               (lambda ()
-                 ;; TODO: add old-prompt to state
-                 (let ((old-prompt (sallet-state-get-prompt state))
-                       (new-prompt (buffer-substring-no-properties 5 (point-max))))
-                   (unless (equal old-prompt new-prompt)
-                     (sallet-state-set-selected-candidate state 0)
-                     (sallet-state-set-prompt state new-prompt)
-                     (-each (sallet-state-get-sources state)
-                       (lambda (source)
-                         (-when-let (generator (sallet-source-get-generator source))
-                           (sallet-source-set-candidates source (funcall generator state)))
-                         (let* ((candidates (sallet-source-get-candidates source)))
-                           (-if-let (matcher (sallet-source-get-matcher source))
-                               (let ((processed-candidates (funcall matcher candidates state)))
-                                 (sallet-source-set-processed-candidates source processed-candidates))
-                             (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates))))))
-                         (let* ((processed-candidates (sallet-source-get-processed-candidates source)))
-                           (-when-let (sorter (sallet-source-get-sorter source))
-                             (sallet-source-set-processed-candidates
-                              source
-                              (funcall sorter processed-candidates state))))))))
-                 ;; TODO: we shouldn't need to re-render if
-                 ;; no change happened... currently this only
-                 ;; handles scrolling (the >> indicator).
-                 ;; That should be done with a sliding
-                 ;; overlay instead.  Change in
-                 ;; `sallet-render-state'.
-                 (sallet-render-state state))
-               nil t))
+        (minibuffer-with-setup-hook (lambda () (sallet-minibuffer-setup state))
           ;; TODO: add support to pass maps
           ;; TODO propertize prompt
           (read-from-minibuffer ">>> " nil (let ((map (make-sparse-keymap)))
