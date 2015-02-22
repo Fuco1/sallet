@@ -333,6 +333,37 @@ STRING is the string we want to fontify."
                'face
                'sallet-buffer-default-directory)))))
 
+(defmacro sallet-cond (pattern &rest forms)
+  "Match PATTERN against specifications in FORMS.
+
+Each element of FORMS is a list (CONDITION BODY).
+
+If CONDITION is a string, it is matched against PATTERN as a
+regular expression.  Regex pattern \"\\(.*\\)\" is automatically
+appended after CONDITION and `match-string' 1 is bound to
+PATTERN.
+
+If CONDITION is anything else, the result is normal `cond'
+branch.
+
+In both cases, BODY is a list of instructions to execute.  The
+value of the last one is returned."
+  (declare (indent 1)
+           (debug (sexp [&rest (sexp body)])))
+  `(cond
+    ,@(mapcar
+       (-lambda ((prefix . body))
+         (cond
+          ((stringp prefix)
+           `((string-match ,(concat prefix "\\(.*\\)") ,pattern)
+             (let ((,pattern (match-string 1 ,pattern)))
+               (unless (equal ,pattern "")
+                 ,@body))))
+          (t
+           `(,prefix
+             ,@body))))
+       forms)))
+
 ;; TODO: add syntax to turn flx matching into substring matching.
 ;; Maybe when the prefix is twice repeated?
 (defun sallet-buffer-matcher (candidates state)
@@ -364,57 +395,47 @@ Any other non-prefixed pattern is matched using the following rules:
          (indices (number-sequence 0 (1- (length candidates)))))
     (-each input
       (lambda (pattern)
-        ;; TODO: abstract the "get substring sans first char", proceed
-        ;; if non-empty pattern
         ;; TODO: abstract the matching "procedures" into separate,
         ;; reusable filters (we might want to use the same rules
         ;; elsewhere too).  See also `sallet-flx-match'
-        (cond
-         ;; test major-mode
-         ((string-match-p "\\`\\*" pattern)
-          (let ((pattern (substring pattern 1)))
-            (unless (equal pattern "")
-              (setq indices
-                    (--filter (with-current-buffer (sallet-aref candidates it)
-                                (flx-score (symbol-name major-mode) pattern))
-                              indices)))))
-         ;; match imenu entries inside buffer
-         ((string-match-p "\\`@" pattern)
-          (let ((pattern (substring pattern 1)))
-            (unless (equal pattern "")
-              (setq indices
-                    (--filter (with-current-buffer (sallet-aref candidates it)
-                                (let ((imenu-alist-flat
-                                       (-flatten (--tree-map (if (stringp it) nil (car it))
-                                                             imenu--index-alist))))
-                                  (--any? (flx-score it pattern) imenu-alist-flat)))
-                              indices)))))
-         ;; fulltext match
-         ((string-match-p "\\`#" pattern)
-          (let ((pattern (substring pattern 1)))
-            (unless (equal pattern "")
-              (setq indices
-                    (--filter (with-current-buffer (sallet-aref candidates it)
-                                (save-excursion
-                                  (goto-char (point-min))
-                                  (re-search-forward pattern nil t)))
-                              indices)))))
-         ;; default directory match
-         ((string-match-p "\\`/" pattern)
-          (let ((pattern (substring pattern 1)))
-            (unless (equal pattern "")
-              (setq indices
-                    (--filter (with-current-buffer (sallet-aref candidates it)
-                                (flx-score default-directory pattern))
-                              indices)))))
-         (t
-          ;; fuzzy match on first non-special sequence, then substring match later
-          (let ((quoted-pattern (regexp-quote pattern)))
-            (setq indices
-                  (if fuzzy-matched
-                      (sallet-subword-match quoted-pattern candidates indices)
-                    (setq fuzzy-matched t)
-                    (sallet-flx-match quoted-pattern candidates indices))))))))
+        (sallet-cond pattern
+          ;; test major-mode
+          ("\\`\\*"
+           (setq indices
+                 (--filter (with-current-buffer (sallet-aref candidates it)
+                             (flx-score (symbol-name major-mode) pattern))
+                           indices)))
+          ;; match imenu entries inside buffer
+          ("\\`@"
+           (setq indices
+                 (--filter (with-current-buffer (sallet-aref candidates it)
+                             (let ((imenu-alist-flat
+                                    (-flatten (--tree-map (if (stringp it) nil (car it))
+                                                          imenu--index-alist))))
+                               (--any? (flx-score it pattern) imenu-alist-flat)))
+                           indices)))
+          ;; fulltext match
+          ("\\`#"
+           (setq indices
+                 (--filter (with-current-buffer (sallet-aref candidates it)
+                             (save-excursion
+                               (goto-char (point-min))
+                               (re-search-forward pattern nil t)))
+                           indices)))
+          ;; default directory match
+          ("\\`/"
+           (setq indices
+                 (--filter (with-current-buffer (sallet-aref candidates it)
+                             (flx-score default-directory pattern))
+                           indices)))
+          (t
+           ;; fuzzy match on first non-special sequence, then substring match later
+           (let ((quoted-pattern (regexp-quote pattern)))
+             (setq indices
+                   (if fuzzy-matched
+                       (sallet-subword-match quoted-pattern candidates indices)
+                     (setq fuzzy-matched t)
+                     (sallet-flx-match quoted-pattern candidates indices))))))))
     indices))
 
 (sallet-defsource buffer nil
