@@ -518,6 +518,22 @@ Any other non-prefixed pattern is matched using the following rules:
             ;; disposed
             (set-window-point (selected-window) (cadr c)))))
 
+(sallet-defsource occur-async (occur)
+  "Async occur source."
+  (async t)
+  (renderer (-lambda ((line-string _ line-number) _ _)
+              ;; TODO: add face to the number
+              ;; TODO: fontify the result line here instead of in the async process
+              (format "%5d:%s" line-number line-string)))
+  ;; the buffer we search is the current buffer in the async instance
+  (generator (lambda (state)
+               (let ((prompt (sallet-state-get-prompt state)))
+                 ;; TODO: move this into a separate setting... this
+                 ;; is going to be quite common for "computing"
+                 ;; sources
+                 (when (>= (length prompt) 2)
+                   (sallet-occur-get-lines (current-buffer) prompt :normal :no-font-lock))))))
+
 (sallet-defsource occur-fuzzy (occur)
   "Fuzzy occur source."
   ;; matcher is used to rank & reorder best matches on top ...
@@ -875,6 +891,10 @@ If you want to customize the matching algorithm, you can extend
 sallet source `sallet-source-occur-fuzzy'."
   (interactive)
   (sallet (list sallet-source-occur-fuzzy)))
+
+(defun sallet-occur-async ()
+  (interactive)
+  (sallet (list sallet-source-occur-async)))
 
 (defun sallet-occur-nonfuzzy ()
   "Show all lines in current buffer matching pattern.
