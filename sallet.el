@@ -94,6 +94,8 @@ Uses the `flx' algorithm."
                      :flx-score (car flx-data)))))
           indices))
 
+;; TODO: these matchers are monads! Write some simple interface to
+;; compose them
 (defun sallet-subword-match (pattern candidates indices)
   "Match PATTERN against CANDIDATES at INDICES.
 
@@ -116,6 +118,8 @@ Uses substring matching."
 (defun sallet-matcher-flx (candidates state)
   "Match candidates using flx matching."
   (let ((prompt (sallet-state-get-prompt state))
+        ;; TODO: indices should be supplied automatically? Or at least
+        ;; make a version which would support that
         (indices (number-sequence 0 (1- (length candidates)))))
     (sallet-flx-match prompt candidates indices)))
 
@@ -281,6 +285,8 @@ Directory buffers are those whose major mode is `dired-mode'."
   "Face used to fontify flx matches."
   :group 'sallet-faces)
 
+;; TODO: these fontifiers are a monad! Let them take the user-data
+;; instead and thread automatically?
 (defun sallet-fontify-substring-matches (matches string)
   "Highlight substring matches.
 
@@ -436,6 +442,7 @@ Any other non-prefixed pattern is matched using the following rules:
   "Face used to fontify recentf file path."
   :group 'sallet-faces)
 
+;; TODO: faces should come as optional parameters, this should be called "bookmark cons" renderer
 (defun sallet-recentf-renderer (candidate _ user-data)
   "Render a recentf candidate."
   (-let (((name . file) candidate))
