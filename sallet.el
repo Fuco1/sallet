@@ -454,6 +454,7 @@ Any other non-prefixed pattern is matched using the following rules:
                    (unless (get-file-buffer name)
                      (cons name it)))
                  recentf-list)))
+  ;; TODO: add matching on path with /
   (matcher sallet-matcher-flx)
   (renderer sallet-recentf-renderer)
   (action (-lambda ((_ . file)) (find-file file)))
@@ -465,6 +466,8 @@ Any other non-prefixed pattern is matched using the following rules:
   "Bookmarks source, files only."
   (candidates bmkp-file-alist-only)
   (matcher sallet-matcher-flx)
+  ;; TODO: extract into generic "flx fontify string candidate"
+  ;; renderer
   (renderer (lambda (c _ user-data)
               (sallet-fontify-flx-matches
                (car c)
