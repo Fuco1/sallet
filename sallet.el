@@ -464,7 +464,12 @@ Any other non-prefixed pattern is matched using the following rules:
 ;; `bmkp-jump-1'), should probably be moved to a different file.
 (sallet-defsource bookmarks-file-only nil
   "Bookmarks source, files only."
-  (candidates bmkp-file-alist-only)
+  (candidates (lambda () (--map
+                          (cons
+                           (substring-no-properties (car it))
+                           (cdr (assoc 'filename (cdr it))))
+                          (bmkp-file-alist-only))))
+  ;; TODO: enable matching on paths with /
   (matcher sallet-matcher-flx)
   ;; TODO: extract into generic "flx fontify string candidate"
   ;; renderer
@@ -474,8 +479,9 @@ Any other non-prefixed pattern is matched using the following rules:
             ;;    (plist-get user-data :flx-matches)
             ;;    (car c)))
             )
+  (action (-lambda ((name))
             ;; TODO: doesn't seem to work
-            (bmkp-jump-1 (cons "" bookmark-name) 'switch-to-buffer nil)))
+            (bmkp-jump-1 name 'switch-to-buffer nil)))
   (header "Bookmarks"))
 
 ;; TODO: write docstring
