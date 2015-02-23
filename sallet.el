@@ -869,6 +869,7 @@ Return number of rendered candidates."
          (state (sallet-init-state sources buffer)))
     (with-current-buffer buffer
       (kill-all-local-variables)
+      (setq truncate-lines t)
       (buffer-disable-undo)
       (setq cursor-type nil))
     (pop-to-buffer buffer)
