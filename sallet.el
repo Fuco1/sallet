@@ -323,24 +323,30 @@ STRING is the string we want to fontify."
 (defun sallet-buffer-renderer (candidate _ user-data)
   "Render a buffer CANDIDATE."
   (with-current-buffer candidate
-    (let ((dd (abbreviate-file-name default-directory)))
-      (format "%-50s%10s  %20s  %s"
-              ;; TODO: rewrite with ->>
-              (sallet-fontify-flx-matches
-               (plist-get user-data :flx-matches)
-               (sallet-fontify-substring-matches
-                (plist-get user-data :substring-matches)
-                (sallet-buffer-fontify-buffer-name candidate)))
-              (propertize (file-size-human-readable (buffer-size)) 'face 'sallet-buffer-size)
-              major-mode
-              (propertize
-               (concat "(" (or (and (buffer-file-name) (concat "in " dd))
-                               (-when-let (process (get-buffer-process (current-buffer)))
-                                 (concat (process-name process)
-                                         " run in " dd))
-                               dd) ")")
-               'face
-               'sallet-buffer-default-directory)))))
+    ;; TODO: make the column widths configurable
+    (format "%-50s%10s  %20s  %s"
+            ;; TODO: rewrite with ->>
+            (s-truncate
+             50
+             (sallet-fontify-flx-matches
+              (plist-get user-data :flx-matches)
+              (sallet-fontify-substring-matches
+               (plist-get user-data :substring-matches)
+               (sallet-buffer-fontify-buffer-name candidate))))
+            (propertize (file-size-human-readable (buffer-size)) 'face 'sallet-buffer-size)
+            (s-truncate 20 (s-chop-suffix "-mode" (symbol-name major-mode)))
+            (format (propertize
+                     (concat "(" (or (and (buffer-file-name) (concat "in %s"))
+                                     (-when-let (process (get-buffer-process (current-buffer)))
+                                       (concat (process-name process)
+                                               " run in %s"))
+                                     "%s")
+                             ")")
+                     'face
+                     'sallet-buffer-default-directory)
+                    (sallet-fontify-flx-matches
+                     (plist-get user-data :flx-matches-path)
+                     default-directory)))))
 
 (defmacro sallet-cond (pattern &rest forms)
   "Match PATTERN against specifications in FORMS.
