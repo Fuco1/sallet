@@ -54,6 +54,7 @@ If INDEX is a cons, take its `car' and then behaves like `aref'."
     (aref candidates (car index))))
 
 ;; TODO: make this better
+;; TODO: rewrite in terms of sallet-subword-match
 (defun sallet-matcher-default (candidates state)
   "Default matcher.
 
@@ -76,6 +77,11 @@ reordered."
 ;; TODO: figure out how the caching works
 ;; TODO: we'd also need some candidate transformer instead of
 ;; hardcoded `sallet-car-maybe' (which can be default)
+;; TODO: make some function which takes an alist prefix -> matcher,
+;; and returns a function taking a pattern and running it through all
+;; the matchers in the order tokens are specified.  Tokens are split
+;; on whitespace by default, but maybe we can have it take a splitter
+;; optionally
 (defun sallet-flx-match (pattern candidates indices)
   "Match PATTERN against CANDIDATES at INDICES.
 
