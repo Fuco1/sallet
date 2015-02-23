@@ -434,9 +434,18 @@ Any other non-prefixed pattern is matched using the following rules:
           ;; default directory match
           ("\\`/"
            (setq indices
-                 (--filter (with-current-buffer (sallet-aref candidates it)
-                             (flx-score default-directory pattern))
-                           indices)))
+                 ;; TODO: abstract, see `sallet-flx-match'
+                 (--keep (-when-let (flx-data (flx-score
+                                               (with-current-buffer (sallet-aref candidates it) default-directory)
+                                               pattern))
+                           ;; TODO: abstract the "append to property" thing
+                           (let ((matches (plist-get (cdr-safe it) :flx-matches-path)))
+                             (cons (sallet-car-maybe it)
+                                   (plist-put
+                                    (cdr-safe it)
+                                    :flx-matches-path
+                                     (-concat (cdr flx-data) matches)))))
+                         indices)))
           (t
            ;; fuzzy match on first non-special sequence, then substring match later
            (let ((quoted-pattern (regexp-quote pattern)))
