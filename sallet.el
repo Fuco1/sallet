@@ -6,7 +6,7 @@
 ;; Maintainer: Matúš Goljer <matus.goljer@gmail.com>
 ;; Version: 0.0.1
 ;; Created: 31st December 2014
-;; Package-requires: ((dash "2.10.0") (flx "0.4") (async "1.2") (shut-up "0.3.2"))
+;; Package-requires: ((dash "2.10.0") (s "1.9.0") (flx "0.4") (async "1.2") (shut-up "0.3.2"))
 ;; Keywords: convenience
 
 ;; This program is free software; you can redistribute it and/or
@@ -26,6 +26,7 @@
 
 ;;; Code:
 (require 'dash)
+(require 's)
 (require 'async)
 (require 'flx)
 
