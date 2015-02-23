@@ -768,9 +768,8 @@ Return number of rendered candidates."
 
 (defun sallet-cleanup-candidate-window ()
   "Cleanup the candidates buffer."
-  (let* ((buffer (get-buffer-create "*Sallet candidates*")))
-    (pop-to-buffer buffer)
-    (kill-buffer-and-window)))
+  (-when-let (buffer (get-buffer "*Sallet candidates*"))
+    (kill-buffer buffer)))
 
 (defun sallet-minibuffer-setup (state)
   ;; TODO: figure out where to do which updates... this currently
@@ -872,7 +871,13 @@ Return number of rendered candidates."
       (setq truncate-lines t)
       (buffer-disable-undo)
       (setq cursor-type nil))
-    (pop-to-buffer buffer)
+    ;; TODO: if we have actions which could use "current" buffer
+    ;; during session (e.g. show context of this occur line), we
+    ;; should show that buffer in a separate (existing?) window.  The
+    ;; operations to restore the original state should go into
+    ;; `sallet-cleanup-candidate-window'.  See also
+    ;; `helm-always-two-windows'.
+    (switch-to-buffer buffer)
     (sallet-render-state state)
     (condition-case var
         (minibuffer-with-setup-hook (lambda () (sallet-minibuffer-setup state))
