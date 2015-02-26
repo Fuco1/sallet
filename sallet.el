@@ -126,6 +126,14 @@ Uses the `flx' algorithm."
   (setq candidate-transform (or candidate-transform 'sallet-candidate-aref))
   (--keep (sallet-flx-score (funcall candidate-transform candidates it) it pattern) indices))
 
+(defun sallet-string-match (candidate index pattern)
+  "Match and score CANDIDATE at INDEX against PATTERN."
+  (save-match-data
+    (when (string-match pattern candidate)
+      (cons
+       (sallet-car-maybe index)
+       (sallet-append-to-plist (cdr-safe index) :substring-matches (cons (match-beginning 0) (match-end 0)))))))
+
 (defun sallet-subword-match (pattern candidates indices)
   "Match PATTERN against CANDIDATES at INDICES.
 
@@ -134,12 +142,7 @@ CANDIDATES is a vector of candidates.
 INDICES is a list of processed candidates.
 
 Uses substring matching."
-  (--keep (save-match-data
-            (when (string-match pattern (sallet-candidate-aref candidates it))
-              (cons
-               (sallet-car-maybe it)
-               (sallet-append-to-plist (cdr-safe it) :substring-matches (cons (match-beginning 0) (match-end 0))))))
-          indices))
+  (--keep (sallet-string-match (sallet-candidate-aref candidates it) it pattern) indices))
 
 (defun sallet-matcher-flx (candidates state)
   "Match candidates using flx matching."
