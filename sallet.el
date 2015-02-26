@@ -97,26 +97,28 @@ reordered."
     (nreverse re)))
 
 ;; TODO: figure out how the caching works
-;; TODO: we'd also need some candidate transformer instead of
-;; hardcoded `sallet-car-maybe' (which can be default)
 ;; TODO: make some function which takes an alist prefix -> matcher,
 ;; and returns a function taking a pattern and running it through all
 ;; the matchers in the order tokens are specified.  Tokens are split
 ;; on whitespace by default, but maybe we can have it take a splitter
 ;; optionally
-(defun sallet-flx-match (pattern candidates indices)
+(defun sallet-flx-match (pattern candidates indices &optional candidate-transform)
   "Match PATTERN against CANDIDATES at INDICES.
 
 CANDIDATES is a vector of candidates.
 
 INDICES is a list of processed candidates.
 
+CANDIDATE-TRANSFORM takes the vector of candidates and an index
+and produces a value to be matched.  Defaults to
+`sallet-candidate-aref'.
+
 Uses the `flx' algorithm."
   (setq candidate-transform (or candidate-transform 'sallet-candidate-aref))
   ;; TODO: write a version of `flx-score' that would automatically
   ;; update the index properties `:flx-matches' and `:flx-score', so
   ;; that we can easily "loop (-keep)" it through lists of candidates
-  (--keep (-when-let (flx-data (flx-score (sallet-candidate-aref candidates it) pattern))
+  (--keep (-when-let (flx-data (flx-score (funcall candidate-transform candidates it) pattern))
             (cons
              (sallet-car-maybe it)
              (-> (cdr-safe it)
