@@ -53,6 +53,28 @@ If INDEX is a cons, take its `car' and then behaves like `aref'."
       (aref candidates index)
     (aref candidates (car index))))
 
+(defun sallet-candidate-aref (candidates index)
+  "Return candidate from CANDIDATES at INDEX.
+
+CANDIDATES is a vector of candidates.  If the element at index is
+a list, return its `car', otherwise return the element without change.
+
+INDEX is a number, index into the CANDIDATES array.  If the index
+is a list, take its `car'."
+  (sallet-car-maybe (aref candidates (sallet-car-maybe index))))
+
+(defun sallet-append-to-plist (plist property data &optional update-function)
+  "Take PLIST and append DATA to PROPERTY.
+
+The value at PROPERTY is a list.
+
+UPDATE-FUNCTION is is used to compute the new value inserted into
+the plist.  It takes two arguments, DATA and old value of
+PROPERTY.  Defaults to `cons'."
+  (setq update-function (or update-function 'cons))
+  (let ((old-data (plist-get plist property)))
+    (plist-put plist property (funcall update-function data old-data))))
+
 ;; TODO: make this better
 ;; TODO: rewrite in terms of sallet-subword-match
 (defun sallet-matcher-default (candidates state)
@@ -90,20 +112,16 @@ CANDIDATES is a vector of candidates.
 INDICES is a list of processed candidates.
 
 Uses the `flx' algorithm."
-  ;; TODO: abstract the car-maybe . aref . car-maybe chain
+  (setq candidate-transform (or candidate-transform 'sallet-candidate-aref))
   ;; TODO: write a version of `flx-score' that would automatically
   ;; update the index properties `:flx-matches' and `:flx-score', so
   ;; that we can easily "loop (-keep)" it through lists of candidates
-  (--keep (-when-let (flx-data (flx-score (sallet-car-maybe (aref candidates (sallet-car-maybe it))) pattern))
-            ;; TODO: abstract the "append to property" thing
-            (let ((matches (plist-get (cdr-safe it) :flx-matches)))
-              (cons (sallet-car-maybe it)
-                    (plist-put
-                     (plist-put
-                      (cdr-safe it)
-                      :flx-matches
-                       (-concat (cdr flx-data) matches))
-                     :flx-score (car flx-data)))))
+  (--keep (-when-let (flx-data (flx-score (sallet-candidate-aref candidates it) pattern))
+            (cons
+             (sallet-car-maybe it)
+             (-> (cdr-safe it)
+               (sallet-append-to-plist :flx-matches (cdr flx-data) '-concat)
+               (plist-put :flx-score (car flx-data)))))
           indices))
 
 (defun sallet-subword-match (pattern candidates indices)
@@ -115,14 +133,10 @@ INDICES is a list of processed candidates.
 
 Uses substring matching."
   (--keep (save-match-data
-            (when (string-match pattern (sallet-car-maybe (aref candidates (sallet-car-maybe it))))
-              ;; TODO: abstract, see `sallet-flx-match'
-              (let ((matches (plist-get (cdr-safe it) :substring-matches)))
-                (cons (sallet-car-maybe it)
-                      (plist-put
-                       (cdr-safe it)
-                       :substring-matches
-                        (cons (cons (match-beginning 0) (match-end 0)) matches))))))
+            (when (string-match pattern (sallet-candidate-aref candidates it))
+              (cons
+               (sallet-car-maybe it)
+               (sallet-append-to-plist (cdr-safe it) :substring-matches (cons (match-beginning 0) (match-end 0))))))
           indices))
 
 (defun sallet-matcher-flx (candidates state)
