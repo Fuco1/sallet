@@ -134,15 +134,20 @@ Uses the `flx' algorithm."
        (sallet-car-maybe index)
        (sallet-append-to-plist (cdr-safe index) :substring-matches (cons (match-beginning 0) (match-end 0)))))))
 
-(defun sallet-subword-match (pattern candidates indices)
+(defun sallet-subword-match (pattern candidates indices &optional candidate-transform)
   "Match PATTERN against CANDIDATES at INDICES.
 
 CANDIDATES is a vector of candidates.
 
 INDICES is a list of processed candidates.
 
+CANDIDATE-TRANSFORM takes the vector of candidates and an index
+and produces a value to be matched.  Defaults to
+`sallet-candidate-aref'.
+
 Uses substring matching."
-  (--keep (sallet-string-match (sallet-candidate-aref candidates it) it pattern) indices))
+  (setq candidate-transform (or candidate-transform 'sallet-candidate-aref))
+  (--keep (sallet-string-match (funcall candidate-transform candidates it) it pattern) indices))
 
 (defun sallet-matcher-flx (candidates state)
   "Match candidates using flx matching."
