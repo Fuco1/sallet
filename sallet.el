@@ -96,6 +96,15 @@ reordered."
      candidates)
     (nreverse re)))
 
+(defun sallet-flx-score (candidate index pattern)
+  "Match and score CANDIDATE at INDEX against PATTERN."
+  (-when-let (flx-data (flx-score candidate pattern))
+    (cons
+     (sallet-car-maybe index)
+     (-> (cdr-safe index)
+       (sallet-append-to-plist :flx-matches (cdr flx-data) '-concat)
+       (plist-put :flx-score (car flx-data))))))
+
 ;; TODO: figure out how the caching works
 ;; TODO: make some function which takes an alist prefix -> matcher,
 ;; and returns a function taking a pattern and running it through all
@@ -115,16 +124,7 @@ and produces a value to be matched.  Defaults to
 
 Uses the `flx' algorithm."
   (setq candidate-transform (or candidate-transform 'sallet-candidate-aref))
-  ;; TODO: write a version of `flx-score' that would automatically
-  ;; update the index properties `:flx-matches' and `:flx-score', so
-  ;; that we can easily "loop (-keep)" it through lists of candidates
-  (--keep (-when-let (flx-data (flx-score (funcall candidate-transform candidates it) pattern))
-            (cons
-             (sallet-car-maybe it)
-             (-> (cdr-safe it)
-               (sallet-append-to-plist :flx-matches (cdr flx-data) '-concat)
-               (plist-put :flx-score (car flx-data)))))
-          indices))
+  (--keep (sallet-flx-score (funcall candidate-transform candidates it) it pattern) indices))
 
 (defun sallet-subword-match (pattern candidates indices)
   "Match PATTERN against CANDIDATES at INDICES.
