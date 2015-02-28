@@ -545,6 +545,33 @@ Any other non-prefixed pattern is matched using the following rules:
                      (cons name it)))
                  recentf-list))))
 
+;; TODO: improve
+(defun sallet-autobookmarks-renderer (candidate _ user-data)
+  "Render an `autobookmarks-mode' candidate."
+  (-let (((name data) candidate))
+    (format "%-50s%s"
+            (sallet-fontify-flx-matches
+             (plist-get user-data :flx-matches)
+             (propertize name 'face 'sallet-recentf-buffer-name))
+            (propertize (abbreviate-file-name data) 'face 'sallet-recentf-file-path))))
+
+(sallet-defsource autobookmarks nil
+  "Files saved with `autobookmarks-mode'."
+  (candidates (lambda ()
+                (-keep
+                 (-lambda ((path &keys :type type))
+                   (cond
+                    ((eq type :file)
+                     (cons (file-name-nondirectory path) it))
+                    ((eq type :dired)
+                     (cons (file-name-nondirectory (substring path 0 -1)) it))))
+                 (abm-recent-buffers))))
+  ;; TODO: add matching on path with /
+  (matcher sallet-matcher-flx)
+  (renderer sallet-autobookmarks-renderer)
+  (action (-lambda ((_ . x)) (abm-restore-killed-buffer x)))
+  (header "Autobookmarks"))
+
 ;; TODO: this depends on bookmark+ (`bmkp-file-alist-only',
 ;; `bmkp-jump-1'), should probably be moved to a different file.
 (sallet-defsource bookmarks-file-only nil
