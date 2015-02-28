@@ -525,16 +525,25 @@ Any other non-prefixed pattern is matched using the following rules:
   "Files saved on `recentf-list'."
   (candidates (lambda ()
                 (unless recentf-mode (recentf-mode 1))
-                (--keep
+                (--map
                  (let ((name (file-name-nondirectory it)))
-                   (unless (get-file-buffer name)
-                     (cons name it)))
+                   (cons name it))
                  recentf-list)))
   ;; TODO: add matching on path with /
   (matcher sallet-matcher-flx)
   (renderer sallet-recentf-renderer)
   (action (-lambda ((_ . file)) (find-file file)))
   (header "Recently opened files"))
+
+(sallet-defsource recentf-closed-only (recentf)
+  "Files saved on `recentf-list', but without those whose buffer is already opened."
+  (candidates (lambda ()
+                (unless recentf-mode (recentf-mode 1))
+                (--keep
+                 (let ((name (file-name-nondirectory it)))
+                   (unless (get-file-buffer it)
+                     (cons name it)))
+                 recentf-list))))
 
 ;; TODO: this depends on bookmark+ (`bmkp-file-alist-only',
 ;; `bmkp-jump-1'), should probably be moved to a different file.
@@ -559,6 +568,14 @@ Any other non-prefixed pattern is matched using the following rules:
             ;; TODO: doesn't seem to work
             (bmkp-jump-1 name 'switch-to-buffer nil)))
   (header "Bookmarks"))
+
+(sallet-defsource bookmarks-file-only-closed-only (bookmarks-file-only)
+  "Bookmarks source, files only, closed files only."
+  (candidates (lambda () (--keep
+                          (let ((path (cdr (assoc 'filename (cdr it)))))
+                            (unless (get-file-buffer path)
+                              (cons (substring-no-properties (car it)) path)))
+                          (bmkp-file-alist-only)))))
 
 ;; TODO: write docstring
 (defun sallet-occur-get-lines (buffer prompt &optional mode no-font-lock)
