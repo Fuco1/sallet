@@ -559,13 +559,15 @@ Any other non-prefixed pattern is matched using the following rules:
 (sallet-defsource autobookmarks nil
   "Files saved with `autobookmarks-mode'."
   (candidates (lambda ()
+                (require 'autobookmarks)
                 (-keep
-                 (-lambda ((path &keys :type type))
-                   (cond
-                    ((eq type :file)
-                     (cons (file-name-nondirectory path) it))
-                    ((eq type :dired)
-                     (cons (file-name-nondirectory (substring path 0 -1)) it))))
+                 (lambda (bookmark)
+                   (-when-let (filename (cdr (assoc 'filename (cdr bookmark))))
+                     (cons (let ((name (file-name-nondirectory filename)))
+                             (if (equal name "")
+                                 (file-name-nondirectory (substring filename 0 -1))
+                               name))
+                           bookmark)))
                  (abm-recent-buffers))))
   ;; TODO: add matching on path with /
   (matcher sallet-matcher-flx)
