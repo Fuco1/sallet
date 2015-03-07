@@ -123,8 +123,9 @@ and produces a value to be matched.  Defaults to
 `sallet-candidate-aref'.
 
 Uses the `flx' algorithm."
-  (setq candidate-transform (or candidate-transform 'sallet-candidate-aref))
-  (--keep (sallet-flx-score (funcall candidate-transform candidates it) it pattern) indices))
+  (if (equal "" pattern) indices
+    (setq candidate-transform (or candidate-transform 'sallet-candidate-aref))
+    (--keep (sallet-flx-score (funcall candidate-transform candidates it) it pattern) indices)))
 
 (defun sallet-string-match (candidate index pattern)
   "Match and score CANDIDATE at INDEX against PATTERN."
