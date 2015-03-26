@@ -96,6 +96,7 @@ reordered."
      candidates)
     (nreverse re)))
 
+;; TODO: abstract the property prefix? (so we can use this for different parts of the candidate)
 (defun sallet-flx-score (candidate index pattern)
   "Match and score CANDIDATE at INDEX against PATTERN."
   (-when-let (flx-data (flx-score candidate pattern))
