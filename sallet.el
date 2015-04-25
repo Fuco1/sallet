@@ -547,6 +547,57 @@ Any other non-prefixed pattern is matched using the following rules:
                      (cons name it)))
                  recentf-list))))
 
+;; TODO: abstract the matcher structure, it is shared with
+;; buffer-matcher (and will be reused in many other places too)
+(defun sallet-autobookmarks-matcher (candidates state)
+  "Match an autobookmark candidate using special rules.
+
+First, the prompt is split on whitespace.  This creates a list of
+patterns.
+
+A pattern starting with / flx-matches against the path to the
+file bookmark represents.
+
+Any other non-prefixed pattern is matched using the following rules:
+
+- If the pattern is first of this type at the prompt, it is
+  flx-matched against the bookmark name.
+- All the following patterns are substring matched against the
+  bookmark name."
+  (let* ((prompt (sallet-state-get-prompt state))
+         (input (split-string prompt))
+         (fuzzy-matched nil)
+         (indices (number-sequence 0 (1- (length candidates)))))
+    (-each input
+      (lambda (pattern)
+        (sallet-cond pattern
+          ;; path match, substring
+          ("\\`//"
+           (setq indices
+                 (--keep (save-match-data
+                           (when (string-match (regexp-quote pattern) (cadr (sallet-aref candidates it)))
+                             (cons
+                              (sallet-car-maybe it)
+                              (sallet-append-to-plist (cdr-safe it) :substring-matches-path (cons (match-beginning 0) (match-end 0))))))
+                         indices)))
+          ;; path match, flx
+          ("\\`/"
+           (setq indices
+                 (--keep (-when-let (flx-data (flx-score (cadr (sallet-aref candidates it)) pattern))
+                           (cons
+                            (sallet-car-maybe it)
+                            (sallet-append-to-plist (cdr-safe it) :flx-matches-path (cdr flx-data) '-concat)))
+                         indices)))
+          (t
+           ;; fuzzy match on first non-special sequence, then substring match later
+           (let ((quoted-pattern (regexp-quote pattern)))
+             (setq indices
+                   (if fuzzy-matched
+                       (sallet-subword-match quoted-pattern candidates indices)
+                     (setq fuzzy-matched t)
+                     (sallet-flx-match quoted-pattern candidates indices))))))))
+    indices))
+
 ;; TODO: improve
 (defun sallet-autobookmarks-renderer (candidate _ user-data)
   "Render an `autobookmarks-mode' candidate."
@@ -555,7 +606,12 @@ Any other non-prefixed pattern is matched using the following rules:
             (sallet-fontify-flx-matches
              (plist-get user-data :flx-matches)
              (propertize name 'face 'sallet-recentf-buffer-name))
-            (propertize (abbreviate-file-name data) 'face 'sallet-recentf-file-path))))
+            (abbreviate-file-name
+             (sallet-fontify-flx-matches
+              (plist-get user-data :flx-matches-path)
+              (sallet-fontify-substring-matches
+               (plist-get user-data :substring-matches-path)
+               (propertize data 'face 'sallet-recentf-file-path)))))))
 
 (sallet-defsource autobookmarks nil
   "Files saved with `autobookmarks-mode'."
@@ -570,8 +626,7 @@ Any other non-prefixed pattern is matched using the following rules:
                                name))
                            bookmark)))
                  (abm-recent-buffers))))
-  ;; TODO: add matching on path with /
-  (matcher sallet-matcher-flx)
+  (matcher sallet-autobookmarks-matcher)
   (renderer sallet-autobookmarks-renderer)
   (action (-lambda ((_ . x)) (abm-restore-killed-buffer x)))
   (header "Autobookmarks"))
