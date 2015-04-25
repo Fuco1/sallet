@@ -372,7 +372,9 @@ STRING is the string we want to fontify."
                      'sallet-buffer-default-directory)
                     (sallet-fontify-flx-matches
                      (plist-get user-data :flx-matches-path)
-                     default-directory)))))
+                     (sallet-fontify-substring-matches
+                      (plist-get user-data :substring-matches-path)
+                      default-directory))))))
 
 (defmacro sallet-cond (pattern &rest forms)
   "Match PATTERN against specifications in FORMS.
@@ -405,8 +407,6 @@ value of the last one is returned."
              ,@body))))
        forms)))
 
-;; TODO: add syntax to turn flx matching into substring matching.
-;; Maybe when the prefix is twice repeated?
 (defun sallet-buffer-matcher (candidates state)
   "Match a buffer candidate using special rules.
 
@@ -463,7 +463,18 @@ Any other non-prefixed pattern is matched using the following rules:
                                (goto-char (point-min))
                                (re-search-forward pattern nil t)))
                            indices)))
-          ;; default directory match
+          ;; default directory match, substr
+          ("\\`//"
+           (setq indices
+                 (--keep (save-match-data
+                           (when (string-match
+                                  (regexp-quote pattern)
+                                  (with-current-buffer (sallet-aref candidates it) default-directory))
+                             (cons
+                              (sallet-car-maybe it)
+                              (sallet-append-to-plist (cdr-safe it) :substring-matches-path (cons (match-beginning 0) (match-end 0))))))
+                         indices)))
+          ;; default directory match, flx
           ("\\`/"
            (setq indices
                  ;; TODO: abstract, see `sallet-flx-match'
