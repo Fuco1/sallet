@@ -470,13 +470,13 @@ Any other non-prefixed pattern is matched using the following rules:
                  (--keep (-when-let (flx-data (flx-score
                                                (with-current-buffer (sallet-aref candidates it) default-directory)
                                                pattern))
-                           ;; TODO: abstract the "append to property" thing
-                           (let ((matches (plist-get (cdr-safe it) :flx-matches-path)))
-                             (cons (sallet-car-maybe it)
-                                   (plist-put
-                                    (cdr-safe it)
-                                    :flx-matches-path
-                                     (-concat (cdr flx-data) matches)))))
+                           ;; TODO: abstract the "update index data"
+                           ;; procedure.  We never change the index
+                           ;; value, only possibly update the
+                           ;; information it carries along
+                           (cons
+                            (sallet-car-maybe it)
+                            (sallet-append-to-plist (cdr-safe it) :flx-matches-path (cdr flx-data) '-concat)))
                          indices)))
           (t
            ;; fuzzy match on first non-special sequence, then substring match later
