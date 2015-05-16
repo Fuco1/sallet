@@ -699,6 +699,9 @@ patterns.
 A pattern starting with / flx-matches against the path to the
 file bookmark represents.
 
+A pattern starting with // substring-matches against the path to the
+file bookmark represents.
+
 Any other non-prefixed pattern is matched using the following rules:
 
 - If the pattern is first of this type at the prompt, it is
