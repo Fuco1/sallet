@@ -606,36 +606,19 @@ Any other non-prefixed pattern is matched using the following rules:
 - All the following patterns are substring matched against the
   buffer name."
   (let* ((prompt (sallet-state-get-prompt state))
-         (input (split-string prompt))
-         (fuzzy-matched nil)
          (indices (number-sequence 0 (1- (length candidates)))))
     ;; TODO: add . prefix to match on file extension
     ;; TODO: add gtags filter?
-    (-each input
-      (lambda (pattern)
-        ;; TODO: abstract the matching "procedures" into separate,
-        ;; reusable filters (we might want to use the same rules
-        ;; elsewhere too).  See also `sallet-filter-flx'
-        (sallet-cond pattern
-          ;; test major-mode
-          ("\\`\\*"
-           (setq indices (sallet-filter-buffer-major-mode candidates indices pattern)))
-          ;; match imenu entries inside buffer
-          ("\\`@"
-           (setq indices (sallet-filter-buffer-imenu candidates indices pattern)))
-          ;; fulltext match
-          ("\\`#"
-           (setq indices (sallet-filter-buffer-fulltext candidates indices pattern)))
-          ;; default directory match, substr
-          ("\\`//"
-           (setq indices (sallet-filter-buffer-default-directory-substr candidates indices pattern)))
-          ;; default directory match, flx
-          ("\\`/"
-           (setq indices (sallet-filter-buffer-default-directory-flx candidates indices pattern)))
-          (t
-           ;; fuzzy match on first non-special sequence, then substring match later
-           (setq indices (sallet-filter-flx-then-substr candidates indices pattern))))))
-    indices))
+    (sallet-compose-filters-by-pattern-prefix
+     '(("\\`\\*\\(.*\\)" 1 sallet-filter-buffer-major-mode)
+       ("\\`@\\(.*\\)" 1 sallet-filter-buffer-imenu)
+       ("\\`#\\(.*\\)" 1 sallet-filter-buffer-fulltext)
+       ("\\`//\\(.*\\)" 1 sallet-filter-buffer-default-directory-substr)
+       ("\\`/\\(.*\\)" 1 sallet-filter-buffer-default-directory-flx)
+       (t sallet-filter-flx-then-substr))
+     candidates
+     indices
+     prompt)))
 
 (sallet-defsource buffer nil
   "Buffer source."
