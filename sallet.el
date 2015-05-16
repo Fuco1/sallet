@@ -68,7 +68,7 @@ is a list, take its `car'."
 
 The value at PROPERTY is a list.
 
-UPDATE-FUNCTION is is used to compute the new value inserted into
+UPDATE-FUNCTION is used to compute the new value inserted into
 the plist.  It takes two arguments, DATA and old value of
 PROPERTY."
   (let ((old-data (plist-get plist property)))
