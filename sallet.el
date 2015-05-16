@@ -744,7 +744,9 @@ Any other non-prefixed pattern is matched using the following rules:
     (format "%-50s%s"
             (sallet-fontify-flx-matches
              (plist-get user-data :flx-matches)
-             (propertize name 'face 'sallet-recentf-buffer-name))
+             (sallet-fontify-substring-matches
+              (plist-get user-data :substring-matches)
+              (propertize name 'face 'sallet-recentf-buffer-name)))
             (abbreviate-file-name
              (sallet-fontify-flx-matches
               (plist-get user-data :flx-matches-path)
