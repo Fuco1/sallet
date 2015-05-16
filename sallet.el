@@ -256,14 +256,14 @@ candidate should not pass the filter."
            (with-current-buffer (sallet-candidate-aref candidates it) default-directory)
            it pattern) indices))
 
-(defun sallet-filter-buffer-default-directory-substr (candidates indices pattern)
+(defun sallet-filter-buffer-default-directory-substring (candidates indices pattern)
   "Keep buffer CANDIDATES substring-matching PATTERN against `default-directory'."
   (let ((quoted-pattern (regexp-quote pattern)))
     (--keep (sallet-predicate-path-substring
              (with-current-buffer (sallet-candidate-aref candidates it) default-directory)
              it quoted-pattern) indices)))
 
-(defun sallet-filter-flx-then-substr (candidates indices pattern)
+(defun sallet-filter-flx-then-substring (candidates indices pattern)
   "Match PATTERN against CANDIDATES with flx- or substring-matching.
 
 CANDIDATES are strings.
@@ -616,9 +616,9 @@ Any other non-prefixed pattern is matched using the following rules:
      '(("\\`\\*\\(.*\\)" 1 sallet-filter-buffer-major-mode)
        ("\\`@\\(.*\\)" 1 sallet-filter-buffer-imenu)
        ("\\`#\\(.*\\)" 1 sallet-filter-buffer-fulltext)
-       ("\\`//\\(.*\\)" 1 sallet-filter-buffer-default-directory-substr)
+       ("\\`//\\(.*\\)" 1 sallet-filter-buffer-default-directory-substring)
        ("\\`/\\(.*\\)" 1 sallet-filter-buffer-default-directory-flx)
-       (t sallet-filter-flx-then-substr))
+       (t sallet-filter-flx-then-substring))
      candidates
      indices
      prompt)))
@@ -682,7 +682,7 @@ Any other non-prefixed pattern is matched using the following rules:
                      (cons name it)))
                  recentf-list))))
 
-(defun sallet-filter-autobookmark-path-substr (candidates indices pattern)
+(defun sallet-filter-autobookmark-path-substring (candidates indices pattern)
   "Keep autobookmark CANDIDATES substring-matching PATTERN against file path."
   (let ((quoted-pattern (regexp-quote pattern)))
     (--keep (sallet-predicate-path-substring (cadr (sallet-aref candidates it)) it quoted-pattern) indices)))
@@ -711,9 +711,9 @@ Any other non-prefixed pattern is matched using the following rules:
   (let* ((prompt (sallet-state-get-prompt state))
          (indices (number-sequence 0 (1- (length candidates)))))
     (sallet-compose-filters-by-pattern-prefix
-     '(("\\`//\\(.*\\)" 1 sallet-filter-autobookmark-path-substr)
+     '(("\\`//\\(.*\\)" 1 sallet-filter-autobookmark-path-substring)
        ("\\`/\\(.*\\)" 1 sallet-filter-autobookmark-path-flx)
-       (t sallet-filter-flx-then-substr))
+       (t sallet-filter-flx-then-substring))
      candidates
      indices
      prompt)))
