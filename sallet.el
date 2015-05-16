@@ -119,7 +119,7 @@ If UPDATE-FUNCTION is omitted the old value is replaced with NEW-VALUE."
                   properties)))
 
 (defun sallet--predicate-flx (candidate index pattern matches-property score-property)
-  "Match CANDIDATE at INDEX against PATTERN.
+  "Match CANDIDATE at INDEX against PATTERN and update its properties.
 
 MATCHES-PROPERTY is the name of property where matching positions
 of candidate are stored.
@@ -156,7 +156,7 @@ Uses the `flx' algorithm."
     (--keep (sallet-predicate-flx (sallet-candidate-aref candidates it) it pattern) indices)))
 
 (defun sallet--predicate-substring (candidate index pattern matches-property)
-  "Match CANDIDATE at INDEX against PATTERN and update its PROPERTIES.
+  "Match CANDIDATE at INDEX against PATTERN and update its properties.
 
 MATCHES-PROPERTY is the name of property where matching positions
 of candidate are stored."
