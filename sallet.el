@@ -478,6 +478,11 @@ Directory buffers are those whose major mode is `dired-mode'."
                  (t 'sallet-buffer-ordinary))))
       (propertize (buffer-name) 'face face))))
 
+(defface sallet-regexp-match
+  '((t (:inherit font-lock-variable-name-face :weight bold)))
+  "Face used to fontify regexp matches."
+  :group 'sallet-faces)
+
 (defface sallet-substring-match
   '((t (:inherit font-lock-variable-name-face :weight bold)))
   "Face used to fontify substring matches."
@@ -489,24 +494,38 @@ Directory buffers are those whose major mode is `dired-mode'."
   "Face used to fontify flx matches."
   :group 'sallet-faces)
 
-(defun sallet-fontify-regexp-matches (matches string)
-  "Highlight substring matches.
+(defun sallet--fontify-regions (regions string face)
+  "Highlight regions.
 
-MATCHES is a list of conses (BEG . END) where each cons delimit
-the matched region.
+REGIONS is a list of conses (BEG . END) where each cons delimits the region.
 
 STRING is the string we want to fontify."
   (let ((new-string (copy-sequence string)))
-    (-each matches
+    (-each regions
       (-lambda ((beg . end))
-        (add-text-properties beg end (list 'face 'sallet-substring-match) new-string)))
+        (add-text-properties beg end (list 'face face) new-string)))
     new-string))
+
+(defun sallet-fontify-regexp-matches (matches string)
+  "Highlight regexp matches.
+
+MATCHES is a list of conses (BEG . END) where each cons delimits the matched region.
+
+STRING is the string we want to fontify."
+  (sallet--fontify-regions matches string 'sallet-regexp-match))
+
+(defun sallet-fontify-substring-matches (matches string)
+  "Highlight substring matches.
+
+MATCHES is a list of conses (BEG . END) where each cons delimits the matched region.
+
+STRING is the string we want to fontify."
+  (sallet--fontify-regions matches string 'sallet-substring-match))
 
 (defun sallet-fontify-flx-matches (matches string)
   "Highlight flx matches.
 
-MATCHES is a list of indices where flx matched a letter to the
-input pattern.
+MATCHES is a list of indices where flx matched a letter to the input pattern.
 
 STRING is the string we want to fontify."
   (let ((new-string (copy-sequence string)))
@@ -514,21 +533,36 @@ STRING is the string we want to fontify."
       (add-text-properties it (1+ it) (list 'face 'sallet-flx-match) new-string))
     new-string))
 
+(defun sallet-compose-fontifiers (string user-data &rest fontifiers)
+  "Fontify STRING using information from USER-DATA, applying FONTIFIERS in sequence.
+
+FONTIFIERS is an list of (FONTIFIER . ATTRIBUTE) or FONTIFIER.
+
+ATTRIBUTE is key into the USER-DATA.
+
+FONTIFIER is a function of one or two arguments.  If it has
+associated ATTRIBUTE, its value in USER-DATA is passed as first
+argument, the string to be fontified as second.  Otherwise just
+the string is passed to the function."
+  (--reduce-from (let ((user-value (when (consp it) (plist-get user-data (cdr it))))
+                       (fn (if (consp it) (car it) it)))
+                   (if (consp it)
+                       (funcall fn user-value acc)
+                     (funcall fn acc)))
+                 string fontifiers))
+
 (defun sallet-buffer-renderer (candidate _ user-data)
   "Render a buffer CANDIDATE."
   (with-current-buffer candidate
     ;; TODO: make the column widths configurable
     (format "%-50s%10s  %20s  %s"
-            ;; TODO: write some function to compose "fontifiers",
-            ;; Taking string, user-data, and an alist of (attribute
-            ;; . fontifier)
             (s-truncate
              50
-             (sallet-fontify-flx-matches
-              (plist-get user-data :flx-matches)
-              (sallet-fontify-regexp-matches
-               (plist-get user-data :regexp-matches)
-               (sallet-buffer-fontify-buffer-name candidate))))
+             (sallet-compose-fontifiers
+              candidate user-data
+              'sallet-buffer-fontify-buffer-name
+              '(sallet-fontify-regexp-matches . :regexp-matches)
+              '(sallet-fontify-flx-matches . :flx-matches)))
             (propertize (file-size-human-readable (buffer-size)) 'face 'sallet-buffer-size)
             (s-truncate 20 (s-chop-suffix "-mode"
                                           (sallet-fontify-flx-matches
@@ -543,11 +577,10 @@ STRING is the string we want to fontify."
                              ")")
                      'face
                      'sallet-buffer-default-directory)
-                    (sallet-fontify-flx-matches
-                     (plist-get user-data :flx-matches-path)
-                     (sallet-fontify-regexp-matches
-                      (plist-get user-data :regexp-matches-path)
-                      default-directory))))))
+                    (sallet-compose-fontifiers
+                     default-directory user-data
+                     '(sallet-fontify-regexp-matches . :regexp-matches-path)
+                     '(sallet-fontify-flx-matches . :flx-matches-path))))))
 
 (defmacro sallet-cond (pattern &rest forms)
   "Match PATTERN against specifications in FORMS.
