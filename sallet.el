@@ -250,51 +250,18 @@ candidate should not pass the filter."
   "Keep buffer CANDIDATES regexp-matching PATTERN against `buffer-string'."
   (--keep (sallet-predicate-buffer-fulltext (sallet-candidate-aref candidates it) it pattern) indices))
 
-;; TODO: the default-directory/path can be passed in from the filter
-;; already.  We can then reuse this predicate for all filters that
-;; match against path (because the metadata key is also the same)
-(defun sallet-predicate-buffer-default-directory-flx (candidate index pattern)
-  "Check if buffer's `default-directory' flx-matches PATTERN.
-
-CANDIDATE is a buffer or buffer name.
-
-INDEX is its index and associated meta data.
-
-PATTERN is a string flx-matched against `default-directory'.
-
-Returns updated INDEX with optional added metadata or nil if this
-candidate should not pass the filter."
-  (sallet--predicate-flx candidate index pattern :flx-matches-path :flx-score-path))
-
 (defun sallet-filter-buffer-default-directory-flx (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against `default-directory'."
-  (--keep (sallet-predicate-buffer-default-directory-flx
+  (--keep (sallet-predicate-path-flx
            (with-current-buffer (sallet-candidate-aref candidates it) default-directory)
            it pattern) indices))
 
-;; TODO: implement in terms of `sallet-predicate-substring'
-(defun sallet-predicate-buffer-default-directory-substr (candidate index pattern)
-  "Check if buffer's `default-directory' substring-matches PATTERN.
-
-CANDIDATE is a buffer or buffer name.
-
-INDEX is its index and associated meta data.
-
-PATTERN is a string substring-matched against `default-directory'.
-
-Returns updated INDEX with optional added metadata or nil if this
-candidate should not pass the filter."
-  (save-match-data
-    (when (string-match
-           (regexp-quote pattern)
-           (with-current-buffer candidate default-directory))
-      (cons
-       (sallet-car-maybe index)
-       (sallet-plist-update (cdr-safe index) :substring-matches-path (cons (match-beginning 0) (match-end 0)) 'cons)))))
-
 (defun sallet-filter-buffer-default-directory-substr (candidates indices pattern)
   "Keep buffer CANDIDATES substring-matching PATTERN against `default-directory'."
-  (--keep (sallet-predicate-buffer-default-directory-substr (sallet-candidate-aref candidates it) it pattern) indices))
+  (let ((quoted-pattern (regexp-quote pattern)))
+    (--keep (sallet-predicate-path-substring
+             (with-current-buffer (sallet-candidate-aref candidates it) default-directory)
+             it quoted-pattern) indices)))
 
 (defun sallet-filter-flx-then-substr (candidates indices pattern)
   "Match PATTERN against CANDIDATES with flx- or substring-matching.
@@ -715,32 +682,14 @@ Any other non-prefixed pattern is matched using the following rules:
                      (cons name it)))
                  recentf-list))))
 
-;; TODO: merge with `sallet-predicate-buffer-default-directory-substr'
-;; (which would be replaced by a more generic `sallet-predicate-path-substr')
-(defun sallet-predicate-autobookmark-path-substr (candidate index pattern)
-  "..."
-  (save-match-data
-    (when (string-match (regexp-quote pattern) candidate)
-      (cons
-       (sallet-car-maybe index)
-       (sallet-plist-update (cdr-safe index) :substring-matches-path (cons (match-beginning 0) (match-end 0)) 'cons)))))
-
 (defun sallet-filter-autobookmark-path-substr (candidates indices pattern)
   "Keep autobookmark CANDIDATES substring-matching PATTERN against file path."
-  (--keep (sallet-predicate-autobookmark-path-substr (cadr (sallet-aref candidates it)) it pattern) indices))
-
-;; TODO: merge with `sallet-predicate-buffer-default-directory-flx'
-;; (which would be replaced by a more generic `sallet-predicate-path-flx')
-(defun sallet-predicate-autobookmark-path-flx (candidate index pattern)
-  "..."
-  (-when-let (flx-data (flx-score candidate pattern))
-    (cons
-     (sallet-car-maybe index)
-     (sallet-plist-update (cdr-safe index) :flx-matches-path (cdr flx-data) '-concat))))
+  (let ((quoted-pattern (regexp-quote pattern)))
+    (--keep (sallet-predicate-path-substring (cadr (sallet-aref candidates it)) it quoted-pattern) indices)))
 
 (defun sallet-filter-autobookmark-path-flx (candidates indices pattern)
   "Keep autobookmark CANDIDATES flx-matching PATTERN against file path."
-  (--keep (sallet-predicate-autobookmark-path-flx (cadr (sallet-aref candidates it)) it pattern) indices))
+  (--keep (sallet-predicate-path-flx (cadr (sallet-aref candidates it)) it pattern) indices))
 
 ;; TODO: abstract the matcher structure, it is shared with
 ;; buffer-matcher (and will be reused in many other places too)
