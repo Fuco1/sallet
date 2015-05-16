@@ -152,7 +152,7 @@ Uses the `flx' algorithm."
   (if (equal "" pattern) indices
     (--keep (sallet-predicate-flx (sallet-candidate-aref candidates it) it pattern) indices)))
 
-(defun sallet--predicate-substring (candidate index pattern matches-property)
+(defun sallet--predicate-regexp (candidate index pattern matches-property)
   "Match CANDIDATE at INDEX against PATTERN and update its properties.
 
 MATCHES-PROPERTY is the name of property where matching positions
@@ -163,13 +163,13 @@ of candidate are stored."
        index
        (list matches-property (cons (match-beginning 0) (match-end 0)) 'cons)))))
 
-(defun sallet-predicate-substring (candidate index pattern)
+(defun sallet-predicate-regexp (candidate index pattern)
   "Match and score CANDIDATE at INDEX against PATTERN."
-  (sallet--predicate-substring candidate index pattern :substring-matches))
+  (sallet--predicate-regexp candidate index pattern :regexp-matches))
 
-(defun sallet-predicate-path-substring (candidate index pattern)
+(defun sallet-predicate-path-regexp (candidate index pattern)
   "Match and score path CANDIDATE at INDEX against PATTERN."
-  (sallet--predicate-substring candidate index pattern :substring-matches-path))
+  (sallet--predicate-regexp candidate index pattern :regexp-matches-path))
 
 (defun sallet-filter-substring (candidates indices pattern)
   "Match PATTERN against CANDIDATES at INDICES.
@@ -180,7 +180,7 @@ INDICES is a list of processed candidates.
 
 Uses substring matching."
   (let ((quoted-pattern (regexp-quote pattern)))
-    (--keep (sallet-predicate-substring (sallet-candidate-aref candidates it) it quoted-pattern) indices)))
+    (--keep (sallet-predicate-regexp (sallet-candidate-aref candidates it) it quoted-pattern) indices)))
 
 (defun sallet-predicate-buffer-imenu (candidate index pattern)
   "Check if buffer contains `imenu' item flx-matching PATTERN.
@@ -260,7 +260,7 @@ candidate should not pass the filter."
 (defun sallet-filter-buffer-default-directory-substring (candidates indices pattern)
   "Keep buffer CANDIDATES substring-matching PATTERN against `default-directory'."
   (let ((quoted-pattern (regexp-quote pattern)))
-    (--keep (sallet-predicate-path-substring
+    (--keep (sallet-predicate-path-regexp
              (with-current-buffer (sallet-candidate-aref candidates it) default-directory)
              it quoted-pattern) indices)))
 
@@ -496,7 +496,7 @@ Directory buffers are those whose major mode is `dired-mode'."
   "Face used to fontify flx matches."
   :group 'sallet-faces)
 
-(defun sallet-fontify-substring-matches (matches string)
+(defun sallet-fontify-regexp-matches (matches string)
   "Highlight substring matches.
 
 MATCHES is a list of conses (BEG . END) where each cons delimit
@@ -533,8 +533,8 @@ STRING is the string we want to fontify."
              50
              (sallet-fontify-flx-matches
               (plist-get user-data :flx-matches)
-              (sallet-fontify-substring-matches
-               (plist-get user-data :substring-matches)
+              (sallet-fontify-regexp-matches
+               (plist-get user-data :regexp-matches)
                (sallet-buffer-fontify-buffer-name candidate))))
             (propertize (file-size-human-readable (buffer-size)) 'face 'sallet-buffer-size)
             (s-truncate 20 (s-chop-suffix "-mode" (symbol-name major-mode)))
@@ -549,8 +549,8 @@ STRING is the string we want to fontify."
                      'sallet-buffer-default-directory)
                     (sallet-fontify-flx-matches
                      (plist-get user-data :flx-matches-path)
-                     (sallet-fontify-substring-matches
-                      (plist-get user-data :substring-matches-path)
+                     (sallet-fontify-regexp-matches
+                      (plist-get user-data :regexp-matches-path)
                       default-directory))))))
 
 (defmacro sallet-cond (pattern &rest forms)
@@ -686,7 +686,7 @@ Any other non-prefixed pattern is matched using the following rules:
 (defun sallet-filter-autobookmark-path-substring (candidates indices pattern)
   "Keep autobookmark CANDIDATES substring-matching PATTERN against file path."
   (let ((quoted-pattern (regexp-quote pattern)))
-    (--keep (sallet-predicate-path-substring (cadr (sallet-aref candidates it)) it quoted-pattern) indices)))
+    (--keep (sallet-predicate-path-regexp (cadr (sallet-aref candidates it)) it quoted-pattern) indices)))
 
 (defun sallet-filter-autobookmark-path-flx (candidates indices pattern)
   "Keep autobookmark CANDIDATES flx-matching PATTERN against file path."
@@ -726,14 +726,14 @@ Any other non-prefixed pattern is matched using the following rules:
     (format "%-50s%s"
             (sallet-fontify-flx-matches
              (plist-get user-data :flx-matches)
-             (sallet-fontify-substring-matches
-              (plist-get user-data :substring-matches)
+             (sallet-fontify-regexp-matches
+              (plist-get user-data :regexp-matches)
               (propertize name 'face 'sallet-recentf-buffer-name)))
             (abbreviate-file-name
              (sallet-fontify-flx-matches
               (plist-get user-data :flx-matches-path)
-              (sallet-fontify-substring-matches
-               (plist-get user-data :substring-matches-path)
+              (sallet-fontify-regexp-matches
+               (plist-get user-data :regexp-matches-path)
                (propertize data 'face 'sallet-recentf-file-path)))))))
 
 (sallet-defsource autobookmarks nil
