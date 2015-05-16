@@ -530,7 +530,10 @@ STRING is the string we want to fontify."
                (plist-get user-data :regexp-matches)
                (sallet-buffer-fontify-buffer-name candidate))))
             (propertize (file-size-human-readable (buffer-size)) 'face 'sallet-buffer-size)
-            (s-truncate 20 (s-chop-suffix "-mode" (symbol-name major-mode)))
+            (s-truncate 20 (s-chop-suffix "-mode"
+                                          (sallet-fontify-flx-matches
+                                           (plist-get user-data :flx-matches-mm)
+                                           (symbol-name major-mode))))
             (format (propertize
                      (concat "(" (or (and (buffer-file-name) (concat "in %s"))
                                      (-when-let (process (get-buffer-process (current-buffer)))
