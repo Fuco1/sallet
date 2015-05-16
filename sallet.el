@@ -298,6 +298,16 @@ Return INDICES filtered in this manner by all the TOKENS."
             (setq indices (sallet-pipe-filters filters candidates indices input))))))
     indices))
 
+(defun sallet-make-tokenized-filter (filter)
+  "Return a variant of FILTER which matches each token from input pattern separately.
+
+Input pattern is split on whitespace to create list of tokens.
+Each candidate is then matched against each token.  Only
+candidates matching all tokens will pass the test."
+  (lambda (candidates indices pattern)
+    (let ((tokens (split-string pattern)))
+      (--reduce-from (funcall filter candidates acc it) indices tokens))))
+
 ;; TODO: make this better
 ;; TODO: rewrite in terms of `sallet-filter-substring'
 (defun sallet-matcher-default (candidates state)
