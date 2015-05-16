@@ -582,37 +582,6 @@ the string is passed to the function."
                      '(sallet-fontify-regexp-matches . :regexp-matches-path)
                      '(sallet-fontify-flx-matches . :flx-matches-path))))))
 
-(defmacro sallet-cond (pattern &rest forms)
-  "Match PATTERN against specifications in FORMS.
-
-Each element of FORMS is a list (CONDITION BODY).
-
-If CONDITION is a string, it is matched against PATTERN as a
-regular expression.  Regex pattern \"\\(.*\\)\" is automatically
-appended after CONDITION and `match-string' 1 is bound to
-PATTERN.
-
-If CONDITION is anything else, the result is normal `cond'
-branch.
-
-In both cases, BODY is a list of instructions to execute.  The
-value of the last one is returned."
-  (declare (indent 1)
-           (debug (sexp [&rest (sexp body)])))
-  `(cond
-    ,@(mapcar
-       (-lambda ((prefix . body))
-         (cond
-          ((stringp prefix)
-           `((string-match ,(concat prefix "\\(.*\\)") ,pattern)
-             (let ((,pattern (match-string 1 ,pattern)))
-               (unless (equal ,pattern "")
-                 ,@body))))
-          (t
-           `(,prefix
-             ,@body))))
-       forms)))
-
 (defun sallet-buffer-matcher (candidates state)
   "Match a buffer candidate using special rules.
 
