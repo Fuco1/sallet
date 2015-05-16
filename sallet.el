@@ -100,7 +100,7 @@ reordered."
 ;; matching two patterns against each other.  It should not do the
 ;; "candidate preprocess", that should be handled by specific
 ;; functions passing the preprocessed arguments
-;; in. `sallet-filter-item-flx' and `sallet-filter-item-substr' will
+;; in. `sallet-predicate-flx' and `sallet-predicate-substr' will
 ;; be the two associated "default" item filters
 ;; TODO: abstract the property prefix? (so we can use this for different parts of the candidate)
 (defun sallet-flx-score (candidate index pattern)
@@ -142,7 +142,7 @@ INDICES is a list of processed candidates.
 Uses substring matching."
   (--keep (sallet-string-match (sallet-candidate-aref candidates it) it pattern) indices))
 
-(defun sallet-filter-item-buffer-imenu (candidate index pattern)
+(defun sallet-predicate-buffer-imenu (candidate index pattern)
   "Check if buffer contains `imenu' item flx-matching PATTERN.
 
 CANDIDATE is a buffer or buffer name.
@@ -168,9 +168,9 @@ candidate should not pass the filter."
 
 (defun sallet-filter-buffer-imenu (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against an imenu item."
-  (--keep (sallet-filter-item-buffer-imenu (sallet-candidate-aref candidates it) it pattern) indices))
+  (--keep (sallet-predicate-buffer-imenu (sallet-candidate-aref candidates it) it pattern) indices))
 
-(defun sallet-filter-item-buffer-major-mode (candidate index pattern)
+(defun sallet-predicate-buffer-major-mode (candidate index pattern)
   "Check if buffer's `major-mode' flx-matches PATTERN.
 
 CANDIDATE is a buffer or buffer name.
@@ -188,9 +188,9 @@ candidate should not pass the filter."
 
 (defun sallet-filter-buffer-major-mode (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against current `major-mode'."
-  (--keep (sallet-filter-item-buffer-major-mode (sallet-candidate-aref candidates it) it pattern) indices))
+  (--keep (sallet-predicate-buffer-major-mode (sallet-candidate-aref candidates it) it pattern) indices))
 
-(defun sallet-filter-item-buffer-fulltext (candidate index pattern)
+(defun sallet-predicate-buffer-fulltext (candidate index pattern)
   "Check if buffer's `buffer-string' regexp-matches PATTERN.
 
 CANDIDATE is a buffer or buffer name.
@@ -209,10 +209,10 @@ candidate should not pass the filter."
 
 (defun sallet-filter-buffer-fulltext (candidates indices pattern)
   "Keep buffer CANDIDATES regexp-matching PATTERN against `buffer-string'."
-  (--keep (sallet-filter-item-buffer-fulltext (sallet-candidate-aref candidates it) it pattern) indices))
+  (--keep (sallet-predicate-buffer-fulltext (sallet-candidate-aref candidates it) it pattern) indices))
 
 ;; TODO: implement in terms of `sallet-flx-score'
-(defun sallet-filter-item-buffer-default-directory-flx (candidate index pattern)
+(defun sallet-predicate-buffer-default-directory-flx (candidate index pattern)
   "Check if buffer's `default-directory' flx-matches PATTERN.
 
 CANDIDATE is a buffer or buffer name.
@@ -236,10 +236,10 @@ candidate should not pass the filter."
 
 (defun sallet-filter-buffer-default-directory-flx (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against `default-directory'."
-  (--keep (sallet-filter-item-buffer-default-directory-flx (sallet-candidate-aref candidates it) it pattern) indices))
+  (--keep (sallet-predicate-buffer-default-directory-flx (sallet-candidate-aref candidates it) it pattern) indices))
 
 ;; TODO: implement in terms of `sallet-string-match'
-(defun sallet-filter-item-buffer-default-directory-substr (candidate index pattern)
+(defun sallet-predicate-buffer-default-directory-substr (candidate index pattern)
   "Check if buffer's `default-directory' substring-matches PATTERN.
 
 CANDIDATE is a buffer or buffer name.
@@ -260,7 +260,7 @@ candidate should not pass the filter."
 
 (defun sallet-filter-buffer-default-directory-substr (candidates indices pattern)
   "Keep buffer CANDIDATES substring-matching PATTERN against `default-directory'."
-  (--keep (sallet-filter-item-buffer-default-directory-substr (sallet-candidate-aref candidates it) it pattern) indices))
+  (--keep (sallet-predicate-buffer-default-directory-substr (sallet-candidate-aref candidates it) it pattern) indices))
 
 (defun sallet-filter-flx-then-substr (candidates indices pattern)
   "Match PATTERN against CANDIDATES with flx- or substring-matching.

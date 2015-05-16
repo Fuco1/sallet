@@ -97,24 +97,24 @@ further processing.")
 It should not be responsibility of a filter to pre-process patterns or
 candidates.
 
-*** Item filters
-In turn, filters can use /item filters/ to match candidates and update
+*** Predicates
+In turn, filters can use /predicates/ to match candidates and update
 their index metadata.
 
-It is important to realize that item filters are completely
+It is important to realize that predicates are completely
 independent of sources, candidate vectors, patterns, filters... all
 they care about is to get two values to compare and one value to
-update, that's it.  Filters using item filters can arbitrarily process
+update, that's it.  Filters using predicates can arbitrarily process
 the candidate and pattern before passing it in as arguments.
 
 However, in most cases they should not do it and instead just pass the
 values directly, as modification of these values is responsibility of
 a pre-processing step, not matching/filtering step.
 
-Item filters have this interface:
+Predicates have this interface:
 
 #+BEGIN_SRC elisp
-(defun sallet-filter-item-NAME (candidate index pattern)
+(defun sallet-predicate-NAME (candidate index pattern)
   "CANDIDATE is the processed candidate.
 
 INDEX is its associated index and user metadata.
