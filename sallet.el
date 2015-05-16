@@ -155,13 +155,20 @@ Uses the `flx' algorithm."
   (if (equal "" pattern) indices
     (--keep (sallet-predicate-flx (sallet-candidate-aref candidates it) it pattern) indices)))
 
-(defun sallet-string-match (candidate index pattern)
-  "Match and score CANDIDATE at INDEX against PATTERN."
+(defun sallet--predicate-substring (candidate index pattern matches-property)
+  "Match CANDIDATE at INDEX against PATTERN and update its PROPERTIES.
+
+MATCHES-PROPERTY is the name of property where matching positions
+of candidate are stored."
   (save-match-data
     (when (string-match pattern candidate)
-      (cons
-       (sallet-car-maybe index)
-       (sallet-plist-update (cdr-safe index) :substring-matches (cons (match-beginning 0) (match-end 0)) 'cons)))))
+      (sallet-update-index
+       index
+       (list matches-property (cons (match-beginning 0) (match-end 0)) 'cons)))))
+
+(defun sallet-string-match (candidate index pattern)
+  "Match and score CANDIDATE at INDEX against PATTERN."
+  (sallet--predicate-substring candidate index pattern :substring-matches))
 
 (defun sallet-filter-substring (candidates indices pattern)
   "Match PATTERN against CANDIDATES at INDICES.
