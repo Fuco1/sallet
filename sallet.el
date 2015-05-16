@@ -76,7 +76,7 @@ PROPERTY.  Defaults to `cons'."
     (plist-put plist property (funcall update-function data old-data))))
 
 ;; TODO: make this better
-;; TODO: rewrite in terms of sallet-subword-match
+;; TODO: rewrite in terms of sallet-filter-substring
 (defun sallet-matcher-default (candidates state)
   "Default matcher.
 
@@ -132,8 +132,7 @@ Uses the `flx' algorithm."
        (sallet-car-maybe index)
        (sallet-append-to-plist (cdr-safe index) :substring-matches (cons (match-beginning 0) (match-end 0)))))))
 
-;; TODO: rename to `sallet-filter-substring'
-(defun sallet-subword-match (pattern candidates indices)
+(defun sallet-filter-substring (pattern candidates indices)
   "Match PATTERN against CANDIDATES at INDICES.
 
 CANDIDATES is a vector of candidates.
@@ -275,7 +274,7 @@ We use following check to determine which algorithm to use:
   (if (or (not (consp (car indices)))
           (not (plist-member (cdar indices) :flx-score)))
       (sallet-filter-flx pattern candidates indices)
-    (sallet-subword-match pattern candidates indices)))
+    (sallet-filter-substring pattern candidates indices)))
 
 (defun sallet-pipe-filters (filters pattern candidates indices)
   "Run all FILTERS in sequence, filtering CANDIDATES against PATTERN."
@@ -743,7 +742,7 @@ Any other non-prefixed pattern is matched using the following rules:
            (let ((quoted-pattern (regexp-quote pattern)))
              (setq indices
                    (if fuzzy-matched
-                       (sallet-subword-match quoted-pattern candidates indices)
+                       (sallet-filter-substring quoted-pattern candidates indices)
                      (setq fuzzy-matched t)
                      (sallet-filter-flx pattern candidates indices))))))))
     indices))
