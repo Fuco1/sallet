@@ -113,7 +113,7 @@ reordered."
        (plist-put :flx-score (car flx-data))))))
 
 ;; TODO: figure out how the caching works
-(defun sallet-filter-flx (pattern candidates indices)
+(defun sallet-filter-flx (candidates indices pattern)
   "Match PATTERN against CANDIDATES at INDICES.
 
 CANDIDATES is a vector of candidates.
@@ -132,7 +132,7 @@ Uses the `flx' algorithm."
        (sallet-car-maybe index)
        (sallet-append-to-plist (cdr-safe index) :substring-matches (cons (match-beginning 0) (match-end 0)))))))
 
-(defun sallet-filter-substring (pattern candidates indices)
+(defun sallet-filter-substring (candidates indices pattern)
   "Match PATTERN against CANDIDATES at INDICES.
 
 CANDIDATES is a vector of candidates.
@@ -166,7 +166,7 @@ candidate should not pass the filter."
             (--any? (flx-score it pattern) imenu-alist-flat)))
     index))
 
-(defun sallet-filter-buffer-imenu (pattern candidates indices)
+(defun sallet-filter-buffer-imenu (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against an imenu item."
   (--keep (sallet-filter-item-buffer-imenu (sallet-candidate-aref candidates it) it pattern) indices))
 
@@ -186,7 +186,7 @@ candidate should not pass the filter."
           (flx-score (symbol-name major-mode) pattern))
     index))
 
-(defun sallet-filter-buffer-major-mode (pattern candidates indices)
+(defun sallet-filter-buffer-major-mode (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against current `major-mode'."
   (--keep (sallet-filter-item-buffer-major-mode (sallet-candidate-aref candidates it) it pattern) indices))
 
@@ -207,7 +207,7 @@ candidate should not pass the filter."
             (re-search-forward pattern nil t)))
     index))
 
-(defun sallet-filter-buffer-fulltext (pattern candidates indices)
+(defun sallet-filter-buffer-fulltext (candidates indices pattern)
   "Keep buffer CANDIDATES regexp-matching PATTERN against `buffer-string'."
   (--keep (sallet-filter-item-buffer-fulltext (sallet-candidate-aref candidates it) it pattern) indices))
 
@@ -234,7 +234,7 @@ candidate should not pass the filter."
      (sallet-car-maybe index)
      (sallet-append-to-plist (cdr-safe index) :flx-matches-path (cdr flx-data) '-concat))))
 
-(defun sallet-filter-buffer-default-directory-flx (pattern candidates indices)
+(defun sallet-filter-buffer-default-directory-flx (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against `default-directory'."
   (--keep (sallet-filter-item-buffer-default-directory-flx (sallet-candidate-aref candidates it) it pattern) indices))
 
@@ -258,11 +258,11 @@ candidate should not pass the filter."
        (sallet-car-maybe index)
        (sallet-append-to-plist (cdr-safe index) :substring-matches-path (cons (match-beginning 0) (match-end 0)))))))
 
-(defun sallet-filter-buffer-default-directory-substr (pattern candidates indices)
+(defun sallet-filter-buffer-default-directory-substr (candidates indices pattern)
   "Keep buffer CANDIDATES substring-matching PATTERN against `default-directory'."
   (--keep (sallet-filter-item-buffer-default-directory-substr (sallet-candidate-aref candidates it) it pattern) indices))
 
-(defun sallet-filter-flx-then-substr (pattern candidates indices)
+(defun sallet-filter-flx-then-substr (candidates indices pattern)
   "Match PATTERN against CANDIDATES with flx- or substring-matching.
 
 CANDIDATES are strings.
@@ -273,12 +273,12 @@ We use following check to determine which algorithm to use:
    match, otherwise flx-matching was never performed so we flx-match."
   (if (or (not (consp (car indices)))
           (not (plist-member (cdar indices) :flx-score)))
-      (sallet-filter-flx pattern candidates indices)
-    (sallet-filter-substring pattern candidates indices)))
+      (sallet-filter-flx candidates indices pattern)
+    (sallet-filter-substring candidates indices pattern)))
 
-(defun sallet-pipe-filters (filters pattern candidates indices)
+(defun sallet-pipe-filters (filters candidates indices pattern)
   "Run all FILTERS in sequence, filtering CANDIDATES against PATTERN."
-  (--reduce-from (funcall it pattern candidates acc) indices filters))
+  (--reduce-from (funcall it candidates acc pattern) indices filters))
 
 ;; TODO: maybe we can add support for "... ..." patterns by "spliting
 ;; as sexps" in a temporary buffer where we set everything to word
@@ -287,7 +287,7 @@ We use following check to determine which algorithm to use:
 ;; TODO: Add optimization where we only re-run changed tokens.  We can
 ;; keep the index from the last update and just work on that
 ;; (similarly as we keep the pattern from one update ago).
-(defun sallet-compose-filters-by-pattern-prefix (filter-alist pattern candidates indices)
+(defun sallet-compose-filters-by-pattern-prefix (filter-alist candidates indices pattern)
   "Filter CANDIDATES using rules from FILTER-ALIST.
 
 FILTER-ALIST is an alist of (SUBPATTERN . FILTERS) or (SUBPATTERN
@@ -321,7 +321,7 @@ Return INDICES filtered in this manner by all the TOKENS."
                          (when (string-match subpattern token)
                            (cons (match-string match-group token) filters))))
                      filter-alist))
-          (setq indices (sallet-pipe-filters filters input candidates indices)))))
+          (setq indices (sallet-pipe-filters filters candidates indices input)))))
     indices))
 
 (defun sallet-matcher-flx (candidates state)
@@ -330,7 +330,7 @@ Return INDICES filtered in this manner by all the TOKENS."
         ;; TODO: indices should be supplied automatically? Or at least
         ;; make a version which would support that
         (indices (number-sequence 0 (1- (length candidates)))))
-    (sallet-filter-flx prompt candidates indices)))
+    (sallet-filter-flx candidates indices prompt)))
 
 (defun sallet-sorter-flx (processed-candidates _)
   "Sort PROCESSED-CANDIDATES by :flx-score."
@@ -619,22 +619,22 @@ Any other non-prefixed pattern is matched using the following rules:
         (sallet-cond pattern
           ;; test major-mode
           ("\\`\\*"
-           (setq indices (sallet-filter-buffer-major-mode pattern candidates indices)))
+           (setq indices (sallet-filter-buffer-major-mode candidates indices pattern)))
           ;; match imenu entries inside buffer
           ("\\`@"
-           (setq indices (sallet-filter-buffer-imenu pattern candidates indices)))
+           (setq indices (sallet-filter-buffer-imenu candidates indices pattern)))
           ;; fulltext match
           ("\\`#"
-           (setq indices (sallet-filter-buffer-fulltext pattern candidates indices)))
+           (setq indices (sallet-filter-buffer-fulltext candidates indices pattern)))
           ;; default directory match, substr
           ("\\`//"
-           (setq indices (sallet-filter-buffer-default-directory-substr pattern candidates indices)))
+           (setq indices (sallet-filter-buffer-default-directory-substr candidates indices pattern)))
           ;; default directory match, flx
           ("\\`/"
-           (setq indices (sallet-filter-buffer-default-directory-flx pattern candidates indices)))
+           (setq indices (sallet-filter-buffer-default-directory-flx candidates indices pattern)))
           (t
            ;; fuzzy match on first non-special sequence, then substring match later
-           (setq indices (sallet-filter-flx-then-substr pattern candidates indices))))))
+           (setq indices (sallet-filter-flx-then-substr candidates indices pattern))))))
     indices))
 
 (sallet-defsource buffer nil
@@ -742,9 +742,9 @@ Any other non-prefixed pattern is matched using the following rules:
            (let ((quoted-pattern (regexp-quote pattern)))
              (setq indices
                    (if fuzzy-matched
-                       (sallet-filter-substring quoted-pattern candidates indices)
+                       (sallet-filter-substring candidates indices quoted-pattern)
                      (setq fuzzy-matched t)
-                     (sallet-filter-flx pattern candidates indices))))))))
+                     (sallet-filter-flx candidates indices pattern))))))))
     indices))
 
 ;; TODO: improve

@@ -81,14 +81,14 @@ sequence, in parallel), can perform set operations on their results
 They all have to follow the following interface:
 
 #+BEGIN_SRC elisp
-(defun sallet-filter-NAME (pattern candidates indices)
-  "PATTERN is the string pattern we are matching against
-candidates.  Its semantics are left to the match procedure.
-
-CANDIDATES is the vector of candidates.
+(defun sallet-filter-NAME (candidates indices pattern)
+  "CANDIDATES is the vector of candidates.
 
 INDICES are indices with possibly attached metadata (see
 terminology).
+
+PATTERN is the string pattern we are matching against
+candidates.  Its semantics are left to the match procedure.
 
 Returns filtered list of indices which should be included in
 further processing.")
