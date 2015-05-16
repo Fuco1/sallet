@@ -242,7 +242,6 @@ candidate should not pass the filter."
   "Keep buffer CANDIDATES regexp-matching PATTERN against `buffer-string'."
   (--keep (sallet-predicate-buffer-fulltext (sallet-candidate-aref candidates it) it pattern) indices))
 
-;; TODO: implement in terms of `sallet-flx-score'
 ;; TODO: the default-directory/path can be passed in from the filter
 ;; already.  We can then reuse this predicate for all filters that
 ;; match against path (because the metadata key is also the same)
@@ -257,19 +256,13 @@ PATTERN is a string flx-matched against `default-directory'.
 
 Returns updated INDEX with optional added metadata or nil if this
 candidate should not pass the filter."
-  (-when-let (flx-data (flx-score
-                        (with-current-buffer candidate default-directory)
-                        pattern))
-    ;; TODO: abstract the "update index data" procedure.  We never
-    ;; change the index value, only possibly update the information it
-    ;; carries along
-    (cons
-     (sallet-car-maybe index)
-     (sallet-plist-update (cdr-safe index) :flx-matches-path (cdr flx-data) '-concat))))
+  (sallet--predicate-flx candidate index pattern :flx-matches-path :flx-score-path))
 
 (defun sallet-filter-buffer-default-directory-flx (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against `default-directory'."
-  (--keep (sallet-predicate-buffer-default-directory-flx (sallet-candidate-aref candidates it) it pattern) indices))
+  (--keep (sallet-predicate-buffer-default-directory-flx
+           (with-current-buffer (sallet-candidate-aref candidates it) default-directory)
+           it pattern) indices))
 
 ;; TODO: implement in terms of `sallet-string-match'
 (defun sallet-predicate-buffer-default-directory-substr (candidate index pattern)
