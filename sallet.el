@@ -75,7 +75,7 @@ PROPERTY."
     (plist-put plist property (funcall update-function data old-data))))
 
 ;; TODO: make this better
-;; TODO: rewrite in terms of sallet-filter-substring
+;; TODO: rewrite in terms of `sallet-filter-substring'
 (defun sallet-matcher-default (candidates state)
   "Default matcher.
 
@@ -132,13 +132,6 @@ against PATTERN. "
      (list matches-property (cdr flx-data) '-concat)
      (list score-property (car flx-data)))))
 
-;; TODO: make this (and `sallet-predicate-substring') a general interface for
-;; matching two patterns against each other.  It should not do the
-;; "candidate preprocess", that should be handled by specific
-;; functions passing the preprocessed arguments
-;; in. `sallet-predicate-flx' and `sallet-predicate-substr' will
-;; be the two associated "default" item filters
-;; TODO: abstract the property prefix? (so we can use this for different parts of the candidate)
 (defun sallet-predicate-flx (candidate index pattern)
   "Match and score CANDIDATE at INDEX against PATTERN."
   (sallet--predicate-flx candidate index pattern :flx-matches :flx-score))
