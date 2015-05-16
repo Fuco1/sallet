@@ -718,19 +718,19 @@ Any other non-prefixed pattern is matched using the following rules:
 ;; TODO: improve
 (defun sallet-autobookmarks-renderer (candidate _ user-data)
   "Render an `autobookmarks-mode' candidate."
-  (-let (((name data) candidate))
+  (-let (((name path) candidate))
     (format "%-50s%s"
-            (sallet-fontify-flx-matches
-             (plist-get user-data :flx-matches)
-             (sallet-fontify-regexp-matches
-              (plist-get user-data :regexp-matches)
-              (propertize name 'face 'sallet-recentf-buffer-name)))
+            (sallet-compose-fontifiers
+             ;; TODO: create a "fontify flx after regexp" function to
+             ;; simplify this common pattern
+             (propertize name 'face 'sallet-recentf-buffer-name) user-data
+             '(sallet-fontify-regexp-matches . :regexp-matches)
+             '(sallet-fontify-flx-matches . :flx-matches))
             (abbreviate-file-name
-             (sallet-fontify-flx-matches
-              (plist-get user-data :flx-matches-path)
-              (sallet-fontify-regexp-matches
-               (plist-get user-data :regexp-matches-path)
-               (propertize data 'face 'sallet-recentf-file-path)))))))
+             (sallet-compose-fontifiers
+              (propertize path 'face 'sallet-recentf-file-path) user-data
+              '(sallet-fontify-regexp-matches . :regexp-matches-path)
+              '(sallet-fontify-flx-matches . :flx-matches-path))))))
 
 (sallet-defsource autobookmarks nil
   "Files saved with `autobookmarks-mode'."
