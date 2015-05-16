@@ -212,6 +212,9 @@ candidate should not pass the filter."
   (--keep (sallet-predicate-buffer-fulltext (sallet-candidate-aref candidates it) it pattern) indices))
 
 ;; TODO: implement in terms of `sallet-flx-score'
+;; TODO: the default-directory/path can be passed in from the filter
+;; already.  We can then reuse this predicate for all filters that
+;; match against path (because the metadata key is also the same)
 (defun sallet-predicate-buffer-default-directory-flx (candidate index pattern)
   "Check if buffer's `default-directory' flx-matches PATTERN.
 
@@ -226,10 +229,9 @@ candidate should not pass the filter."
   (-when-let (flx-data (flx-score
                         (with-current-buffer candidate default-directory)
                         pattern))
-    ;; TODO: abstract the "update index data"
-    ;; procedure.  We never change the index
-    ;; value, only possibly update the
-    ;; information it carries along
+    ;; TODO: abstract the "update index data" procedure.  We never
+    ;; change the index value, only possibly update the information it
+    ;; carries along
     (cons
      (sallet-car-maybe index)
      (sallet-append-to-plist (cdr-safe index) :flx-matches-path (cdr flx-data) '-concat))))
@@ -524,7 +526,9 @@ STRING is the string we want to fontify."
   (with-current-buffer candidate
     ;; TODO: make the column widths configurable
     (format "%-50s%10s  %20s  %s"
-            ;; TODO: rewrite with ->>
+            ;; TODO: write some function to compose "fontifiers",
+            ;; Taking string, user-data, and an alist of (attribute
+            ;; . fontifier)
             (s-truncate
              50
              (sallet-fontify-flx-matches
