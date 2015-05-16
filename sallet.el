@@ -136,6 +136,10 @@ against PATTERN. "
   "Match and score CANDIDATE at INDEX against PATTERN."
   (sallet--predicate-flx candidate index pattern :flx-matches :flx-score))
 
+(defun sallet-predicate-path-flx (candidate index pattern)
+  "Match and score path CANDIDATE at INDEX against PATTERN."
+  (sallet--predicate-flx candidate index pattern :flx-matches-path :flx-score-path))
+
 ;; TODO: figure out how the caching works
 (defun sallet-filter-flx (candidates indices pattern)
   "Match PATTERN against CANDIDATES at INDICES.
@@ -162,6 +166,10 @@ of candidate are stored."
 (defun sallet-predicate-substring (candidate index pattern)
   "Match and score CANDIDATE at INDEX against PATTERN."
   (sallet--predicate-substring candidate index pattern :substring-matches))
+
+(defun sallet-predicate-path-substring (candidate index pattern)
+  "Match and score path CANDIDATE at INDEX against PATTERN."
+  (sallet--predicate-substring candidate index pattern :substring-matches-path))
 
 (defun sallet-filter-substring (candidates indices pattern)
   "Match PATTERN against CANDIDATES at INDICES.
