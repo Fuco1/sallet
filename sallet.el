@@ -679,6 +679,33 @@ Any other non-prefixed pattern is matched using the following rules:
                      (cons name it)))
                  recentf-list))))
 
+;; TODO: merge with `sallet-predicate-buffer-default-directory-substr'
+;; (which would be replaced by a more generic `sallet-predicate-path-substr')
+(defun sallet-predicate-autobookmark-path-substr (candidate index pattern)
+  "..."
+  (save-match-data
+    (when (string-match (regexp-quote pattern) candidate)
+      (cons
+       (sallet-car-maybe it)
+       (sallet-append-to-plist (cdr-safe it) :substring-matches-path (cons (match-beginning 0) (match-end 0)))))))
+
+(defun sallet-filter-autobookmark-path-substr (candidates indices pattern)
+  "Keep autobookmark CANDIDATES substring-matching PATTERN against file path."
+  (--keep (sallet-predicate-autobookmark-path-substr (cadr (sallet-aref candidates it)) it pattern) indices))
+
+;; TODO: merge with `sallet-predicate-buffer-default-directory-flx'
+;; (which would be replaced by a more generic `sallet-predicate-path-flx')
+(defun sallet-predicate-autobookmark-path-flx (candidate index pattern)
+  "..."
+  (-when-let (flx-data (flx-score candidate pattern))
+    (cons
+     (sallet-car-maybe it)
+     (sallet-append-to-plist (cdr-safe it) :flx-matches-path (cdr flx-data) '-concat))))
+
+(defun sallet-filter-autobookmark-path-flx (candidates indices pattern)
+  "Keep autobookmark CANDIDATES flx-matching PATTERN against file path."
+  (--keep (sallet-predicate-autobookmark-path-flx (cadr (sallet-aref candidates it)) it pattern) indices))
+
 ;; TODO: abstract the matcher structure, it is shared with
 ;; buffer-matcher (and will be reused in many other places too)
 (defun sallet-autobookmarks-matcher (candidates state)
@@ -697,38 +724,14 @@ Any other non-prefixed pattern is matched using the following rules:
 - All the following patterns are substring matched against the
   bookmark name."
   (let* ((prompt (sallet-state-get-prompt state))
-         (input (split-string prompt))
-         (fuzzy-matched nil)
          (indices (number-sequence 0 (1- (length candidates)))))
-    (-each input
-      (lambda (pattern)
-        (sallet-cond pattern
-          ;; path match, substring
-          ("\\`//"
-           (setq indices
-                 (--keep (save-match-data
-                           (when (string-match (regexp-quote pattern) (cadr (sallet-aref candidates it)))
-                             (cons
-                              (sallet-car-maybe it)
-                              (sallet-append-to-plist (cdr-safe it) :substring-matches-path (cons (match-beginning 0) (match-end 0))))))
-                         indices)))
-          ;; path match, flx
-          ("\\`/"
-           (setq indices
-                 (--keep (-when-let (flx-data (flx-score (cadr (sallet-aref candidates it)) pattern))
-                           (cons
-                            (sallet-car-maybe it)
-                            (sallet-append-to-plist (cdr-safe it) :flx-matches-path (cdr flx-data) '-concat)))
-                         indices)))
-          (t
-           ;; fuzzy match on first non-special sequence, then substring match later
-           (let ((quoted-pattern (regexp-quote pattern)))
-             (setq indices
-                   (if fuzzy-matched
-                       (sallet-filter-substring candidates indices quoted-pattern)
-                     (setq fuzzy-matched t)
-                     (sallet-filter-flx candidates indices pattern))))))))
-    indices))
+    (sallet-compose-filters-by-pattern-prefix
+     '(("\\`//\\(.*\\)" 1 sallet-filter-autobookmark-path-substr)
+       ("\\`/\\(.*\\)" 1 sallet-filter-autobookmark-path-flx)
+       (t sallet-filter-flx-then-substr))
+     candidates
+     indices
+     prompt)))
 
 ;; TODO: improve
 (defun sallet-autobookmarks-renderer (candidate _ user-data)
