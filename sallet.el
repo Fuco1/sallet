@@ -308,7 +308,7 @@ We use following check to determine which algorithm to use:
   (if (or (not (consp (car indices)))
           (not (plist-member (cdar indices) :flx-score)))
       (sallet-filter-flx candidates indices pattern)
-    (sallet-filter-substring candidates indices pattern)))
+    (sallet-filter-substring candidates indices (regexp-quote pattern))))
 
 (defun sallet-pipe-filters (filters candidates indices pattern)
   "Run all FILTERS in sequence, filtering CANDIDATES against PATTERN."
