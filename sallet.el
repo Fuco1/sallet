@@ -95,6 +95,43 @@ reordered."
      candidates)
     (nreverse re)))
 
+(defun sallet-update-index (index &rest properties)
+  "Update INDEX with PROPERTIES.
+
+PROPERTIES is a list of properties (PROPERTY NEW-VALUE UPDATE-FUNCTION).
+
+PROPERTY is the key under which the value is stored.
+
+NEW-VALUE is the value to combine with the old value.
+
+UPDATE-FUNCTION is used to compute the new value inserted into
+the plist.  It takes two arguments, NEW-VALUE and old value of
+PROPERTY.
+
+If UPDATE-FUNCTION is omitted the old value is replaced with NEW-VALUE."
+  (cons
+   (sallet-car-maybe index)
+   (--reduce-from (let* ((property (car it))
+                         (new-value (cadr it))
+                         (update-function (or (nth 2 it) (lambda (x _) x))))
+                    (sallet-plist-update acc property new-value update-function))
+                  (cdr-safe index)
+                  properties)))
+
+(defun sallet--predicate-flx (candidate index pattern matches-property score-property)
+  "Match CANDIDATE at INDEX against PATTERN.
+
+MATCHES-PROPERTY is the name of property where matching positions
+of candidate are stored.
+
+SCORE-PROPERTY is the score of the flx match of this CANDIDATE
+against PATTERN. "
+  (-when-let (flx-data (flx-score candidate pattern))
+    (sallet-update-index
+     index
+     (list matches-property (cdr flx-data) '-concat)
+     (list score-property (car flx-data)))))
+
 ;; TODO: make this (and `sallet-string-match') a general interface for
 ;; matching two patterns against each other.  It should not do the
 ;; "candidate preprocess", that should be handled by specific
@@ -102,14 +139,9 @@ reordered."
 ;; in. `sallet-predicate-flx' and `sallet-predicate-substr' will
 ;; be the two associated "default" item filters
 ;; TODO: abstract the property prefix? (so we can use this for different parts of the candidate)
-(defun sallet-flx-score (candidate index pattern)
+(defun sallet-predicate-flx (candidate index pattern)
   "Match and score CANDIDATE at INDEX against PATTERN."
-  (-when-let (flx-data (flx-score candidate pattern))
-    (cons
-     (sallet-car-maybe index)
-     (-> (cdr-safe index)
-       (sallet-plist-update :flx-matches (cdr flx-data) '-concat)
-       (plist-put :flx-score (car flx-data))))))
+  (sallet--predicate-flx candidate index pattern :flx-matches :flx-score))
 
 ;; TODO: figure out how the caching works
 (defun sallet-filter-flx (candidates indices pattern)
@@ -121,7 +153,7 @@ INDICES is a list of processed candidates.
 
 Uses the `flx' algorithm."
   (if (equal "" pattern) indices
-    (--keep (sallet-flx-score (sallet-candidate-aref candidates it) it pattern) indices)))
+    (--keep (sallet-predicate-flx (sallet-candidate-aref candidates it) it pattern) indices)))
 
 (defun sallet-string-match (candidate index pattern)
   "Match and score CANDIDATE at INDEX against PATTERN."
