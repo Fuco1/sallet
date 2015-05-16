@@ -74,27 +74,6 @@ PROPERTY."
   (let ((old-data (plist-get plist property)))
     (plist-put plist property (funcall update-function data old-data))))
 
-;; TODO: make this better
-;; TODO: rewrite in terms of `sallet-filter-substring'
-(defun sallet-matcher-default (candidates state)
-  "Default matcher.
-
-The input string is split on whitespace, then candidate must
-match each constituent to pass the test.  Matches are not
-reordered."
-  (let* ((i 0)
-         (re nil)
-         (prompt (sallet-state-get-prompt state))
-         (parts (split-string prompt)))
-    (mapc
-     (lambda (c)
-       (let ((c (sallet-car-maybe c)))
-         (when (--all? (string-match-p (regexp-quote it) c) parts)
-           (push i re)))
-       (setq i (1+ i)))
-     candidates)
-    (nreverse re)))
-
 (defun sallet-update-index (index &rest properties)
   "Update INDEX with PROPERTIES.
 
@@ -140,17 +119,11 @@ against PATTERN. "
   "Match and score path CANDIDATE at INDEX against PATTERN."
   (sallet--predicate-flx candidate index pattern :flx-matches-path :flx-score-path))
 
-;; TODO: figure out how the caching works
-(defun sallet-filter-flx (candidates indices pattern)
-  "Match PATTERN against CANDIDATES at INDICES.
+(defun sallet-predicate-buffer-major-mode (candidate index pattern)
+  "Match and score CANDIDATE buffer's `major-mode' at INDEX against PATTERN.
 
-CANDIDATES is a vector of candidates.
-
-INDICES is a list of processed candidates.
-
-Uses the `flx' algorithm."
-  (if (equal "" pattern) indices
-    (--keep (sallet-predicate-flx (sallet-candidate-aref candidates it) it pattern) indices)))
+Matching is done using flx alogrithm."
+  (sallet--predicate-flx candidate index pattern :flx-matches-mm :flx-score-mm))
 
 (defun sallet--predicate-regexp (candidate index pattern matches-property)
   "Match CANDIDATE at INDEX against PATTERN and update its properties.
@@ -170,6 +143,18 @@ of candidate are stored."
 (defun sallet-predicate-path-regexp (candidate index pattern)
   "Match and score path CANDIDATE at INDEX against PATTERN."
   (sallet--predicate-regexp candidate index pattern :regexp-matches-path))
+
+;; TODO: figure out how the caching works
+(defun sallet-filter-flx (candidates indices pattern)
+  "Match PATTERN against CANDIDATES at INDICES.
+
+CANDIDATES is a vector of candidates.
+
+INDICES is a list of processed candidates.
+
+Uses the `flx' algorithm."
+  (if (equal "" pattern) indices
+    (--keep (sallet-predicate-flx (sallet-candidate-aref candidates it) it pattern) indices)))
 
 (defun sallet-filter-substring (candidates indices pattern)
   "Match PATTERN against CANDIDATES at INDICES.
@@ -209,12 +194,6 @@ candidate should not pass the filter."
 (defun sallet-filter-buffer-imenu (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against an imenu item."
   (--keep (sallet-predicate-buffer-imenu (sallet-candidate-aref candidates it) it pattern) indices))
-
-(defun sallet-predicate-buffer-major-mode (candidate index pattern)
-  "Match and score CANDIDATE buffer's `major-mode' at INDEX against PATTERN.
-
-Matching is done using flx alogrithm."
-  (sallet--predicate-flx candidate index pattern :flx-matches-mm :flx-score-mm))
 
 (defun sallet-filter-buffer-major-mode (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against current `major-mode'."
@@ -318,6 +297,27 @@ Return INDICES filtered in this manner by all the TOKENS."
           (unless (equal input "")
             (setq indices (sallet-pipe-filters filters candidates indices input))))))
     indices))
+
+;; TODO: make this better
+;; TODO: rewrite in terms of `sallet-filter-substring'
+(defun sallet-matcher-default (candidates state)
+  "Default matcher.
+
+The input string is split on whitespace, then candidate must
+match each constituent to pass the test.  Matches are not
+reordered."
+  (let* ((i 0)
+         (re nil)
+         (prompt (sallet-state-get-prompt state))
+         (parts (split-string prompt)))
+    (mapc
+     (lambda (c)
+       (let ((c (sallet-car-maybe c)))
+         (when (--all? (string-match-p (regexp-quote it) c) parts)
+           (push i re)))
+       (setq i (1+ i)))
+     candidates)
+    (nreverse re)))
 
 ;; TODO: write a "defmatcher" macro which would automatically define
 ;; prompt and indices variables
