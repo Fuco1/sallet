@@ -315,7 +315,8 @@ Return INDICES filtered in this manner by all the TOKENS."
                          (when (string-match subpattern token)
                            (cons (match-string match-group token) filters))))
                      filter-alist))
-          (setq indices (sallet-pipe-filters filters candidates indices input)))))
+          (unless (equal input "")
+            (setq indices (sallet-pipe-filters filters candidates indices input))))))
     indices))
 
 (defun sallet-matcher-flx (candidates state)
