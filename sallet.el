@@ -605,7 +605,7 @@ Any other non-prefixed pattern is matched using the following rules:
          (indices (number-sequence 0 (1- (length candidates)))))
     ;; TODO: add . prefix to match on file extension
     ;; TODO: add gtags filter?
-    (sallet-compose-filters-by-pattern-prefix
+    (sallet-compose-filters-by-pattern
      '(("\\`\\*\\(.*\\)" 1 sallet-filter-buffer-major-mode)
        ("\\`@\\(.*\\)" 1 sallet-filter-buffer-imenu)
        ("\\`#\\(.*\\)" 1 sallet-filter-buffer-fulltext)
@@ -703,7 +703,7 @@ Any other non-prefixed pattern is matched using the following rules:
   bookmark name."
   (let* ((prompt (sallet-state-get-prompt state))
          (indices (number-sequence 0 (1- (length candidates)))))
-    (sallet-compose-filters-by-pattern-prefix
+    (sallet-compose-filters-by-pattern
      '(("\\`//\\(.*\\)" 1 sallet-filter-autobookmark-path-substring)
        ("\\`/\\(.*\\)" 1 sallet-filter-autobookmark-path-flx)
        (t sallet-filter-flx-then-substring))
