@@ -132,7 +132,7 @@ against PATTERN. "
      (list matches-property (cdr flx-data) '-concat)
      (list score-property (car flx-data)))))
 
-;; TODO: make this (and `sallet-string-match') a general interface for
+;; TODO: make this (and `sallet-predicate-substring') a general interface for
 ;; matching two patterns against each other.  It should not do the
 ;; "candidate preprocess", that should be handled by specific
 ;; functions passing the preprocessed arguments
@@ -166,7 +166,7 @@ of candidate are stored."
        index
        (list matches-property (cons (match-beginning 0) (match-end 0)) 'cons)))))
 
-(defun sallet-string-match (candidate index pattern)
+(defun sallet-predicate-substring (candidate index pattern)
   "Match and score CANDIDATE at INDEX against PATTERN."
   (sallet--predicate-substring candidate index pattern :substring-matches))
 
@@ -178,7 +178,7 @@ CANDIDATES is a vector of candidates.
 INDICES is a list of processed candidates.
 
 Uses substring matching."
-  (--keep (sallet-string-match (sallet-candidate-aref candidates it) it pattern) indices))
+  (--keep (sallet-predicate-substring (sallet-candidate-aref candidates it) it pattern) indices))
 
 (defun sallet-predicate-buffer-imenu (candidate index pattern)
   "Check if buffer contains `imenu' item flx-matching PATTERN.
@@ -271,7 +271,7 @@ candidate should not pass the filter."
            (with-current-buffer (sallet-candidate-aref candidates it) default-directory)
            it pattern) indices))
 
-;; TODO: implement in terms of `sallet-string-match'
+;; TODO: implement in terms of `sallet-predicate-substring'
 (defun sallet-predicate-buffer-default-directory-substr (candidate index pattern)
   "Check if buffer's `default-directory' substring-matches PATTERN.
 
