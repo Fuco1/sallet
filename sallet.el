@@ -689,8 +689,8 @@ Any other non-prefixed pattern is matched using the following rules:
   (save-match-data
     (when (string-match (regexp-quote pattern) candidate)
       (cons
-       (sallet-car-maybe it)
-       (sallet-plist-update (cdr-safe it) :substring-matches-path (cons (match-beginning 0) (match-end 0)) 'cons)))))
+       (sallet-car-maybe index)
+       (sallet-plist-update (cdr-safe index) :substring-matches-path (cons (match-beginning 0) (match-end 0)) 'cons)))))
 
 (defun sallet-filter-autobookmark-path-substr (candidates indices pattern)
   "Keep autobookmark CANDIDATES substring-matching PATTERN against file path."
@@ -702,8 +702,8 @@ Any other non-prefixed pattern is matched using the following rules:
   "..."
   (-when-let (flx-data (flx-score candidate pattern))
     (cons
-     (sallet-car-maybe it)
-     (sallet-plist-update (cdr-safe it) :flx-matches-path (cdr flx-data) '-concat))))
+     (sallet-car-maybe index)
+     (sallet-plist-update (cdr-safe index) :flx-matches-path (cdr flx-data) '-concat))))
 
 (defun sallet-filter-autobookmark-path-flx (candidates indices pattern)
   "Keep autobookmark CANDIDATES flx-matching PATTERN against file path."
