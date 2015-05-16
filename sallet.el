@@ -211,24 +211,16 @@ candidate should not pass the filter."
   (--keep (sallet-predicate-buffer-imenu (sallet-candidate-aref candidates it) it pattern) indices))
 
 (defun sallet-predicate-buffer-major-mode (candidate index pattern)
-  "Check if buffer's `major-mode' flx-matches PATTERN.
+  "Match and score CANDIDATE buffer's `major-mode' at INDEX against PATTERN.
 
-CANDIDATE is a buffer or buffer name.
-
-INDEX is its index and associated meta data.
-
-PATTERN is a string flx-matched against `major-mode'.
-
-Returns updated INDEX with optional added metadata or nil if this
-candidate should not pass the filter."
-  (when (with-current-buffer candidate
-          ;; TODO: add meta-data about the match
-          (flx-score (symbol-name major-mode) pattern))
-    index))
+Matching is done using flx alogrithm."
+  (sallet--predicate-flx candidate index pattern :flx-matches-mm :flx-score-mm))
 
 (defun sallet-filter-buffer-major-mode (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against current `major-mode'."
-  (--keep (sallet-predicate-buffer-major-mode (sallet-candidate-aref candidates it) it pattern) indices))
+  (--keep (sallet-predicate-buffer-major-mode
+           (with-current-buffer (sallet-candidate-aref candidates it) (symbol-name major-mode))
+           it pattern) indices))
 
 (defun sallet-predicate-buffer-fulltext (candidate index pattern)
   "Check if buffer's `buffer-string' regexp-matches PATTERN.
