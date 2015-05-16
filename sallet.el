@@ -113,8 +113,7 @@ reordered."
        (plist-put :flx-score (car flx-data))))))
 
 ;; TODO: figure out how the caching works
-;; TODO: rename to `sallet-filter-flx'
-(defun sallet-flx-match (pattern candidates indices)
+(defun sallet-filter-flx (pattern candidates indices)
   "Match PATTERN against CANDIDATES at INDICES.
 
 CANDIDATES is a vector of candidates.
@@ -275,7 +274,7 @@ We use following check to determine which algorithm to use:
    match, otherwise flx-matching was never performed so we flx-match."
   (if (or (not (consp (car indices)))
           (not (plist-member (cdar indices) :flx-score)))
-      (sallet-flx-match pattern candidates indices)
+      (sallet-filter-flx pattern candidates indices)
     (sallet-subword-match pattern candidates indices)))
 
 (defun sallet-pipe-filters (filters pattern candidates indices)
@@ -332,7 +331,7 @@ Return INDICES filtered in this manner by all the TOKENS."
         ;; TODO: indices should be supplied automatically? Or at least
         ;; make a version which would support that
         (indices (number-sequence 0 (1- (length candidates)))))
-    (sallet-flx-match prompt candidates indices)))
+    (sallet-filter-flx prompt candidates indices)))
 
 (defun sallet-sorter-flx (processed-candidates _)
   "Sort PROCESSED-CANDIDATES by :flx-score."
@@ -617,7 +616,7 @@ Any other non-prefixed pattern is matched using the following rules:
       (lambda (pattern)
         ;; TODO: abstract the matching "procedures" into separate,
         ;; reusable filters (we might want to use the same rules
-        ;; elsewhere too).  See also `sallet-flx-match'
+        ;; elsewhere too).  See also `sallet-filter-flx'
         (sallet-cond pattern
           ;; test major-mode
           ("\\`\\*"
@@ -746,7 +745,7 @@ Any other non-prefixed pattern is matched using the following rules:
                    (if fuzzy-matched
                        (sallet-subword-match quoted-pattern candidates indices)
                      (setq fuzzy-matched t)
-                     (sallet-flx-match pattern candidates indices))))))))
+                     (sallet-filter-flx pattern candidates indices))))))))
     indices))
 
 ;; TODO: improve
