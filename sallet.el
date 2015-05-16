@@ -96,6 +96,12 @@ reordered."
      candidates)
     (nreverse re)))
 
+;; TODO: make this (and `sallet-string-match') a general interface for
+;; matching two patterns against each other.  It should not do the
+;; "candidate preprocess", that should be handled by specific
+;; functions passing the preprocessed arguments
+;; in. `sallet-filter-item-flx' and `sallet-filter-item-substr' will
+;; be the two associated "default" item filters
 ;; TODO: abstract the property prefix? (so we can use this for different parts of the candidate)
 (defun sallet-flx-score (candidate index pattern)
   "Match and score CANDIDATE at INDEX against PATTERN."
@@ -107,26 +113,17 @@ reordered."
        (plist-put :flx-score (car flx-data))))))
 
 ;; TODO: figure out how the caching works
-;; TODO: make some function which takes an alist prefix -> matcher,
-;; and returns a function taking a pattern and running it through all
-;; the matchers in the order tokens are specified.  Tokens are split
-;; on whitespace by default, but maybe we can have it take a splitter
-;; optionally
-(defun sallet-flx-match (pattern candidates indices &optional candidate-transform)
+;; TODO: rename to `sallet-filter-flx'
+(defun sallet-flx-match (pattern candidates indices)
   "Match PATTERN against CANDIDATES at INDICES.
 
 CANDIDATES is a vector of candidates.
 
 INDICES is a list of processed candidates.
 
-CANDIDATE-TRANSFORM takes the vector of candidates and an index
-and produces a value to be matched.  Defaults to
-`sallet-candidate-aref'.
-
 Uses the `flx' algorithm."
   (if (equal "" pattern) indices
-    (setq candidate-transform (or candidate-transform 'sallet-candidate-aref))
-    (--keep (sallet-flx-score (funcall candidate-transform candidates it) it pattern) indices)))
+    (--keep (sallet-flx-score (sallet-candidate-aref candidates it) it pattern) indices)))
 
 (defun sallet-string-match (candidate index pattern)
   "Match and score CANDIDATE at INDEX against PATTERN."
@@ -136,20 +133,198 @@ Uses the `flx' algorithm."
        (sallet-car-maybe index)
        (sallet-append-to-plist (cdr-safe index) :substring-matches (cons (match-beginning 0) (match-end 0)))))))
 
-(defun sallet-subword-match (pattern candidates indices &optional candidate-transform)
+;; TODO: rename to `sallet-filter-substring'
+(defun sallet-subword-match (pattern candidates indices)
   "Match PATTERN against CANDIDATES at INDICES.
 
 CANDIDATES is a vector of candidates.
 
 INDICES is a list of processed candidates.
 
-CANDIDATE-TRANSFORM takes the vector of candidates and an index
-and produces a value to be matched.  Defaults to
-`sallet-candidate-aref'.
-
 Uses substring matching."
-  (setq candidate-transform (or candidate-transform 'sallet-candidate-aref))
-  (--keep (sallet-string-match (funcall candidate-transform candidates it) it pattern) indices))
+  (--keep (sallet-string-match (sallet-candidate-aref candidates it) it pattern) indices))
+
+(defun sallet-filter-item-buffer-imenu (candidate index pattern)
+  "Check if buffer contains `imenu' item flx-matching PATTERN.
+
+CANDIDATE is a buffer or buffer name.
+
+INDEX is its index and associated meta data.
+
+PATTERN is a string flx-matched against imenu items.
+
+Returns updated INDEX with optional added metadata or nil if this
+candidate should not pass the filter."
+  (when (with-current-buffer candidate
+          (let ((imenu-alist-flat
+                 ;; TODO: cache the flattened
+                 ;; alists so we don't have to
+                 ;; recomute on every inserted letter.
+                 (-flatten (--tree-map (if (stringp it) nil (car it))
+                                       ;; TODO: make sure the alist is initialized
+                                       imenu--index-alist))))
+            ;; TODO: add list of matching imenu items as metadata so
+            ;; we can render that somehow in the list?
+            (--any? (flx-score it pattern) imenu-alist-flat)))
+    index))
+
+(defun sallet-filter-buffer-imenu (pattern candidates indices)
+  "Keep buffer CANDIDATES flx-matching PATTERN against an imenu item."
+  (--keep (sallet-filter-item-buffer-imenu (sallet-candidate-aref candidates it) it pattern) indices))
+
+(defun sallet-filter-item-buffer-major-mode (candidate index pattern)
+  "Check if buffer's `major-mode' flx-matches PATTERN.
+
+CANDIDATE is a buffer or buffer name.
+
+INDEX is its index and associated meta data.
+
+PATTERN is a string flx-matched against `major-mode'.
+
+Returns updated INDEX with optional added metadata or nil if this
+candidate should not pass the filter."
+  (when (with-current-buffer candidate
+          ;; TODO: add meta-data about the match
+          (flx-score (symbol-name major-mode) pattern))
+    index))
+
+(defun sallet-filter-buffer-major-mode (pattern candidates indices)
+  "Keep buffer CANDIDATES flx-matching PATTERN against current `major-mode'."
+  (--keep (sallet-filter-item-buffer-major-mode (sallet-candidate-aref candidates it) it pattern) indices))
+
+(defun sallet-filter-item-buffer-fulltext (candidate index pattern)
+  "Check if buffer's `buffer-string' regexp-matches PATTERN.
+
+CANDIDATE is a buffer or buffer name.
+
+INDEX is its index and associated meta data.
+
+PATTERN is a regexp matched against `buffer-string'.
+
+Returns updated INDEX with optional added metadata or nil if this
+candidate should not pass the filter."
+  (when (with-current-buffer candidate
+          (save-excursion
+            (goto-char (point-min))
+            (re-search-forward pattern nil t)))
+    index))
+
+(defun sallet-filter-buffer-fulltext (pattern candidates indices)
+  "Keep buffer CANDIDATES regexp-matching PATTERN against `buffer-string'."
+  (--keep (sallet-filter-item-buffer-fulltext (sallet-candidate-aref candidates it) it pattern) indices))
+
+;; TODO: implement in terms of `sallet-flx-score'
+(defun sallet-filter-item-buffer-default-directory-flx (candidate index pattern)
+  "Check if buffer's `default-directory' flx-matches PATTERN.
+
+CANDIDATE is a buffer or buffer name.
+
+INDEX is its index and associated meta data.
+
+PATTERN is a string flx-matched against `default-directory'.
+
+Returns updated INDEX with optional added metadata or nil if this
+candidate should not pass the filter."
+  (-when-let (flx-data (flx-score
+                        (with-current-buffer candidate default-directory)
+                        pattern))
+    ;; TODO: abstract the "update index data"
+    ;; procedure.  We never change the index
+    ;; value, only possibly update the
+    ;; information it carries along
+    (cons
+     (sallet-car-maybe index)
+     (sallet-append-to-plist (cdr-safe index) :flx-matches-path (cdr flx-data) '-concat))))
+
+(defun sallet-filter-buffer-default-directory-flx (pattern candidates indices)
+  "Keep buffer CANDIDATES flx-matching PATTERN against `default-directory'."
+  (--keep (sallet-filter-item-buffer-default-directory-flx (sallet-candidate-aref candidates it) it pattern) indices))
+
+;; TODO: implement in terms of `sallet-string-match'
+(defun sallet-filter-item-buffer-default-directory-substr (candidate index pattern)
+  "Check if buffer's `default-directory' substring-matches PATTERN.
+
+CANDIDATE is a buffer or buffer name.
+
+INDEX is its index and associated meta data.
+
+PATTERN is a string substring-matched against `default-directory'.
+
+Returns updated INDEX with optional added metadata or nil if this
+candidate should not pass the filter."
+  (save-match-data
+    (when (string-match
+           (regexp-quote pattern)
+           (with-current-buffer candidate default-directory))
+      (cons
+       (sallet-car-maybe index)
+       (sallet-append-to-plist (cdr-safe index) :substring-matches-path (cons (match-beginning 0) (match-end 0)))))))
+
+(defun sallet-filter-buffer-default-directory-substr (pattern candidates indices)
+  "Keep buffer CANDIDATES substring-matching PATTERN against `default-directory'."
+  (--keep (sallet-filter-item-buffer-default-directory-substr (sallet-candidate-aref candidates it) it pattern) indices))
+
+(defun sallet-filter-flx-then-substr (pattern candidates indices)
+  "Match PATTERN against CANDIDATES with flx- or substring-matching.
+
+CANDIDATES are strings.
+
+We use following check to determine which algorithm to use:
+1. Pick the first index from INDICES.
+2. If it contains metadata related to flx-matching, we substring
+   match, otherwise flx-matching was never performed so we flx-match."
+  (if (or (not (consp (car indices)))
+          (not (plist-member (cdar indices) :flx-score)))
+      (sallet-flx-match pattern candidates indices)
+    (sallet-subword-match pattern candidates indices)))
+
+(defun sallet-pipe-filters (filters pattern candidates indices)
+  "Run all FILTERS in sequence, filtering CANDIDATES against PATTERN."
+  (--reduce-from (funcall it pattern candidates acc) indices filters))
+
+;; TODO: maybe we can add support for "... ..." patterns by "spliting
+;; as sexps" in a temporary buffer where we set everything to word
+;; syntax except spaces and quotes. Then each sexp is one token
+;; (symbols converted to strings first)
+;; TODO: Add optimization where we only re-run changed tokens.  We can
+;; keep the index from the last update and just work on that
+;; (similarly as we keep the pattern from one update ago).
+(defun sallet-compose-filters-by-pattern-prefix (filter-alist pattern candidates indices)
+  "Filter CANDIDATES using rules from FILTER-ALIST.
+
+FILTER-ALIST is an alist of (SUBPATTERN . FILTERS) or (SUBPATTERN
+MATCH-GROUP . FILTERS).
+
+SUBPATTERN is a regular expression, FILTERS is a list of filters,
+MATCH-GROUP is a match group of SUBPATTERN.
+
+First, PATTERN is split on whitespace into a list of TOKENS.
+
+Then for each TOKEN we find first SUBPATTERN that matches it and
+filter INDICES through the associated list of filters.  The
+pattern passed to the filter is the value of first match group of
+SUBPATTERN or MATCH-GROUP if specified.
+
+The special SUBPATTERN `t' signifies a default branch.  As soon
+as this SUBPATTERN is found the search stops and its filters are
+applied.
+
+Return INDICES filtered in this manner by all the TOKENS."
+  (let* ((input (split-string pattern)))
+    (-each input
+      (lambda (token)
+        (-when-let ((input . filters)
+                    (--some
+                     (let ((subpattern (car it))
+                           (match-group (if (numberp (cadr it)) (cadr it) 0))
+                           (filters (if (numberp (cadr it)) (cddr it) (cdr it))))
+                       (if (eq t subpattern)
+                           (cons token filters)
+                         (when (string-match subpattern token)
+                           (cons (match-string match-group token) filters))))
+                     filter-alist))
+          (setq indices (sallet-pipe-filters filters input candidates indices)))))
+    indices))
 
 (defun sallet-matcher-flx (candidates state)
   "Match candidates using flx matching."
@@ -410,6 +585,8 @@ value of the last one is returned."
 (defun sallet-buffer-matcher (candidates state)
   "Match a buffer candidate using special rules.
 
+CANDIDATES are buffer names.
+
 First, the prompt is split on whitespace.  This creates a list of
 patterns.
 
@@ -434,6 +611,8 @@ Any other non-prefixed pattern is matched using the following rules:
          (input (split-string prompt))
          (fuzzy-matched nil)
          (indices (number-sequence 0 (1- (length candidates)))))
+    ;; TODO: add . prefix to match on file extension
+    ;; TODO: add gtags filter?
     (-each input
       (lambda (pattern)
         ;; TODO: abstract the matching "procedures" into separate,
@@ -442,61 +621,22 @@ Any other non-prefixed pattern is matched using the following rules:
         (sallet-cond pattern
           ;; test major-mode
           ("\\`\\*"
-           (setq indices
-                 (--filter (with-current-buffer (sallet-aref candidates it)
-                             (flx-score (symbol-name major-mode) pattern))
-                           indices)))
+           (setq indices (sallet-filter-buffer-major-mode pattern candidates indices)))
           ;; match imenu entries inside buffer
           ("\\`@"
-           (setq indices
-                 (--filter (with-current-buffer (sallet-aref candidates it)
-                             (let ((imenu-alist-flat
-                                    (-flatten (--tree-map (if (stringp it) nil (car it))
-                                                          imenu--index-alist))))
-                               (--any? (flx-score it pattern) imenu-alist-flat)))
-                           indices)))
+           (setq indices (sallet-filter-buffer-imenu pattern candidates indices)))
           ;; fulltext match
           ("\\`#"
-           (setq indices
-                 (--filter (with-current-buffer (sallet-aref candidates it)
-                             (save-excursion
-                               (goto-char (point-min))
-                               (re-search-forward pattern nil t)))
-                           indices)))
+           (setq indices (sallet-filter-buffer-fulltext pattern candidates indices)))
           ;; default directory match, substr
           ("\\`//"
-           (setq indices
-                 (--keep (save-match-data
-                           (when (string-match
-                                  (regexp-quote pattern)
-                                  (with-current-buffer (sallet-aref candidates it) default-directory))
-                             (cons
-                              (sallet-car-maybe it)
-                              (sallet-append-to-plist (cdr-safe it) :substring-matches-path (cons (match-beginning 0) (match-end 0))))))
-                         indices)))
+           (setq indices (sallet-filter-buffer-default-directory-substr pattern candidates indices)))
           ;; default directory match, flx
           ("\\`/"
-           (setq indices
-                 ;; TODO: abstract, see `sallet-flx-match'
-                 (--keep (-when-let (flx-data (flx-score
-                                               (with-current-buffer (sallet-aref candidates it) default-directory)
-                                               pattern))
-                           ;; TODO: abstract the "update index data"
-                           ;; procedure.  We never change the index
-                           ;; value, only possibly update the
-                           ;; information it carries along
-                           (cons
-                            (sallet-car-maybe it)
-                            (sallet-append-to-plist (cdr-safe it) :flx-matches-path (cdr flx-data) '-concat)))
-                         indices)))
+           (setq indices (sallet-filter-buffer-default-directory-flx pattern candidates indices)))
           (t
            ;; fuzzy match on first non-special sequence, then substring match later
-           (let ((quoted-pattern (regexp-quote pattern)))
-             (setq indices
-                   (if fuzzy-matched
-                       (sallet-subword-match quoted-pattern candidates indices)
-                     (setq fuzzy-matched t)
-                     (sallet-flx-match quoted-pattern candidates indices))))))))
+           (setq indices (sallet-filter-flx-then-substr pattern candidates indices))))))
     indices))
 
 (sallet-defsource buffer nil
@@ -606,7 +746,7 @@ Any other non-prefixed pattern is matched using the following rules:
                    (if fuzzy-matched
                        (sallet-subword-match quoted-pattern candidates indices)
                      (setq fuzzy-matched t)
-                     (sallet-flx-match quoted-pattern candidates indices))))))))
+                     (sallet-flx-match pattern candidates indices))))))))
     indices))
 
 ;; TODO: improve
@@ -807,6 +947,8 @@ Any other non-prefixed pattern is matched using the following rules:
     instance))
 
 ;; TODO: make this into eieio object?
+;; TODO: add documentation for the processes thing (and write/figure
+;; out how the async works)
 (defvar sallet-state nil
   "Current state.
 
@@ -993,6 +1135,7 @@ Return number of rendered candidates."
 
 (defun sallet-process-sources (state)
   ;; TODO: add old-prompt to state
+  ;; TODO: add old-processed-candidates to state
   (-each (sallet-state-get-sources state)
     (lambda (source)
       (if (not (sallet-source-is-async source))

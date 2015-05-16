@@ -63,6 +63,68 @@ and the current state.
 
 The output are processed candidates.
 
+Matchers follow following naming convention:
+- if the matcher is a universal matcher (for example, doing subword,
+  flx or regexp matching) independent of the source, use
+  ~sallet-matcher-NAME~.
+- if the matcher is specific to single source, use ~sallet-SOURCE-NAME-matcher~.
+
+*** Filters
+Most matchers are implemented in terms of simpler reusable filters.
+
+There is an interface to make these filters composable (they form
+something akin to a monad, yay).  Therefore, one matcher can compose
+these filters acting in different ways on the source pattern (in
+sequence, in parallel), can perform set operations on their results
+(must match all, must match some) and so on.
+
+They all have to follow the following interface:
+
+#+BEGIN_SRC elisp
+(defun sallet-filter-NAME (pattern candidates indices)
+  "PATTERN is the string pattern we are matching against
+candidates.  Its semantics are left to the match procedure.
+
+CANDIDATES is the vector of candidates.
+
+INDICES are indices with possibly attached metadata (see
+terminology).
+
+Returns filtered list of indices which should be included in
+further processing.")
+#+END_SRC
+
+It should not be responsibility of a filter to pre-process patterns or
+candidates.
+
+*** Item filters
+In turn, filters can use /item filters/ to match candidates and update
+their index metadata.
+
+It is important to realize that item filters are completely
+independent of sources, candidate vectors, patterns, filters... all
+they care about is to get two values to compare and one value to
+update, that's it.  Filters using item filters can arbitrarily process
+the candidate and pattern before passing it in as arguments.
+
+However, in most cases they should not do it and instead just pass the
+values directly, as modification of these values is responsibility of
+a pre-processing step, not matching/filtering step.
+
+Item filters have this interface:
+
+#+BEGIN_SRC elisp
+(defun sallet-filter-item-NAME (candidate index pattern)
+  "CANDIDATE is the processed candidate.
+
+INDEX is its associated index and user metadata.
+
+PATTERN is a pattern we are matching against.
+
+Returns updated INDEX with optional added metadata or nil if this
+candidate should not pass the filter.")
+#+END_SRC
+
 ** Sorter
 Sorter further processes the [[*Processed%20candidates][processed candidates]] by sorting
 them---which is the most expected action, but really, arbitrary
