@@ -948,7 +948,10 @@ CURRENT-BUFFER is the buffer from which sallet was executed.
 
 PROMPT is the current prompt.
 
-SELECTED-CANDIDATE is the currently selected candidate.")
+SELECTED-CANDIDATE is the currently selected candidate.
+
+PROCESSES is a plist mapping source id to the `async' future that
+computes it.")
 
 (defun sallet-state-get-sources (state)
   (cdr (assoc 'sources state)))
@@ -960,6 +963,8 @@ SELECTED-CANDIDATE is the currently selected candidate.")
   (cdr (assoc 'selected-candidate state)))
 (defun sallet-state-get-candidate-buffer (state)
   (cdr (assoc 'candidate-buffer state)))
+;; TODO: rename to futures.  Processes should be reserved for things
+;; like "doing ag/grep in the background".
 (defun sallet-state-get-processes (state)
   (cdr (assoc 'processes state)))
 
