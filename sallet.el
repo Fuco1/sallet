@@ -287,7 +287,7 @@ We use following check to determine which algorithm to use:
 ;; TODO: Add optimization where we only re-run changed tokens.  We can
 ;; keep the index from the last update and just work on that
 ;; (similarly as we keep the pattern from one update ago).
-(defun sallet-compose-filters-by-pattern-prefix (filter-alist candidates indices pattern)
+(defun sallet-compose-filters-by-pattern (filter-alist candidates indices pattern)
   "Filter CANDIDATES using rules from FILTER-ALIST.
 
 FILTER-ALIST is an alist of (SUBPATTERN . FILTERS) or (SUBPATTERN
