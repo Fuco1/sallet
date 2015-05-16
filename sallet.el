@@ -319,11 +319,11 @@ Return INDICES filtered in this manner by all the TOKENS."
             (setq indices (sallet-pipe-filters filters candidates indices input))))))
     indices))
 
+;; TODO: write a "defmatcher" macro which would automatically define
+;; prompt and indices variables
 (defun sallet-matcher-flx (candidates state)
   "Match candidates using flx matching."
   (let ((prompt (sallet-state-get-prompt state))
-        ;; TODO: indices should be supplied automatically? Or at least
-        ;; make a version which would support that
         (indices (number-sequence 0 (1- (length candidates)))))
     (sallet-filter-flx candidates indices prompt)))
 
