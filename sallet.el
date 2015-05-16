@@ -63,15 +63,14 @@ INDEX is a number, index into the CANDIDATES array.  If the index
 is a list, take its `car'."
   (sallet-car-maybe (aref candidates (sallet-car-maybe index))))
 
-(defun sallet-append-to-plist (plist property data &optional update-function)
+(defun sallet-plist-update (plist property data update-function)
   "Take PLIST and append DATA to PROPERTY.
 
 The value at PROPERTY is a list.
 
 UPDATE-FUNCTION is is used to compute the new value inserted into
 the plist.  It takes two arguments, DATA and old value of
-PROPERTY.  Defaults to `cons'."
-  (setq update-function (or update-function 'cons))
+PROPERTY."
   (let ((old-data (plist-get plist property)))
     (plist-put plist property (funcall update-function data old-data))))
 
@@ -109,7 +108,7 @@ reordered."
     (cons
      (sallet-car-maybe index)
      (-> (cdr-safe index)
-       (sallet-append-to-plist :flx-matches (cdr flx-data) '-concat)
+       (sallet-plist-update :flx-matches (cdr flx-data) '-concat)
        (plist-put :flx-score (car flx-data))))))
 
 ;; TODO: figure out how the caching works
@@ -130,7 +129,7 @@ Uses the `flx' algorithm."
     (when (string-match pattern candidate)
       (cons
        (sallet-car-maybe index)
-       (sallet-append-to-plist (cdr-safe index) :substring-matches (cons (match-beginning 0) (match-end 0)))))))
+       (sallet-plist-update (cdr-safe index) :substring-matches (cons (match-beginning 0) (match-end 0)) 'cons)))))
 
 (defun sallet-filter-substring (candidates indices pattern)
   "Match PATTERN against CANDIDATES at INDICES.
@@ -234,7 +233,7 @@ candidate should not pass the filter."
     ;; carries along
     (cons
      (sallet-car-maybe index)
-     (sallet-append-to-plist (cdr-safe index) :flx-matches-path (cdr flx-data) '-concat))))
+     (sallet-plist-update (cdr-safe index) :flx-matches-path (cdr flx-data) '-concat))))
 
 (defun sallet-filter-buffer-default-directory-flx (candidates indices pattern)
   "Keep buffer CANDIDATES flx-matching PATTERN against `default-directory'."
@@ -258,7 +257,7 @@ candidate should not pass the filter."
            (with-current-buffer candidate default-directory))
       (cons
        (sallet-car-maybe index)
-       (sallet-append-to-plist (cdr-safe index) :substring-matches-path (cons (match-beginning 0) (match-end 0)))))))
+       (sallet-plist-update (cdr-safe index) :substring-matches-path (cons (match-beginning 0) (match-end 0)) 'cons)))))
 
 (defun sallet-filter-buffer-default-directory-substr (candidates indices pattern)
   "Keep buffer CANDIDATES substring-matching PATTERN against `default-directory'."
@@ -691,7 +690,7 @@ Any other non-prefixed pattern is matched using the following rules:
     (when (string-match (regexp-quote pattern) candidate)
       (cons
        (sallet-car-maybe it)
-       (sallet-append-to-plist (cdr-safe it) :substring-matches-path (cons (match-beginning 0) (match-end 0)))))))
+       (sallet-plist-update (cdr-safe it) :substring-matches-path (cons (match-beginning 0) (match-end 0)) 'cons)))))
 
 (defun sallet-filter-autobookmark-path-substr (candidates indices pattern)
   "Keep autobookmark CANDIDATES substring-matching PATTERN against file path."
@@ -704,7 +703,7 @@ Any other non-prefixed pattern is matched using the following rules:
   (-when-let (flx-data (flx-score candidate pattern))
     (cons
      (sallet-car-maybe it)
-     (sallet-append-to-plist (cdr-safe it) :flx-matches-path (cdr flx-data) '-concat))))
+     (sallet-plist-update (cdr-safe it) :flx-matches-path (cdr flx-data) '-concat))))
 
 (defun sallet-filter-autobookmark-path-flx (candidates indices pattern)
   "Keep autobookmark CANDIDATES flx-matching PATTERN against file path."
