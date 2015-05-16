@@ -690,8 +690,6 @@ Any other non-prefixed pattern is matched using the following rules:
   "Keep autobookmark CANDIDATES flx-matching PATTERN against file path."
   (--keep (sallet-predicate-path-flx (cadr (sallet-aref candidates it)) it pattern) indices))
 
-;; TODO: abstract the matcher structure, it is shared with
-;; buffer-matcher (and will be reused in many other places too)
 (defun sallet-autobookmarks-matcher (candidates state)
   "Match an autobookmark candidate using special rules.
 
