@@ -179,7 +179,8 @@ CANDIDATES is a vector of candidates.
 INDICES is a list of processed candidates.
 
 Uses substring matching."
-  (--keep (sallet-predicate-substring (sallet-candidate-aref candidates it) it pattern) indices))
+  (let ((quoted-pattern (regexp-quote pattern)))
+    (--keep (sallet-predicate-substring (sallet-candidate-aref candidates it) it quoted-pattern) indices)))
 
 (defun sallet-predicate-buffer-imenu (candidate index pattern)
   "Check if buffer contains `imenu' item flx-matching PATTERN.
