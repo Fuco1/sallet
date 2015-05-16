@@ -308,26 +308,14 @@ candidates matching all tokens will pass the test."
     (let ((tokens (split-string pattern)))
       (--reduce-from (funcall filter candidates acc it) indices tokens))))
 
-;; TODO: make this better
-;; TODO: rewrite in terms of `sallet-filter-substring'
 (defun sallet-matcher-default (candidates state)
   "Default matcher.
 
-The input string is split on whitespace, then candidate must
-match each constituent to pass the test.  Matches are not
-reordered."
-  (let* ((i 0)
-         (re nil)
-         (prompt (sallet-state-get-prompt state))
-         (parts (split-string prompt)))
-    (mapc
-     (lambda (c)
-       (let ((c (sallet-car-maybe c)))
-         (when (--all? (string-match-p (regexp-quote it) c) parts)
-           (push i re)))
-       (setq i (1+ i)))
-     candidates)
-    (nreverse re)))
+The prompt is split on whitespace, then candidate must
+substring-match each token to pass the test."
+  (let ((prompt (sallet-state-get-prompt state))
+        (indices (number-sequence 0 (1- (length candidates)))))
+    (funcall (sallet-make-tokenized-filter 'sallet-filter-substring) candidates indices prompt)))
 
 ;; TODO: write a "defmatcher" macro which would automatically define
 ;; prompt and indices variables
