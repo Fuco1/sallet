@@ -334,7 +334,7 @@ substring-match each token to pass the test."
 
 ;; TODO: add docs
 (defmacro sallet-defsource (name parents &optional docstring &rest body)
-  (declare (docstring 3)
+  (declare (doc-string 3)
            (debug (&define name (&rest arg) [&optional stringp] def-body))
            (indent defun))
   (unless (stringp docstring) (setq body (cons docstring body)))
