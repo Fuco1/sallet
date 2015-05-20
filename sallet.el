@@ -398,6 +398,8 @@ and identity action."
   ;; different emacs instance.  The source must be written with this in mind.
   (async nil)
   ;; header
+  ;; TODO: make it possible to use a function to generate the header
+  ;; based on state
   (header "Select a candidate"))
 
 (defgroup sallet-faces nil
@@ -624,10 +626,17 @@ Any other non-prefixed pattern is matched using the following rules:
   "Buffer source."
   (candidates (lambda ()
                 (let ((buffers
+                       ;; TODO: preprocess candidates to include
+                       ;; major-mode and directory so we don't have to
+                       ;; query it multiple times (in filtering and
+                       ;; rendering)
                        (--keep (let ((name (buffer-name it)))
                                  (unless (string-match-p "^ " name) name))
                                (buffer-list))))
                   (if (< 1 (length buffers))
+                      ;; swap the current buffer with the last
+                      ;; recently visited other buffer, so we default
+                      ;; to toggling
                       (-cons* (cadr buffers) (car buffers) (cddr buffers))
                     buffers))))
   (matcher sallet-buffer-matcher)
@@ -1023,8 +1032,14 @@ Return number of rendered candidates."
           ;; useful when at the sorter stage)
           (let* ((candidate (sallet-source-get-candidate source (sallet-car-maybe n))))
             ;; TODO: The >> marker should be handled with an
-            ;; overlay. See the note in `sallet'.
+            ;; overlay. See the note in
+            ;; `sallet-minibuffer-post-command-hook'.  Then we don't
+            ;; have to redraw everything every time user scrolls
             (insert (if (= coffset i) ">>" "  ")
+                    ;; TODO: cache the already rendered lines also
+                    ;; between sallet calls, there's quite a lot of
+                    ;; chance it will come again, like with buffers or
+                    ;; so
                     (funcall renderer candidate state (cdr-safe n))
                     "\n"))
           (when (= coffset i)
