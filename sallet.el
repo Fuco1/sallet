@@ -398,14 +398,21 @@ and identity action."
   ;; If t, this source is asynchronous and processing takes place in a
   ;; different emacs instance.  The source must be written with this in mind.
   (async nil)
-  ;; header
-  ;; TODO: make it possible to use a function to generate the header
-  ;; based on state
+  ;; Header.  Is either a string or a function.  In case of a string,
+  ;; it is rendered in sallet-source-header face with a counter
+  ;; showing number of filtered/all candidates.  If a function, it is
+  ;; passed current source as argument and its output is used verbatim
+  ;; as the header text (newline is added *automatically*)
   (header "Select a candidate"))
 
 (defgroup sallet-faces nil
   "Sallet faces."
   :group 'sallet)
+
+(defface sallet-source-header
+  '((t (:inherit highlight)))
+  "Face used to fontify source header."
+  :group 'sallet-faces)
 
 (defface sallet-buffer-ordinary
   '((t (:inherit font-lock-type-face)))
@@ -1026,7 +1033,14 @@ Return number of rendered candidates."
       ;; TODO: abstract header rendering
       (when (and processed-candidates
                  (> (length processed-candidates) 0))
-        (insert "=== " (sallet-source-get-header source) " ===\n"))
+        (let ((header (sallet-source-get-header source)))
+          (if (functionp header)
+              (insert (funcall header source) "\n")
+            (insert (propertize (format " • %s [%d/%d]\n"
+                                        header
+                                        (length (sallet-source-get-processed-candidates source))
+                                        (length (sallet-source-get-candidates source)))
+                                'face 'sallet-source-header)))))
       (-each processed-candidates
         (lambda (n)
           ;; `n' can be a number or a list returned from the
