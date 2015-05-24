@@ -1211,6 +1211,10 @@ scrolling/position of selected/marked candidate."
   "Set the current selected candidate to the first candidate of next source."
   (interactive)
   (let* ((current (sallet-state-get-selected-candidate sallet-state))
+         ;; TODO: rewrite using text properties: mark the header with
+         ;; some property when rendering, then find the next such
+         ;; property after the point, go to the next line, extract the
+         ;; candidate index, set it as current candidate
          (candidates-per-source (--remove
                                  (= 0 it)
                                  (--map (length (sallet-source-get-processed-candidates it))
