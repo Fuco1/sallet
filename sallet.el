@@ -1154,6 +1154,13 @@ scrolling/position of selected/marked candidate."
   ;; TODO: add old-processed-candidates to state
   (-each (sallet-state-get-sources state)
     (lambda (source)
+      ;; Here async means async package (computing in background
+      ;; emacs).  Another meaning of async is async io (using output
+      ;; of a process to construct candidates).  The latter is not yet
+      ;; supported, but we should get it working.
+      ;; TODO: add support for taking process output and constructing
+      ;; list of candidates out of that.  That could be called
+      ;; "process filtering source" ?
       (if (not (sallet-source-is-async source))
           (sallet-process-source state source)
         (let ((processes (sallet-state-get-processes state))
@@ -1181,6 +1188,7 @@ scrolling/position of selected/marked candidate."
   (let* ((buffer (get-buffer-create "*Sallet candidates*"))
          ;; make this lexically scoped
          (state (sallet-init-state sources buffer)))
+    ;; TODO: add better modeline, show number of sources/candidates etc...
     (with-current-buffer buffer
       (kill-all-local-variables)
       (setq truncate-lines t)
