@@ -697,6 +697,8 @@ Any other non-prefixed pattern is matched using the following rules:
   "Keep autobookmark CANDIDATES flx-matching PATTERN against file path."
   (--keep (sallet-predicate-path-flx (cadr (sallet-aref candidates it)) it pattern) indices))
 
+;; TODO: add a matcher for major mode based on extension and
+;; auto-mode-alist
 (defun sallet-autobookmarks-matcher (candidates state)
   "Match an autobookmark candidate using special rules.
 
