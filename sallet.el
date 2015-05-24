@@ -6,7 +6,7 @@
 ;; Maintainer: Matúš Goljer <matus.goljer@gmail.com>
 ;; Version: 0.0.1
 ;; Created: 31st December 2014
-;; Package-requires: ((dash "2.10.0") (s "1.9.0") (flx "0.4") (async "1.2") (shut-up "0.3.2"))
+;; Package-requires: ((dash "2.10.0") (s "1.9.0") (flx "0.4") (async "1.2") (shut-up "0.3.2") (ov "1.0"))
 ;; Keywords: convenience
 
 ;; This program is free software; you can redistribute it and/or
@@ -29,6 +29,7 @@
 (require 's)
 (require 'async)
 (require 'flx)
+(require 'ov)
 
 (require 'eieio)
 (require 'ibuffer)
@@ -1033,31 +1034,41 @@ Return number of rendered candidates."
           ;; is arbitrary meta data ignored at this stage (it is
           ;; useful when at the sorter stage)
           (let* ((candidate (sallet-source-get-candidate source (sallet-car-maybe n))))
-            ;; TODO: The >> marker should be handled with an
-            ;; overlay. See the note in
-            ;; `sallet-minibuffer-post-command-hook'.  Then we don't
-            ;; have to redraw everything every time user scrolls
-            (insert (if (= coffset i) ">>" "  ")
+            (insert (propertize "  " 'sallet-candidate-index (+ offset i))
                     ;; TODO: cache the already rendered lines also
                     ;; between sallet calls, there's quite a lot of
                     ;; chance it will come again, like with buffers or
                     ;; so
                     (funcall renderer candidate state (cdr-safe n))
                     "\n"))
-          (when (= coffset i)
-            (set-window-point (get-buffer-window (sallet-state-get-candidate-buffer state)) (point)))
           (setq i (1+ i))))
       i)))
 
-(defun sallet-render-state (state)
-  "Render state."
+(defun sallet-render-state (state render-sources)
+  "Render state.
+
+STATE is the current `sallet-state'.
+
+RENDER-SOURCES indicates whether we need to render sources (in
+case the prompt or candidates changed) or only update the
+scrolling/position of selected/marked candidate."
+  (when render-sources
+    (with-current-buffer (sallet-state-get-candidate-buffer state)
+      (erase-buffer)
+      (let ((offset 0))
+        (-each (sallet-state-get-sources state)
+          (lambda (source)
+            (setq offset (+ offset (sallet-render-source state source offset)))))
+        (insert "\n\n"))))
+  ;; Draw the >> pointer to the currently active candidate
   (with-current-buffer (sallet-state-get-candidate-buffer state)
-    (erase-buffer)
-    (let ((offset 0))
-      (-each (sallet-state-get-sources state)
-        (lambda (source)
-          (setq offset (+ offset (sallet-render-source state source offset)))))
-      (insert "\n\n"))))
+    (-when-let (pos (text-property-any (point-min) (point-max) 'sallet-candidate-index (sallet-state-get-selected-candidate state)))
+      (ov-clear 'sallet-selected-candidate-arrow)
+      (goto-char pos)
+      ;; TODO: add face, extend the overlay over the entire row? (then
+      ;; we can highlight the rest with some overlay as well)
+      (ov (point) (+ 2 (point)) 'display ">>" 'sallet-selected-candidate-arrow t)
+      (set-window-point (get-buffer-window (sallet-state-get-candidate-buffer state)) pos))))
 
 (defun sallet-cleanup-candidate-window ()
   "Cleanup the candidates buffer."
@@ -1108,7 +1119,7 @@ Return number of rendered candidates."
                    result)
          (sallet-source-set-candidates source candidates)
          (sallet-source-set-processed-candidates source processed-candidates)
-         (sallet-render-state state))))))
+         (sallet-render-state state t))))))
 
 (defun sallet-process-source (state source)
   (-when-let (generator (sallet-source-get-generator source))
@@ -1147,12 +1158,8 @@ Return number of rendered candidates."
     (unless (equal old-prompt new-prompt)
       (sallet-state-set-selected-candidate state 0)
       (sallet-state-set-prompt state new-prompt)
-      (sallet-process-sources state)))
-  ;; TODO: we shouldn't need to re-render if no change
-  ;; happened... currently this only handles scrolling (the >>
-  ;; indicator).  That should be done with a sliding overlay instead.
-  ;; Change in `sallet-render-state'.
-  (sallet-render-state state))
+      (sallet-process-sources state))
+    (sallet-render-state state (not (equal old-prompt new-prompt)))))
 
 ;; Add user-facing documentation as docstring and developer
 ;; documentation in code.
@@ -1172,7 +1179,7 @@ Return number of rendered candidates."
     ;; `sallet-cleanup-candidate-window'.  See also
     ;; `helm-always-two-windows'.
     (switch-to-buffer buffer)
-    (sallet-render-state state)
+    (sallet-render-state state t)
     (condition-case var
         (minibuffer-with-setup-hook (lambda () (sallet-minibuffer-setup state))
           ;; TODO: add support to pass maps
