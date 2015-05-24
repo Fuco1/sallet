@@ -1179,6 +1179,7 @@ Return number of rendered candidates."
                                              (set-keymap-parent map minibuffer-local-map)
                                              (define-key map (kbd "C-n") 'sallet-candidate-up)
                                              (define-key map (kbd "C-p") 'sallet-candidate-down)
+                                             (define-key map (kbd "C-o") 'sallet-candidate-next-source)
                                              map))
           (sallet-default-action))
       ;; TODO: do we want `kill-buffer-and-window?'
@@ -1196,6 +1197,19 @@ Return number of rendered candidates."
   (interactive)
   (when (> (sallet-state-get-selected-candidate sallet-state) 0)
     (sallet-state-decf-selected-candidate sallet-state)))
+
+(defun sallet-candidate-next-source ()
+  "Set the current selected candidate to the first candidate of next source."
+  (interactive)
+  (let* ((current (sallet-state-get-selected-candidate sallet-state))
+         (candidates-per-source (--remove
+                                 (= 0 it)
+                                 (--map (length (sallet-source-get-processed-candidates it))
+                                        (sallet-state-get-sources sallet-state))))
+         (offsets (-butlast (nreverse (--reduce-from (cons (+ it (car acc)) acc) (list 0) candidates-per-source))))
+         (next (--first (< current it) offsets)))
+    (unless next (setq next 0))
+    (sallet-state-set-selected-candidate sallet-state next)))
 
 (defun sallet-default-action ()
   (sallet-cleanup-candidate-window)
