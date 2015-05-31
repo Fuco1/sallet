@@ -738,14 +738,16 @@ Any other non-prefixed pattern is matched using the following rules:
 ;; TODO: improve
 (defun sallet-autobookmarks-renderer (candidate _ user-data)
   "Render an `autobookmarks-mode' candidate."
-  (-let (((name path) candidate))
-    (format "%-50s%s"
+  (-let* (((name path . data) candidate)
+          ((&alist 'visits visits) data))
+    (format "%-55s%5s  %s"
             (sallet-compose-fontifiers
              ;; TODO: create a "fontify flx after regexp" function to
              ;; simplify this common pattern
              (propertize name 'face 'sallet-recentf-buffer-name) user-data
              '(sallet-fontify-regexp-matches . :regexp-matches)
              '(sallet-fontify-flx-matches . :flx-matches))
+            (propertize (int-to-string visits) 'face 'sallet-buffer-size)
             (abbreviate-file-name
              (sallet-compose-fontifiers
               (propertize path 'face 'sallet-recentf-file-path) user-data
@@ -764,7 +766,10 @@ Any other non-prefixed pattern is matched using the following rules:
                                  (file-name-nondirectory (substring filename 0 -1))
                                name))
                            bookmark)))
-                 (abm-recent-buffers))))
+                 (-sort (-lambda ((_ . (&alist 'time a))
+                                  (_ . (&alist 'time b)))
+                          (time-less-p b a))
+                        (abm-recent-buffers)))))
   (matcher sallet-autobookmarks-matcher)
   (renderer sallet-autobookmarks-renderer)
   (action (-lambda ((_ . x)) (abm-restore-killed-buffer x)))
