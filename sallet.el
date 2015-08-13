@@ -652,6 +652,8 @@ Any other non-prefixed pattern is matched using the following rules:
   (header "Buffers")
   (renderer sallet-buffer-renderer))
 
+;; TODO: define source for files in the current directory
+
 (defface sallet-recentf-buffer-name
   '((t (:inherit font-lock-builtin-face)))
   "Face used to fontify recentf buffer name."
