@@ -1393,4 +1393,9 @@ customize the matching algorithm, you can extend sallet source
 ;; TODO: write sallet for opening files
 
 (provide 'sallet)
+
+;; Local Variables:
+;; eval: (add-to-list 'imenu-generic-expression '("Sallet sources" "\\(^(sallet-defsource +\\)\\(\\_<.+?\\_>\\)" 2))
+;; End:
+
 ;;; sallet.el ends here
