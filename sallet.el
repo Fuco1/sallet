@@ -755,7 +755,7 @@ Any other non-prefixed pattern is matched using the following rules:
              (propertize name 'face 'sallet-recentf-buffer-name) user-data
              '(sallet-fontify-regexp-matches . :regexp-matches)
              '(sallet-fontify-flx-matches . :flx-matches))
-            (propertize (int-to-string visits) 'face 'sallet-buffer-size)
+            (propertize (if visits (int-to-string visits) "0") 'face 'sallet-buffer-size)
             (abbreviate-file-name
              (sallet-compose-fontifiers
               (propertize path 'face 'sallet-recentf-file-path) user-data
