@@ -768,12 +768,14 @@ Any other non-prefixed pattern is matched using the following rules:
                 (require 'autobookmarks)
                 (-keep
                  (lambda (bookmark)
-                   (-when-let (filename (cdr (assoc 'filename (cdr bookmark))))
-                     (cons (let ((name (file-name-nondirectory filename)))
-                             (if (equal name "")
-                                 (file-name-nondirectory (substring filename 0 -1))
-                               name))
-                           bookmark)))
+                   (-when-let (name
+                               (cond
+                                ((assoc 'defaults (cdr bookmark))
+                                 (cadr (assoc 'defaults (cdr bookmark))))
+                                ((assoc 'filename (cdr bookmark))
+                                 (f-filename
+                                  (cdr (assoc 'filename (cdr bookmark)))))))
+                     (cons name bookmark)))
                  (-sort (-lambda ((_ . (&alist 'time a))
                                   (_ . (&alist 'time b)))
                           (time-less-p b a))
