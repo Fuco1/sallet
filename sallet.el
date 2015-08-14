@@ -261,6 +261,7 @@ We use following check to determine which algorithm to use:
 ;; TODO: Add optimization where we only re-run changed tokens.  We can
 ;; keep the index from the last update and just work on that
 ;; (similarly as we keep the pattern from one update ago).
+;; TODO: turn into a transformer returning a filter closure
 (defun sallet-compose-filters-by-pattern (filter-alist candidates indices pattern)
   "Filter CANDIDATES using rules from FILTER-ALIST.
 
@@ -643,6 +644,10 @@ Any other non-prefixed pattern is matched using the following rules:
      indices
      prompt)))
 
+;; TODO: sorting is now done the same way as `buffer-list' returns the
+;; results, in LRU order.  We should also try to add some weight to
+;; the flx score.  One possibility is to add +100, and decreasing, to
+;; the flx-score for more recent buffers.
 (sallet-defsource buffer nil
   "Buffer source."
   (candidates (lambda ()
@@ -652,6 +657,9 @@ Any other non-prefixed pattern is matched using the following rules:
                        ;; query it multiple times (in filtering and
                        ;; rendering)
                        (--keep (let ((name (buffer-name it)))
+                                 ;; TODO: add a variable where users
+                                 ;; can write regexps to exclude
+                                 ;; buffers
                                  (unless (string-match-p "^ " name) name))
                                (buffer-list))))
                   (if (< 1 (length buffers))
