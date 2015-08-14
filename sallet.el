@@ -309,6 +309,13 @@ candidates matching all tokens will pass the test."
     (let ((tokens (split-string pattern)))
       (--reduce-from (funcall filter candidates acc it) indices tokens))))
 
+(defun sallet-make-matcher (filter)
+  "Make a sallet matcher from a filter."
+  (lambda (candidates state)
+    (let ((prompt (sallet-state-get-prompt state))
+          (indices (number-sequence 0 (1- (length candidates)))))
+      (funcall filter candidates indices prompt))))
+
 (defun sallet-matcher-default (candidates state)
   "Default matcher.
 
