@@ -326,12 +326,18 @@ substring-match each token to pass the test."
         (indices (number-sequence 0 (1- (length candidates)))))
     (sallet-filter-flx candidates indices prompt)))
 
+;; TODO: figure out how to compose this when multiple filters are in
+;; place and not all of them provide the sorting attribute
 (defun sallet-sorter-flx (processed-candidates _)
   "Sort PROCESSED-CANDIDATES by :flx-score."
   (sort processed-candidates
-        (-lambda ((_ . (&plist :flx-score a))
-                  (_ . (&plist :flx-score b)))
-          (> a b))))
+        (lambda (a b)
+          ;; UGLY!!!!
+          (if (and (consp a) (consp b))
+              (-when-let* (((_ &keys :flx-score sa) a)
+                           ((_ &keys :flx-score sb) b))
+                (> sa sb))
+            (> a b)))))
 
 ;; TODO: add docs
 (defmacro sallet-defsource (name parents &optional docstring &rest body)
