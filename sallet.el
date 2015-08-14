@@ -792,6 +792,61 @@ Any other non-prefixed pattern is matched using the following rules:
   (action (-lambda ((_ . x)) (abm-restore-killed-buffer x)))
   (header "Autobookmarks"))
 
+(defun sallet--imenu-flatten (alist)
+  "Compute imenu candidates."
+  (--mapcat (if (imenu--subalist-p it)
+                (-map (-lambda ((name pos . tags)) (-cons* name pos (car it) tags)) (sallet--imenu-flatten (cdr it)))
+              (list (list (car it) (cdr it))))
+            alist))
+
+(defun sallet-filter-imenu-tags-flx (candidates indices pattern)
+  "Keep buffer CANDIDATES flx-matching PATTERN against `default-directory'."
+  (--keep (sallet-predicate-path-flx
+           (mapconcat 'identity (cddr (sallet-aref candidates it)) ", ")
+           it pattern) indices))
+
+(defun sallet-imenu-renderer (c _ user-data)
+  (-let* (((x _ . tags) c)
+          (face (cond ((member "Variables" tags)
+                       'font-lock-variable-name-face)
+                      ((member "Types" tags)
+                       'font-lock-type-face)
+                      (t 'font-lock-function-name-face))))
+    (format "%-80s%s"
+            (sallet-compose-fontifiers
+             (propertize x 'face face) user-data
+             '(sallet-fontify-regexp-matches . :regexp-matches)
+             '(sallet-fontify-flx-matches . :flx-matches))
+            (sallet-compose-fontifiers
+             (mapconcat 'identity tags ", ") user-data
+             '(sallet-fontify-regexp-matches . :regexp-matches-path)
+             '(sallet-fontify-flx-matches . :flx-matches-path)))))
+
+(defun sallet-imenu-matcher (a b)
+  (funcall (sallet-make-matcher (lambda (c i p)
+                          (sallet-compose-filters-by-pattern
+                           '(("\\`/\\(.*\\)" 1 sallet-filter-imenu-tags-flx)
+                             (t sallet-filter-flx-then-substring)) c i p))) a b))
+
+(defun sallet-imenu-candidates ()
+  (let ((initial (symbol-name (symbol-at-point)))
+        (cands (--map (if (cddr it) it (-snoc it ""))
+                      (--remove (< (cadr it) 0) (sallet--imenu-flatten (imenu--make-index-alist))))))
+    (if initial
+        (-if-let (initial (--first (equal (car it) initial) cands))
+            (cons initial (--remove (equal initial it) cands))
+          cands)
+      cands)))
+
+(sallet-defsource imenu nil
+  "Imenu."
+  (candidates sallet-imenu-candidates)
+  (matcher sallet-imenu-matcher)
+  (sorter sallet-sorter-flx)
+  (renderer sallet-imenu-renderer)
+  (action (-lambda ((_ pos)) (goto-char pos)))
+  (header "Imenu"))
+
 ;; TODO: this depends on bookmark+ (`bmkp-file-alist-only',
 ;; `bmkp-jump-1'), should probably be moved to a different file.
 (sallet-defsource bookmarks-file-only nil
@@ -1322,6 +1377,10 @@ customize the matching algorithm, you can extend sallet source
 `sallet-source-occur'."
   (interactive)
   (sallet (list sallet-source-occur)))
+
+(defun sallet-imenu ()
+  (interactive)
+  (sallet (list sallet-source-imenu)))
 
 ;; TODO: write sallet for opening files
 
