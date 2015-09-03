@@ -808,7 +808,7 @@ Any other non-prefixed pattern is matched using the following rules:
             alist))
 
 (defun sallet-filter-imenu-tags-flx (candidates indices pattern)
-  "Keep buffer CANDIDATES flx-matching PATTERN against `default-directory'."
+  "Keep buffer CANDIDATES flx-matching PATTERN against imenu tags."
   (--keep (sallet-predicate-path-flx
            (mapconcat 'identity (cddr (sallet-aref candidates it)) ", ")
            it pattern) indices))
