@@ -852,7 +852,13 @@ Any other non-prefixed pattern is matched using the following rules:
   (matcher sallet-imenu-matcher)
   (sorter sallet-sorter-flx)
   (renderer sallet-imenu-renderer)
-  (action (-lambda ((_ pos)) (goto-char pos)))
+  (action (-lambda ((_ pos))
+            (cond
+             ((eq major-mode 'org-mode)
+              (goto-char pos)
+              (org-show-context)
+              (org-show-entry))
+             (t (goto-char pos)))))
   (header "Imenu"))
 
 ;; TODO: this depends on bookmark+ (`bmkp-file-alist-only',
