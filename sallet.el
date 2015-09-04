@@ -380,6 +380,9 @@ This source defines internal variables used to hold state during
 the picking process."
   (processed-candidates nil))
 
+;; TODO: add a simple interface to create an interactive transient
+;; "source" with just a static list of candidates (i.e. support for
+;; anonymous sources)
 (sallet-defsource default (-default)
   "Default source.
 
