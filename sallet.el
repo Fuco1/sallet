@@ -1276,8 +1276,15 @@ scrolling/position of selected/marked candidate."
       (sallet-process-sources state))
     (sallet-render-state state (not (equal old-prompt new-prompt)))))
 
-;; Add user-facing documentation as docstring and developer
+;; TODO: add user-facing documentation as docstring and developer
 ;; documentation in code.
+;; TODO: add a way to preprocess the pattern before passing it to the
+;; individual sources... this can help when we mix "incompatible"
+;; sources together (where e.g. special prefixes mean different things
+;; or are meaningless... so if we mix e.g. buffer and locate, we don't
+;; want to pass leading / to locate but we want to pass it to buffer).
+;; The filter is not done on the source level because the same prefix
+;; (or lack of) can mean different thing to different sources.
 (defun sallet (sources)
   (let* ((buffer (get-buffer-create "*Sallet candidates*"))
          ;; make this lexically scoped
