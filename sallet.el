@@ -1179,9 +1179,18 @@ scrolling/position of selected/marked candidate."
 (defun sallet-cleanup-candidate-window ()
   "Cleanup the candidates buffer."
   (-when-let (buffer (get-buffer "*Sallet candidates*"))
-    (kill-buffer buffer)))
+    (kill-buffer buffer))
+  (--each (buffer-list)
+    (when (string-match-p "\\` \\*Minibuf-[0-9]+\\*\\'"(buffer-name it))
+      (remove-hook 'post-command-hook 'sallet-minibuffer-post-command-hook t))))
+
+(defvar sallet-minibuffer-post-command-hook nil
+  "Closure used to update sallet window on minibuffer events.
+
+The closure is stored in function slot.")
 
 (defun sallet-minibuffer-setup (state)
+  "Setup `post-command-hook' in minibuffer to update sallet STATE."
   ;; TODO: figure out where to do which updates... this currently
   ;; doesn't work The problem is that this lags the minibuffer input
   ;; reading every time it changes and some recomputation happens.  We
@@ -1189,7 +1198,9 @@ scrolling/position of selected/marked candidate."
   ;; full candidate list after every letter.  Helm solves this with
   ;; timers, which we will probably have to opt for too (aka poor
   ;; man's threads)
-  (add-hook 'post-command-hook (lambda () (sallet-minibuffer-post-command state)) nil t))
+  (fset 'sallet-minibuffer-post-command-hook
+        (lambda () (sallet-minibuffer-post-command state)))
+  (add-hook 'post-command-hook 'sallet-minibuffer-post-command-hook nil t))
 
 ;; TODO: figure out how to do the buffer passing fast
 (defun sallet-process-source-async (state source)
