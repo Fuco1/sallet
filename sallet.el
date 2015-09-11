@@ -1029,7 +1029,7 @@ Any other non-prefixed pattern is matched using the following rules:
     instance))
 
 ;; TODO: make this into eieio object?
-;; TODO: add documentation for the processes thing (and write/figure
+;; TODO: add documentation for the futures thing (and write/figure
 ;; out how the async works)
 (defvar sallet-state nil
   "Current state.
@@ -1042,7 +1042,7 @@ PROMPT is the current prompt.
 
 SELECTED-CANDIDATE is the currently selected candidate.
 
-PROCESSES is a plist mapping source id to the `async' future that
+FUTURES is a plist mapping source id to the `async' future that
 computes it.")
 
 (defun sallet-state-get-sources (state)
@@ -1055,10 +1055,8 @@ computes it.")
   (cdr (assoc 'selected-candidate state)))
 (defun sallet-state-get-candidate-buffer (state)
   (cdr (assoc 'candidate-buffer state)))
-;; TODO: rename to futures.  Processes should be reserved for things
-;; like "doing ag/grep in the background".
-(defun sallet-state-get-processes (state)
-  (cdr (assoc 'processes state)))
+(defun sallet-state-get-futures (state)
+  (cdr (assoc 'futures state)))
 
 (defun sallet-state-set-sources (state sources)
   (setf (cdr (assoc 'sources state)) sources))
@@ -1066,8 +1064,8 @@ computes it.")
   (setf (cdr (assoc 'prompt state)) prompt))
 (defun sallet-state-set-selected-candidate (state selected-candidate)
   (setf (cdr (assoc 'selected-candidate state)) selected-candidate))
-(defun sallet-state-set-processes (state processes)
-  (setf (cdr (assoc 'processes state)) processes))
+(defun sallet-state-set-futures (state futures)
+  (setf (cdr (assoc 'futures state)) futures))
 
 (defun sallet-state-incf-selected-candidate (state)
   (incf (cdr (assoc 'selected-candidate state))))
@@ -1104,7 +1102,7 @@ STATE is sallet state."
                      (cons 'current-buffer (current-buffer))
                      (cons 'prompt "")
                      (cons 'selected-candidate 0)
-                     (cons 'processes nil)
+                     (cons 'futures nil)
                      (cons 'candidate-buffer candidate-buffer))))
     (setq sallet-state state)
     state))
@@ -1198,7 +1196,7 @@ scrolling/position of selected/marked candidate."
   "Process SOURCE asynchronously in separate emacs."
   (let ((sallet-async-state (--remove
                              (memq (car it) '(sources
-                                              processes
+                                              futures
                                               current-buffer
                                               candidate-buffer)) state))
         (sallet-async-source source))
@@ -1257,15 +1255,15 @@ scrolling/position of selected/marked candidate."
       ;; "process filtering source" ?
       (if (not (sallet-source-is-async source))
           (sallet-process-source state source)
-        (let ((processes (sallet-state-get-processes state))
+        (let ((futures (sallet-state-get-futures state))
               (source-id (aref source 2)))
-          (-when-let ((&plist source-id process) processes)
+          (-when-let ((&plist source-id process) futures)
             (ignore-errors
               (let ((buffer (process-buffer process)))
                 (kill-process process)
                 (kill-buffer buffer))))
           (let ((proc (sallet-process-source-async state source)))
-            (sallet-state-set-processes state (plist-put processes source-id proc))))))))
+            (sallet-state-set-futures state (plist-put futures source-id proc))))))))
 
 (defun sallet-minibuffer-post-command-hook (state)
   (let ((old-prompt (sallet-state-get-prompt state))
