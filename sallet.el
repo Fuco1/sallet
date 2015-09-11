@@ -1189,7 +1189,7 @@ scrolling/position of selected/marked candidate."
   ;; full candidate list after every letter.  Helm solves this with
   ;; timers, which we will probably have to opt for too (aka poor
   ;; man's threads)
-  (add-hook 'post-command-hook (lambda () (sallet-minibuffer-post-command-hook state)) nil t))
+  (add-hook 'post-command-hook (lambda () (sallet-minibuffer-post-command state)) nil t))
 
 ;; TODO: figure out how to do the buffer passing fast
 (defun sallet-process-source-async (state source)
@@ -1265,7 +1265,7 @@ scrolling/position of selected/marked candidate."
           (let ((proc (sallet-process-source-async state source)))
             (sallet-state-set-futures state (plist-put futures source-id proc))))))))
 
-(defun sallet-minibuffer-post-command-hook (state)
+(defun sallet-minibuffer-post-command (state)
   (let ((old-prompt (sallet-state-get-prompt state))
         (new-prompt (buffer-substring-no-properties 5 (point-max))))
     (unless (equal old-prompt new-prompt)
