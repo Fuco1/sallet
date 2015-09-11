@@ -40,6 +40,24 @@
   :group 'convenience
   :prefix "sallet-")
 
+(defun sallet-vector-logical-length (vector)
+  "Return logical length of VECTOR.
+
+Logical length is the number of non-nil elements from start."
+  (let ((i 0))
+    (catch 'end
+      (mapc (lambda (x) (if x (setq i (1+ i)) (throw 'end i))) vector)
+      (length vector))))
+
+(defun sallet-make-candidate-indices (candidates)
+  "Create the indices list for CANDIDATES.
+
+This is a list from 0 to (1- logical-length-of-candidates).  This
+list is used in the filtering pipeline and at the end the
+remaining indices point to the candidates structure and designate
+valid candidates."
+  (number-sequence 0 (1- (sallet-vector-logical-length candidates))))
+
 (defun sallet-car-maybe (cons-or-thing)
   "Return `car' of CONS-OR-THING if it is a cons or itself otherwise."
   (if (consp cons-or-thing) (car cons-or-thing) cons-or-thing))
@@ -314,7 +332,7 @@ candidates matching all tokens will pass the test."
   "Make a sallet matcher from a filter."
   (lambda (candidates state)
     (let ((prompt (sallet-state-get-prompt state))
-          (indices (number-sequence 0 (1- (length candidates)))))
+          (indices (sallet-make-candidate-indices candidates)))
       (funcall filter candidates indices prompt))))
 
 (defun sallet-matcher-default (candidates state)
@@ -323,7 +341,7 @@ candidates matching all tokens will pass the test."
 The prompt is split on whitespace, then candidate must
 substring-match each token to pass the test."
   (let ((prompt (sallet-state-get-prompt state))
-        (indices (number-sequence 0 (1- (length candidates)))))
+        (indices (sallet-make-candidate-indices candidates)))
     (funcall (sallet-make-tokenized-filter 'sallet-filter-substring) candidates indices prompt)))
 
 ;; TODO: write a "defmatcher" macro which would automatically define
@@ -331,7 +349,7 @@ substring-match each token to pass the test."
 (defun sallet-matcher-flx (candidates state)
   "Match candidates using flx matching."
   (let ((prompt (sallet-state-get-prompt state))
-        (indices (number-sequence 0 (1- (length candidates)))))
+        (indices (sallet-make-candidate-indices candidates)))
     (sallet-filter-flx candidates indices prompt)))
 
 ;; TODO: figure out how to compose this when multiple filters are in
@@ -633,7 +651,7 @@ Any other non-prefixed pattern is matched using the following rules:
 - All the following patterns are substring matched against the
   buffer name."
   (let* ((prompt (sallet-state-get-prompt state))
-         (indices (number-sequence 0 (1- (length candidates)))))
+         (indices (sallet-make-candidate-indices candidates)))
     ;; TODO: add . prefix to match on file extension
     ;; TODO: add gtags filter?
     (sallet-compose-filters-by-pattern
@@ -752,7 +770,7 @@ Any other non-prefixed pattern is matched using the following rules:
 - All the following patterns are substring matched against the
   bookmark name."
   (let* ((prompt (sallet-state-get-prompt state))
-         (indices (number-sequence 0 (1- (length candidates)))))
+         (indices (sallet-make-candidate-indices candidates)))
     (sallet-compose-filters-by-pattern
      '(("\\`//\\(.*\\)" 1 sallet-filter-autobookmark-path-substring)
        ("\\`/\\(.*\\)" 1 sallet-filter-autobookmark-path-flx)
@@ -1022,7 +1040,7 @@ Any other non-prefixed pattern is matched using the following rules:
         (setq candidates (vconcat candidates)))
       (sallet-source-set-candidates instance candidates)
       ;; no filtering at start
-      (sallet-source-set-processed-candidates instance (number-sequence 0 (1- (length candidates)))))
+      (sallet-source-set-processed-candidates instance (sallet-make-candidate-indices candidates)))
     (let ((generator (sallet-source-get-generator instance)))
       (unless (functionp generator)
         (sallet-source-set-generator instance (eval generator t))))
@@ -1245,7 +1263,7 @@ The closure is stored in function slot.")
     (-if-let (matcher (sallet-source-get-matcher source))
         (let ((processed-candidates (funcall matcher candidates state)))
           (sallet-source-set-processed-candidates source processed-candidates))
-      (sallet-source-set-processed-candidates source (number-sequence 0 (1- (length candidates))))))
+      (sallet-source-set-processed-candidates source (sallet-make-candidate-indices candidates))))
   (let* ((processed-candidates (sallet-source-get-processed-candidates source)))
     (-when-let (sorter (sallet-source-get-sorter source))
       (sallet-source-set-processed-candidates
