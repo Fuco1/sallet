@@ -1285,6 +1285,14 @@ scrolling/position of selected/marked candidate."
 ;; want to pass leading / to locate but we want to pass it to buffer).
 ;; The filter is not done on the source level because the same prefix
 ;; (or lack of) can mean different thing to different sources.
+;; TODO: add conditional evaluation of sources.  For example, first
+;; run global -P, if nothing is found run ag -g, if nothing is found
+;; run find . -name '*<pat>*', if nothing is found run locate...  This
+;; way we don't run all the redundant "broader" searches if some
+;; narrower search succeeds.  After some timeouts or a "recompute
+;; signal" we can recompute all targets.
+;; TODO: add some simple default implementation for "line candidates
+;; from process" and "grep-like candidates from process"
 (defun sallet (sources)
   (let* ((buffer (get-buffer-create "*Sallet candidates*"))
          ;; make this lexically scoped
