@@ -328,6 +328,21 @@ candidates matching all tokens will pass the test."
     (let ((tokens (split-string pattern)))
       (--reduce-from (funcall filter candidates acc it) indices tokens))))
 
+(defun sallet-ignore-first-token-filter (filter)
+  "Return a variant of FILTER which ignores first token of prompt.
+
+Input pattern is split on whitespace to create list of tokens.
+The first token is dropped and then the resulting strings are
+concatenated again and passed to FILTER.
+
+This is useful in asyncio sources where we pass the first token
+to the asyncio process and the rest to the matcher."
+  (lambda (candidates indices pattern)
+    (let* ((tokens (split-string pattern " "))
+           (new-pattern (mapconcat 'identity (cdr tokens) " ")))
+      (if (equal new-pattern "") indices
+        (funcall filter candidates indices new-pattern)))))
+
 (defun sallet-make-matcher (filter)
   "Make a sallet matcher from a filter."
   (lambda (candidates state)
