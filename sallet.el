@@ -425,10 +425,10 @@ and identity action."
   ;; long as the matcher and renderer and action know how to handle
   ;; it).
   (candidates nil)
-  ;; function generating candidates, takes state, returns a vector
-  ;; The difference with `candidates' is that `candidates' run only
-  ;; when we first enter the session while `generator' takes input
-  ;; interactively.
+  ;; function generating candidates, takes source and state, returns a
+  ;; vector The difference with `candidates' is that `candidates' run
+  ;; only when we first enter the session while `generator' takes
+  ;; input interactively.
   (generator nil)
   ;; If t, this source is asynchronous and processing takes place in a
   ;; different emacs instance.  The source must be written with this in mind.
@@ -950,7 +950,7 @@ Any other non-prefixed pattern is matched using the following rules:
               ;; TODO: add face to the number
               (format "%5d:%s" line-number line-string)))
   (generator '(let ((buffer (current-buffer)))
-                (lambda (state)
+                (lambda (_ state)
                   (let ((prompt (sallet-state-get-prompt state)))
                     ;; TODO: move this into a separate setting... this
                     ;; is going to be quite common for "computing"
@@ -971,7 +971,7 @@ Any other non-prefixed pattern is matched using the following rules:
               ;; TODO: fontify the result line here instead of in the async process
               (format "%5d:%s" line-number line-string)))
   ;; the buffer we search is the current buffer in the async instance
-  (generator (lambda (state)
+  (generator (lambda (_ state)
                (let ((prompt (sallet-state-get-prompt state)))
                  ;; TODO: move this into a separate setting... this
                  ;; is going to be quite common for "computing"
@@ -986,7 +986,7 @@ Any other non-prefixed pattern is matched using the following rules:
   (sorter sallet-sorter-flx)
   ;; ... while generator is the stupidest matcher possible
   (generator '(let ((buffer (current-buffer)))
-                (lambda (state)
+                (lambda (_ state)
                   (let ((prompt (sallet-state-get-prompt state)))
                     (when (>= (length prompt) 2)
                       (sallet-occur-get-lines buffer prompt :fuzzy)))))))

@@ -50,10 +50,12 @@ Generator is responsible for generating new set of possible
 /candidates/ with each change of the user input (prompt).  Think
 /dynamic candidates/.
 
-It is a function of one argument: the current sallet state.
+It is a function of two arguments: the current source and the current sallet state.
 
 The return value is a *vector* of candidates, each candidate can be
-either a value or a list of values.
+either a value or a list of values.  The generator can also work
+asynchronously (via async IO facilities) and update the candidates
+dynamically directly on the object.
 
 ** Matcher
 Matcher filters the available candidates and produces [[*Processed%20candidates][processed candidates]].
