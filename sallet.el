@@ -1299,10 +1299,8 @@ The closure is stored in function slot.")
     (let ((gen (funcall generator source state)))
       (cond
        ((processp gen)
-        (-when-let (old-proc (sallet-source-get-process source))
-          (ignore-errors (kill-process old-proc)))
         (sallet-source-set-process source gen))
-       (t (sallet-source-set-candidates source gen)))))
+       (gen (sallet-source-set-candidates source gen)))))
   (sallet-update-candidates state source))
 
 (defun sallet-process-sources (state)
