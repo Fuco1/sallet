@@ -1011,6 +1011,31 @@ Any other non-prefixed pattern is matched using the following rules:
                     (when (>= (length prompt) 2)
                       (sallet-occur-get-lines buffer prompt :fuzzy)))))))
 
+(defun sallet-create-line-asyncio-generator (process-creator filter &optional min-prompt-length)
+  "Create a source from program producing lines of candidates.
+
+PROCESS-CREATOR is a function which when called returns a process which
+produces the candidates.  It takes one argument, the current prompt.
+
+FILTER is a function taking one line of output and producing a
+candidate.
+
+MIN-PROMPT-LENGTH is the length of prompt when we spawn the
+process for the first time."
+  (setq min-prompt-length (or min-prompt-length 3))
+  (lambda (source state)
+    (let ((prompt (sallet-state-get-prompt state)))
+      (when (>= (length prompt) min-prompt-length)
+        (-when-let (proc (funcall process-creator prompt))
+          (-when-let (old-proc (sallet-source-get-process source))
+            (ignore-errors (kill-process old-proc)))
+          (set-process-filter
+           proc
+           (sallet-linereader
+            (sallet-linebased-candidate-generator filter source state)))
+          (sit-for 0.01)
+          proc)))))
+
 (defun sallet-source-get-matcher (source)
   (oref source matcher))
 (defun sallet-source-get-sorter (source)
