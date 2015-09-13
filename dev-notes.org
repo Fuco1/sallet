@@ -99,6 +99,15 @@ further processing.")
 It should not be responsibility of a filter to pre-process patterns or
 candidates.
 
+However, there are /composite filters/ which group subfilters together
+to provide aggregated functionality (like anding or oring them
+together, or making filters operate on parts of the pattern).  These
+are usually realized as /decorators/ which take a filter and turn it
+into another filter by preprocessing any of the parameters before
+passing them further.  Some examples include
+=sallet-make-tokenized-filter= which runs the underlying filter on each
+input token separately and then ands the results, or =sallet-compose-filters-by-pattern= which composes filters by dispatching different parts of the pattern to different filters.
+
 *** Predicates
 In turn, filters can use /predicates/ to match candidates and update
 their index metadata.
