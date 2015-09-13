@@ -623,18 +623,20 @@ the string is passed to the function."
   (with-current-buffer candidate
     ;; TODO: make the column widths configurable
     (format "%-50s%10s  %20s  %s"
-            (s-truncate
-             50
+            (truncate-string-to-width
              (sallet-compose-fontifiers
               candidate user-data
               'sallet-buffer-fontify-buffer-name
               '(sallet-fontify-regexp-matches . :regexp-matches)
-              '(sallet-fontify-flx-matches . :flx-matches)))
+              '(sallet-fontify-flx-matches . :flx-matches))
+             50 nil nil t)
             (propertize (file-size-human-readable (buffer-size)) 'face 'sallet-buffer-size)
-            (s-truncate 20 (s-chop-suffix "-mode"
-                                          (sallet-fontify-flx-matches
-                                           (plist-get user-data :flx-matches-mm)
-                                           (symbol-name major-mode))))
+            (truncate-string-to-width
+             (s-chop-suffix "-mode"
+                            (sallet-fontify-flx-matches
+                             (plist-get user-data :flx-matches-mm)
+                             (symbol-name major-mode)))
+             20 nil nil t)
             (format (propertize
                      (concat "(" (or (and (buffer-file-name) (concat "in %s"))
                                      (-when-let (process (get-buffer-process (current-buffer)))
