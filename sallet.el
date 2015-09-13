@@ -1476,6 +1476,57 @@ customize the matching algorithm, you can extend sallet source
 
 ;; TODO: write sallet for opening files
 
+(defun sallet-linereader (filter)
+  "Read stream of data and pass complete lines to FILTER.
+
+Returns a function which can be used as process sentinel.
+
+FILTER is a function which could be used with
+`set-process-filter'.
+
+This decorator buffers input until it can pass the data further
+and is useful as a buffer between a process producing data and an
+Emacs function operating on the data which expects to get
+complete lines as input."
+  (let ((data ""))
+    (lambda (process string)
+      (let* ((data (concat data string))
+             (line-data (split-string data "\n")))
+        (while (cdr line-data)
+          (funcall filter process (car line-data))
+          (!cdr line-data))
+        (setq data (car line-data))))))
+
+(defun sallet-linebased-candidate-generator (transformer source state)
+  "Turn a TRANSFORMER into candidate generator for SOURCE.
+
+TRANSFORMER is a function which given a string generates one
+candidate from it.
+
+SOURCE is an instance of sallet source.
+
+STATE is a sallet state."
+  (let ((n 0))
+    (sallet-source-set-candidates source (make-vector 32 nil))
+    (lambda (_process string)
+      (let* ((buffer (sallet-source-get-candidates source))
+             (cand (funcall transformer string))
+             (bl (length buffer)))
+        (when (= n bl)
+          (let ((new-buffer (make-vector (* 2 bl) nil))
+                (i 0))
+            (mapc (lambda (x)
+                    (aset new-buffer i x)
+                    (setq i (1+ i)))
+                  buffer)
+            (setq buffer new-buffer)
+            (sallet-source-set-candidates source new-buffer))
+          (sallet-update-candidates state source)
+          (sallet-render-state state t))
+        (aset buffer n cand)
+        (setq n (1+ n))
+        (sallet-source-set-candidates source buffer)))))
+
 (provide 'sallet)
 
 ;; Local Variables:
