@@ -440,6 +440,11 @@ and identity action."
   ;; as the header text (newline is added *automatically*)
   (header "Select a candidate"))
 
+(sallet-defsource asyncio (default)
+  "Default asyncio source."
+  (process nil
+           :documentation "Process generating candidates"))
+
 (defgroup sallet-faces nil
   "Sallet faces."
   :group 'sallet)
@@ -1009,6 +1014,8 @@ Any other non-prefixed pattern is matched using the following rules:
   (oref source processed-candidates))
 (defun sallet-source-is-async (source)
   (oref source async))
+(defun sallet-source-get-process (source)
+  (oref source process))
 
 (defun sallet-source-set-candidates (source candidates)
   (oset source candidates candidates))
@@ -1016,6 +1023,8 @@ Any other non-prefixed pattern is matched using the following rules:
   (oset source generator generator))
 (defun sallet-source-set-processed-candidates (source processed-candidates)
   (oset source processed-candidates processed-candidates))
+(defun sallet-source-set-process (source process)
+  (oset source process process))
 
 (defun sallet-source-get-candidate (source n)
   (elt (sallet-source-get-candidates source) n))
