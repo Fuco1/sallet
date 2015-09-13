@@ -268,6 +268,7 @@ We use following check to determine which algorithm to use:
       (sallet-filter-flx candidates indices pattern)
     (sallet-filter-substring candidates indices (regexp-quote pattern))))
 
+;; TODO: turn into a transformer returning a filter closure
 (defun sallet-pipe-filters (filters candidates indices pattern)
   "Run all FILTERS in sequence, filtering CANDIDATES against PATTERN."
   (--reduce-from (funcall it candidates acc pattern) indices filters))
@@ -416,6 +417,9 @@ the picking process."
 ;; TODO: add a simple interface to create an interactive transient
 ;; "source" with just a static list of candidates (i.e. support for
 ;; anonymous sources)
+;; TODO: remake all the functions to take source as first
+;; argument... this allows us to save state inside the source as with
+;; normal objects.
 (sallet-defsource default (-default)
   "Default source.
 
@@ -1011,6 +1015,10 @@ Any other non-prefixed pattern is matched using the following rules:
                     (when (>= (length prompt) 2)
                       (sallet-occur-get-lines buffer prompt :fuzzy)))))))
 
+;; TODO: better name, put it somewhere in the pipeline
+;; TODO: here, filter shouldn't be called filter but... line
+;; transformer? candidate generator?... filter has different meaning
+;; in sallet
 (defun sallet-create-line-asyncio-generator (process-creator filter &optional min-prompt-length)
   "Create a source from program producing lines of candidates.
 
@@ -1501,6 +1509,7 @@ customize the matching algorithm, you can extend sallet source
 
 ;; TODO: write sallet for opening files
 
+;; TODO: better name, put it in the framework/pipeline somewhere
 (defun sallet-linereader (filter)
   "Read stream of data and pass complete lines to FILTER.
 
@@ -1522,6 +1531,7 @@ complete lines as input."
           (!cdr line-data))
         (setq data (car line-data))))))
 
+;; TODO: better name, put it in the framework/pipeline somewhere
 (defun sallet-linebased-candidate-generator (transformer source state)
   "Turn a TRANSFORMER into candidate generator for SOURCE.
 
