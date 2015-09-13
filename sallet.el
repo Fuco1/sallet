@@ -1256,9 +1256,8 @@ The closure is stored in function slot.")
          (sallet-source-set-processed-candidates source processed-candidates)
          (sallet-render-state state t))))))
 
-(defun sallet-process-source (state source)
-  (-when-let (generator (sallet-source-get-generator source))
-    (sallet-source-set-candidates source (funcall generator state)))
+(defun sallet-update-candidates (state source)
+  "Update candidates and processed-candidatess in STATE for SOURCE."
   (let* ((candidates (sallet-source-get-candidates source)))
     (-if-let (matcher (sallet-source-get-matcher source))
         (let ((processed-candidates (funcall matcher candidates state)))
@@ -1269,6 +1268,18 @@ The closure is stored in function slot.")
       (sallet-source-set-processed-candidates
        source
        (funcall sorter processed-candidates state)))))
+
+(defun sallet-process-source (state source)
+  "Update sallet STATE by processing SOURCE."
+  (-when-let (generator (sallet-source-get-generator source))
+    (let ((gen (funcall generator source state)))
+      (cond
+       ((processp gen)
+        (-when-let (old-proc (sallet-source-get-process source))
+          (ignore-errors (kill-process old-proc)))
+        (sallet-source-set-process source gen))
+       (t (sallet-source-set-candidates source gen)))))
+  (sallet-update-candidates state source))
 
 (defun sallet-process-sources (state)
   ;; TODO: add old-prompt to state
