@@ -53,9 +53,31 @@ Generator is responsible for generating new set of possible
 It is a function of two arguments: the current source and the current sallet state.
 
 The return value is a *vector* of candidates, each candidate can be
-either a value or a list of values.  The generator can also work
-asynchronously (via async IO facilities) and update the candidates
-dynamically directly on the object.
+either a value or a list of values.
+
+Sallet supports two asynchronous types of sources:
+
+1. Using asynchronous IO (async IO or asyncio from now on).
+2. Using =async.el=.
+
+*** async IO
+In this case the generator function returns the process which computes
+the candidates.  Candidates themselves are updated from the
+=process-filter= attached to the process.  In case we need to
+prematurely stop the process it is enough to kill the process returned
+from the generator (available via =sallet-source-get-process=).
+
+Because the generator has access to the current sallet state and the
+source, it can update the candidates dynamically directly on the
+source object.
+*** async.el
+These sources are marked with =async= property set to =t= on the source.
+In theory, any synchronous source can be turned into asynchronous one
+just by attaching this property.  The asynchrony here is that while
+computing the candidate list emacs doesn't block.
+
+This, however, is very experimental so I don't recommend any one
+getting into it much
 
 ** Matcher
 Matcher filters the available candidates and produces [[*Processed%20candidates][processed candidates]].
@@ -106,7 +128,9 @@ are usually realized as /decorators/ which take a filter and turn it
 into another filter by preprocessing any of the parameters before
 passing them further.  Some examples include
 =sallet-make-tokenized-filter= which runs the underlying filter on each
-input token separately and then ands the results, or =sallet-compose-filters-by-pattern= which composes filters by dispatching different parts of the pattern to different filters.
+input token separately and then ands the results, or
+=sallet-compose-filters-by-pattern= which composes filters by
+dispatching different parts of the pattern to different filters.
 
 *** Predicates
 In turn, filters can use /predicates/ to match candidates and update
@@ -154,3 +178,24 @@ It is a function with two mandatory input arguments: a [[*Candidate][candidate]]
 Additionally, any extra user data produced by matcher and/or sorter
 (that is, the ~cdr~ of this candidate's candidate index) are passed as
 an optional third argument.
+
+* Auxiliary
+** Process filters and decorators
+Because sallet provides async IO sources and the Emacs async IO is
+quite hairy, we provide some auxiliary decorators to deal with output
+of processes.
+
+The most basic is the =sallet-process-filter-line-buffering-decorator=
+decorator, which buffers input until it can pass an entire line
+further to the underlying process filter.
+
+Generally, users define new candidates /linewise/ from the output of a
+program.  We call a function which turns a line of output to a
+candidate a /processor/.
+
+These in themselves can't modify sources as they should be pure
+functions.  To make defining generators simpler we provide another
+auxiliary function =sallet-process-filter-linewise-candidate-decorator=
+to turn a processor into a candidate generating process filter.  Your
+generator than handles the process creation and attaches this process
+filter to the process to fill the candidates vector with values.
