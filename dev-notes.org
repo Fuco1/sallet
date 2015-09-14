@@ -199,3 +199,9 @@ auxiliary function =sallet-process-filter-linewise-candidate-decorator=
 to turn a processor into a candidate generating process filter.  Your
 generator than handles the process creation and attaches this process
 filter to the process to fill the candidates vector with values.
+
+Even more high level is the function
+=sallet-make-generator-linewise-asyncio= which takes a process creator
+(a function of one argument---prompt) and a processor and returns a
+/generator/ you can directly assign to your source.  This is the way
+virtually any linewise async io source can (should) be defined.

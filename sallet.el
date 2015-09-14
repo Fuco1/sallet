@@ -1015,21 +1015,21 @@ Any other non-prefixed pattern is matched using the following rules:
                     (when (>= (length prompt) 2)
                       (sallet-occur-get-lines buffer prompt :fuzzy)))))))
 
-;; TODO: better name, put it somewhere in the pipeline
-;; TODO: here, filter shouldn't be called filter but... line
-;; transformer? candidate generator?... filter has different meaning
-;; in sallet
-(defun sallet-create-line-asyncio-generator (process-creator filter &optional min-prompt-length)
-  "Create a source from program producing lines of candidates.
+(defun sallet-make-generator-linewise-asyncio
+    (process-creator processor &optional min-prompt-length)
+  "Make a linewise generator.
 
-PROCESS-CREATOR is a function which when called returns a process which
-produces the candidates.  It takes one argument, the current prompt.
+PROCESS-CREATOR is a function which when called returns a process
+which produces the candidates.  It takes one argument, the
+current prompt.
 
-FILTER is a function taking one line of output and producing a
+PROCESSOR is a function taking one line of output and producing a
 candidate.
 
 MIN-PROMPT-LENGTH is the length of prompt when we spawn the
-process for the first time."
+process for the first time.
+
+Return a generator."
   (setq min-prompt-length (or min-prompt-length 3))
   (lambda (source state)
     (let ((prompt (sallet-state-get-prompt state)))
@@ -1039,8 +1039,14 @@ process for the first time."
             (ignore-errors (kill-process old-proc)))
           (set-process-filter
            proc
-           (sallet-linereader
-            (sallet-linebased-candidate-generator filter source state)))
+           (sallet-process-filter-linewise-candidate-decorator
+            processor source state))
+          (set-process-sentinel
+           proc
+           (lambda (_process process-state)
+             (when (equal process-state "finished\n")
+               (sallet-update-candidates state source)
+               (sallet-render-state state t))))
           (sit-for 0.01)
           proc)))))
 
@@ -1509,19 +1515,17 @@ customize the matching algorithm, you can extend sallet source
 
 ;; TODO: write sallet for opening files
 
-;; TODO: better name, put it in the framework/pipeline somewhere
-(defun sallet-linereader (filter)
-  "Read stream of data and pass complete lines to FILTER.
+(defun sallet-process-filter-line-buffering-decorator (filter)
+  "Decorate a process FILTER with line-buffering logic.
 
-Returns a function which can be used as process sentinel.
+Return a new process filter based on FILTER.
 
-FILTER is a function which could be used with
-`set-process-filter'.
+FILTER is a function which could be used with `set-process-filter'.
 
-This decorator buffers input until it can pass the data further
-and is useful as a buffer between a process producing data and an
-Emacs function operating on the data which expects to get
-complete lines as input."
+This decorator buffers input until it can pass a complete line
+further to the supplied FILTER.  It is useful as a buffer between
+a process producing data and an Emacs function operating on the
+data which expects to get complete lines as input."
   (let ((data ""))
     (lambda (process string)
       (let* ((data (concat data string))
@@ -1531,36 +1535,38 @@ complete lines as input."
           (!cdr line-data))
         (setq data (car line-data))))))
 
-;; TODO: better name, put it in the framework/pipeline somewhere
-(defun sallet-linebased-candidate-generator (transformer source state)
-  "Turn a TRANSFORMER into candidate generator for SOURCE.
+(defun sallet-process-filter-linewise-candidate-decorator (processor source state)
+  "Turn a PROCESSOR into a candidate generating process filter.
 
-TRANSFORMER is a function which given a string generates one
-candidate from it.
+PROCESSOR is a function which given a string (usually a complete
+line of output of a program) generates one candidate from it.
 
-SOURCE is an instance of sallet source.
+SOURCE is an instance of sallet source.  The generated candidates
+are placed in this source's candidates vector.
 
 STATE is a sallet state."
   (let ((n 0))
     (sallet-source-set-candidates source (make-vector 32 nil))
-    (lambda (_process string)
-      (let* ((buffer (sallet-source-get-candidates source))
-             (cand (funcall transformer string))
-             (bl (length buffer)))
-        (when (= n bl)
-          (let ((new-buffer (make-vector (* 2 bl) nil))
-                (i 0))
-            (mapc (lambda (x)
-                    (aset new-buffer i x)
-                    (setq i (1+ i)))
-                  buffer)
-            (setq buffer new-buffer)
-            (sallet-source-set-candidates source new-buffer))
-          (sallet-update-candidates state source)
-          (sallet-render-state state t))
-        (aset buffer n cand)
-        (setq n (1+ n))
-        (sallet-source-set-candidates source buffer)))))
+    (sallet-process-filter-line-buffering-decorator
+     (lambda (_process string)
+       (let* ((buffer (sallet-source-get-candidates source))
+              (cand (funcall processor string))
+              (bl (length buffer)))
+         (when (= n bl)
+           (let ((new-buffer (make-vector (* 2 bl) nil))
+                 (i 0))
+             (mapc (lambda (x)
+                     (aset new-buffer i x)
+                     (setq i (1+ i)))
+                   buffer)
+             (setq buffer new-buffer)
+             (sallet-source-set-candidates source new-buffer)))
+         (when (= (mod n 256) 0)
+           (sallet-update-candidates state source)
+           (sallet-render-state state t))
+         (aset buffer n cand)
+         (setq n (1+ n))
+         (sallet-source-set-candidates source buffer))))))
 
 (provide 'sallet)
 
