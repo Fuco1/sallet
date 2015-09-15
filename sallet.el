@@ -1050,6 +1050,189 @@ Return a generator."
           (sit-for 0.01)
           proc)))))
 
+;; TODO: add arguments such as path and other "session" data we need
+;; to pass to grep
+;; TODO: extract the "non-updating 2nd+ argument logic"
+(defun sallet-grep-make-process-creator (file-name)
+  "Return a process creator for grep sallet.
+
+FILE-NAME is the file we are grepping."
+  (let ((old ""))
+    (lambda (prompt)
+      (let ((input (split-string prompt " ")))
+        (when (or (not old)
+                  (not (equal (car input) old)))
+          (setq old (car input))
+          (start-process
+           "grep" nil "grep" "-n"
+           (car input)
+           file-name))))))
+
+(sallet-defsource grep (asyncio)
+  "Grep."
+  (generator
+   (sallet-make-generator-linewise-asyncio
+    (sallet-grep-make-process-creator (buffer-file-name))
+    'identity))
+  (matcher (sallet-make-matcher
+            (sallet-ignore-first-token-filter
+             (sallet-make-tokenized-filter
+              'sallet-filter-substring))))
+  (renderer (lambda (c _ _) c))
+  (action (lambda (c) c)))
+
+(defun sallet-grep ()
+  "Run grep sallet."
+  (interactive)
+  (sallet (list sallet-source-grep)))
+
+;; TODO: see `sallet-grep-make-process-creator'.
+(defun sallet-gtags-files-make-process-creator ()
+  "Return a process creator for gtags-files sallet."
+  (let ((old ""))
+    (lambda (prompt)
+      (let ((input (split-string prompt " ")))
+        (when (or (not old)
+                  (not (equal (car input) old)))
+          (setq old (car input))
+          (with-temp-buffer
+            (cd (locate-dominating-file default-directory "GTAGS"))
+            (start-process
+             "global" nil "global" "-P"
+             (mapconcat
+              (lambda (x) (char-to-string x))
+              (string-to-list (car input))
+              ".*"))))))))
+
+;; TODO: after some timeout, start generating candidates automatically
+(sallet-defsource gtags-files (asyncio)
+  "Grep."
+  (generator
+   (sallet-make-generator-linewise-asyncio
+    (sallet-gtags-files-make-process-creator)
+    'identity
+    1))
+  (matcher (sallet-make-matcher
+            (sallet-make-tokenized-filter
+             'sallet-filter-flx-then-substring)))
+  (sorter sallet-sorter-flx)
+  (renderer (lambda (candidate _ user-data)
+              (sallet-compose-fontifiers
+               candidate user-data
+               '(sallet-fontify-regexp-matches . :regexp-matches)
+               '(sallet-fontify-flx-matches . :flx-matches))))
+  (action (lambda (c)
+            (-when-let (root (locate-dominating-file default-directory "GTAGS"))
+              (find-file (concat root "/" c))))))
+
+(defun sallet-gtags-files ()
+  "Run gtags files sallet."
+  (interactive)
+  (sallet (list sallet-source-gtags-files)))
+
+(defun sallet-tags-make-process-creator ()
+  "Return a process creator for gtags tags sallet."
+  (let ((old ""))
+    (lambda (prompt)
+      (let ((input (split-string prompt " ")))
+        (when (or (not old)
+                  (not (equal (car input) old)))
+          (setq old (car input))
+          ;; TODO: write something to "start global in the root" or
+          ;; figure out a way to print paths from root, not relative.
+          (with-temp-buffer
+            ;; TODO: this should come from outside?
+            (cd (locate-dominating-file default-directory "GTAGS"))
+            (start-process
+             "global" nil "global" "--result" "grep" "-T"
+             ;; TODO: extract this "fuzzy regexp" generator logic
+             (mapconcat
+              (lambda (x) (char-to-string x))
+              (string-to-list (car input))
+              ".*"))))))))
+
+;; TODO: add a stack so we can pop back from where we came
+(defun sallet-gtags-tags-action (c)
+  (-when-let (root (locate-dominating-file default-directory "GTAGS"))
+    (save-match-data
+      (let (file line)
+        (string-match "^\\(.*?\\):\\(.*?\\):" c)
+        ;; sigh...
+        (setq file  (match-string 1 c))
+        (setq line (match-string 2 c))
+        (find-file (concat root "/" file))
+        (goto-char (point-min))
+        (forward-line (1- (string-to-number line)))
+        (recenter-top-bottom)))))
+
+(sallet-defsource gtags-tags (asyncio)
+  "Grep."
+  (generator
+   ;; TODO: We should be generating better candidates, not just lines
+   ;; (identity)
+   (sallet-make-generator-linewise-asyncio
+    (sallet-tags-make-process-creator)
+    'identity))
+  (matcher
+   ;; TODO: extract this matcher into a function, it is pretty common
+   ;; (c.f. `sallet-matcher-default')
+   ;; TODO: match only on content, add / matcher for path
+   (sallet-make-matcher
+    (sallet-make-tokenized-filter
+     'sallet-filter-flx-then-substring)))
+  (sorter sallet-sorter-flx)
+  (renderer
+   ;; TODO: extract this renderer into a function, it is pretty common
+   (lambda (candidate _ user-data)
+     (sallet-compose-fontifiers
+      candidate user-data
+      '(sallet-fontify-regexp-matches . :regexp-matches)
+      '(sallet-fontify-flx-matches . :flx-matches))))
+  (action sallet-gtags-tags-action))
+
+(defun sallet-gtags-tags ()
+  "Run gtags tags sallet."
+  (interactive)
+  (sallet (list sallet-source-gtags-tags)))
+
+;; TODO: see `sallet-grep-make-process-creator'.
+(defun sallet-ag-make-process-creator ()
+  "Return a process creator for gtags-files sallet."
+  (let ((old "")
+        (root
+          (read-directory-name
+           "Project root: "
+           (locate-dominating-file default-directory "GTAGS"))))
+    (lambda (prompt)
+      (let ((input (split-string prompt " ")))
+        (when (or (not old)
+                  (not (equal (car input) old)))
+          (setq old (car input))
+          (with-temp-buffer
+            (cd root)
+            (start-process "ag" nil "ag" "--nocolor" "--literal" "--line-number" "--smart-case" "--nogroup" "--column" prompt)))))))
+
+;; TODO: match only on content, add / matcher for path.  We should
+;; acomplish this by generating better candidates, not just lines
+;; (identity)
+(sallet-defsource ag (asyncio)
+  "Grep."
+  (generator
+   (sallet-make-generator-linewise-asyncio
+    (sallet-ag-make-process-creator)
+    'identity))
+  (renderer (lambda (candidate _ user-data)
+              (sallet-fontify-regexp-matches
+               (plist-get user-data :regexp-matches)
+               candidate)))
+  ;; TODO: finish the action
+  (action (lambda (c) c)))
+
+(defun sallet-ag ()
+  "Run ag sallet."
+  (interactive)
+  (sallet (list sallet-source-ag)))
+
 (defun sallet-source-get-matcher (source)
   (oref source matcher))
 (defun sallet-source-get-sorter (source)
