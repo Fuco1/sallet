@@ -1106,12 +1106,14 @@ FILE-NAME is the file we are grepping."
           (setq old (car input))
           (with-temp-buffer
             (cd (locate-dominating-file default-directory "GTAGS"))
-            (start-process
+            (apply
+             'start-process
              "global" nil "global" "-P"
-             (mapconcat
-              (lambda (x) (char-to-string x))
-              (string-to-list (car input))
-              ".*"))))))))
+             (-concat
+              ;; "smart case"
+              (unless (string-match-p "[A-Z]" (car input))
+                (list "--ignore-case"))
+              (list (concat ".*" (car input) ".*"))))))))))
 
 ;; TODO: after some timeout, start generating candidates automatically
 (sallet-defsource gtags-files (asyncio)
@@ -1121,10 +1123,10 @@ FILE-NAME is the file we are grepping."
     (sallet-gtags-files-make-process-creator)
     'identity
     1))
-  (matcher (sallet-make-matcher
-            (sallet-make-tokenized-filter
-             'sallet-filter-flx-then-substring)))
-  (sorter sallet-sorter-flx)
+  (matcher sallet-matcher-default)
+  ;; TODO: add some sorter which does intelligent scoring for
+  ;; substring matches
+  ;; (sorter sallet-sorter-flx)
   (renderer (lambda (candidate _ user-data)
               (sallet-compose-fontifiers
                candidate user-data
