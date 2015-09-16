@@ -1238,7 +1238,10 @@ ROOT is the directory from where we launch ag(1)."
           (setq old (car input))
           (with-temp-buffer
             (cd root)
-            (start-process "ag" nil "ag" "--nocolor" "--literal" "--line-number" "--smart-case" "--nogroup" "--column" prompt)))))))
+            (start-process
+             "ag" nil "ag"
+             "--nocolor" "--literal" "--line-number" "--smart-case"
+             "--nogroup" "--column" prompt)))))))
 
 ;; TODO: match only on content, add / matcher for path.  We should
 ;; acomplish this by generating better candidates, not just lines
