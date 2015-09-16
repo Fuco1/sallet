@@ -360,6 +360,12 @@ substring-match each token to pass the test."
         (indices (sallet-make-candidate-indices candidates)))
     (funcall (sallet-make-tokenized-filter 'sallet-filter-substring) candidates indices prompt)))
 
+(defun sallet-matcher-flx-then-substring (candidates state)
+  "Flx match on first token and then substring match on the rest."
+  (let ((prompt (sallet-state-get-prompt state))
+        (indices (sallet-make-candidate-indices candidates)))
+    (funcall (sallet-make-tokenized-filter 'sallet-filter-flx-then-substring) candidates indices prompt)))
+
 ;; TODO: write a "defmatcher" macro which would automatically define
 ;; prompt and indices variables
 (defun sallet-matcher-flx (candidates state)
@@ -1174,8 +1180,6 @@ FILE-NAME is the file we are grepping."
     (sallet-tags-make-process-creator)
     'identity))
   (matcher
-   ;; TODO: extract this matcher into a function, it is pretty common
-   ;; (c.f. `sallet-matcher-default')
    ;; TODO: match only on content, add / matcher for path
    (sallet-make-matcher
     (sallet-make-tokenized-filter
