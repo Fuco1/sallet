@@ -1113,6 +1113,13 @@ FILE-NAME is the file we are grepping."
               ;; "smart case"
               (unless (string-match-p "[A-Z]" (car input))
                 (list "--ignore-case"))
+              ;; TODO: for this kind of flex matching we should
+              ;; replace . with [^/] so that we search only in the
+              ;; base name and not the directory tree.  Additionally,
+              ;; / does flex matching on the path and non-prefixed
+              ;; second and further strings substring-match the entire
+              ;; path (if the first token starts with /, we use . in
+              ;; the pattern to get full list over the entire project)
               ;; (list (mapconcat
               ;;        (lambda (x) (char-to-string x))
               ;;        (string-to-list (car input))
