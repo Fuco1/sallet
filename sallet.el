@@ -1152,13 +1152,23 @@ FILE-NAME is the file we are grepping."
           (with-temp-buffer
             ;; TODO: this should come from outside?
             (cd (locate-dominating-file default-directory "GTAGS"))
-            (start-process
+            (apply
+             'start-process
              "global" nil "global" "--result" "grep" "-T"
+             ;; TODO: extract this "smart-case logic"
+             (-concat
+              ;; "smart case"
+              (unless (string-match-p "[A-Z]" (car input))
+                (list "--ignore-case"))
+              ;; TODO: extract this "match substring anywhere in the
+              ;; string" logic
+              (list (concat ".*" (car input) ".*")))
              ;; TODO: extract this "fuzzy regexp" generator logic
-             (mapconcat
-              (lambda (x) (char-to-string x))
-              (string-to-list (car input))
-              ".*"))))))))
+             ;; (mapconcat
+             ;;  (lambda (x) (char-to-string x))
+             ;;  (string-to-list (car input))
+             ;;  ".*")
+             )))))))
 
 ;; TODO: add a stack so we can pop back from where we came
 (defun sallet-gtags-tags-action (c)
@@ -1184,10 +1194,9 @@ FILE-NAME is the file we are grepping."
     'identity))
   (matcher
    ;; TODO: match only on content, add / matcher for path
-   (sallet-make-matcher
-    (sallet-make-tokenized-filter
-     'sallet-filter-flx-then-substring)))
-  (sorter sallet-sorter-flx)
+   sallet-matcher-default)
+  ;; TODO: better sorter
+  ;; (sorter sallet-sorter-flx)
   (renderer
    ;; TODO: extract this renderer into a function, it is pretty common
    (lambda (candidate _ user-data)
