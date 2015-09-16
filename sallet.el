@@ -116,7 +116,7 @@ If UPDATE-FUNCTION is omitted the old value is replaced with NEW-VALUE."
                   (cdr-safe index)
                   properties)))
 
-(defun sallet--predicate-flx (candidate index pattern matches-property score-property)
+(defun sallet--predicate-flx (candidate index pattern matches-property score-property &optional flx-cache)
   "Match CANDIDATE at INDEX against PATTERN and update its properties.
 
 MATCHES-PROPERTY is the name of property where matching positions
@@ -124,7 +124,7 @@ of candidate are stored.
 
 SCORE-PROPERTY is the score of the flx match of this CANDIDATE
 against PATTERN. "
-  (-when-let (flx-data (flx-score candidate pattern))
+  (-when-let (flx-data (flx-score candidate pattern flx-cache))
     (sallet-update-index
      index
      (list matches-property (cdr flx-data) '-concat)
@@ -136,7 +136,7 @@ against PATTERN. "
 
 (defun sallet-predicate-path-flx (candidate index pattern)
   "Match and score path CANDIDATE at INDEX against PATTERN."
-  (sallet--predicate-flx candidate index pattern :flx-matches-path :flx-score-path))
+  (sallet--predicate-flx candidate index pattern :flx-matches-path :flx-score-path flx-file-cache))
 
 (defun sallet-predicate-buffer-major-mode (candidate index pattern)
   "Match and score CANDIDATE buffer's `major-mode' at INDEX against PATTERN.
