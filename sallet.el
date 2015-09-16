@@ -1226,17 +1226,11 @@ FILE-NAME is the file we are grepping."
   (sallet (list sallet-source-gtags-tags)))
 
 ;; TODO: see `sallet-grep-make-process-creator'.
-(defun sallet-ag-make-process-creator ()
-  "Return a process creator for gtags-files sallet."
-  (let ((old "")
-        (root
-         ;; TODO: when we re-eval ag source, this is called (because
-         ;; eieio creates new instance on class eval?).  This
-         ;; shouldn't happen, because it also disturbs file load and
-         ;; other things.
-          (read-directory-name
-           "Project root: "
-           (locate-dominating-file default-directory "GTAGS"))))
+(defun sallet-ag-make-process-creator (root)
+  "Return a process creator for gtags-files sallet.
+
+ROOT is the directory from where we launch ag(1)."
+  (let ((old ""))
     (lambda (prompt)
       (let ((input (split-string prompt " ")))
         (when (or (not old)
@@ -1252,9 +1246,12 @@ FILE-NAME is the file we are grepping."
 (sallet-defsource ag (asyncio)
   "Grep."
   (generator
-   (sallet-make-generator-linewise-asyncio
-    (sallet-ag-make-process-creator)
-    'identity))
+   '(sallet-make-generator-linewise-asyncio
+     (sallet-ag-make-process-creator
+      (read-directory-name
+       "Project root: "
+       (locate-dominating-file default-directory "GTAGS")))
+     'identity))
   (renderer (lambda (candidate _ user-data)
               (sallet-fontify-regexp-matches
                (plist-get user-data :regexp-matches)
