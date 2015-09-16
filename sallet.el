@@ -1113,6 +1113,10 @@ FILE-NAME is the file we are grepping."
               ;; "smart case"
               (unless (string-match-p "[A-Z]" (car input))
                 (list "--ignore-case"))
+              ;; (list (mapconcat
+              ;;        (lambda (x) (char-to-string x))
+              ;;        (string-to-list (car input))
+              ;;        ".*"))
               (list (concat ".*" (car input) ".*"))))))))))
 
 ;; TODO: after some timeout, start generating candidates automatically
@@ -1124,6 +1128,7 @@ FILE-NAME is the file we are grepping."
     'identity
     1))
   (matcher sallet-matcher-default)
+  ;; (matcher sallet-matcher-flx-then-substring)
   ;; TODO: add some sorter which does intelligent scoring for
   ;; substring matches
   ;; (sorter sallet-sorter-flx)
