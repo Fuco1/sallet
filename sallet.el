@@ -175,6 +175,9 @@ Uses the `flx' algorithm."
   (if (equal "" pattern) indices
     (--keep (sallet-predicate-flx (sallet-candidate-aref candidates it) it pattern) indices)))
 
+;; TODO: this shouldn't be written in terms of regexp matching but
+;; something like flx only that it takes substrigs.  So we should
+;; match "more important" parts first and score properly etc.
 (defun sallet-filter-substring (candidates indices pattern)
   "Match PATTERN against CANDIDATES at INDICES.
 
@@ -1204,6 +1207,10 @@ FILE-NAME is the file we are grepping."
   "Return a process creator for gtags-files sallet."
   (let ((old "")
         (root
+         ;; TODO: when we re-eval ag source, this is called (because
+         ;; eieio creates new instance on class eval?).  This
+         ;; shouldn't happen, because it also disturbs file load and
+         ;; other things.
           (read-directory-name
            "Project root: "
            (locate-dominating-file default-directory "GTAGS"))))
