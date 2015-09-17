@@ -1045,6 +1045,8 @@ Return a generator."
       (when (>= (length prompt) min-prompt-length)
         (-when-let (proc (funcall process-creator prompt))
           (-when-let (old-proc (sallet-source-get-process source))
+            (set-process-filter old-proc nil)
+            (set-process-sentinel old-proc nil)
             (ignore-errors (kill-process old-proc)))
           (set-process-filter
            proc
