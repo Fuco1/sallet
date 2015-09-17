@@ -1024,6 +1024,20 @@ Any other non-prefixed pattern is matched using the following rules:
                     (when (>= (length prompt) 2)
                       (sallet-occur-get-lines buffer prompt :fuzzy)))))))
 
+;; TODO: add a user/source option to disable this
+(defun sallet--smart-case (pattern &optional switch)
+  "Decide if we should turn on smart-case matching for PATTERN.
+
+If PATTERN contains upper-case letters, respect case, otherwise
+ignore case.
+
+SWITCH is the command switch which we should use to toggle this
+behaviour, defaults to \"--ignore-case\".
+
+Returns a list with car being the SWITCH."
+  (unless (string-match-p "[A-Z]" pattern)
+    (list (or switch "--ignore-case"))))
+
 (defun sallet-make-generator-linewise-asyncio
     (process-creator processor &optional min-prompt-length)
   "Make a linewise generator.
@@ -1112,9 +1126,7 @@ FILE-NAME is the file we are grepping."
              'start-process
              "global" nil "global" "-P"
              (-concat
-              ;; "smart case"
-              (unless (string-match-p "[A-Z]" (car input))
-                (list "--ignore-case"))
+              (sallet--smart-case (car input))
               ;; TODO: for this kind of flex matching we should
               ;; replace . with [^/] so that we search only in the
               ;; base name and not the directory tree.  Additionally,
@@ -1171,11 +1183,8 @@ FILE-NAME is the file we are grepping."
             (apply
              'start-process
              "global" nil "global" "--result" "grep" "-T"
-             ;; TODO: extract this "smart-case logic"
              (-concat
-              ;; "smart case"
-              (unless (string-match-p "[A-Z]" (car input))
-                (list "--ignore-case"))
+              (sallet--smart-case (car input))
               ;; TODO: extract this "match substring anywhere in the
               ;; string" logic
               (list (concat ".*" (car input) ".*")))
