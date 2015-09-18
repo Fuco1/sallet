@@ -1283,12 +1283,20 @@ ROOT is the directory from where we launch ag(1)."
         (when (or (not old)
                   (not (equal (car input) old)))
           (setq old (car input))
+          (setq input (car input))
           (apply
            'start-process
            "locate" nil "locate"
            (-concat
-            (sallet--smart-case (car input))
-            (list (car input)))))))))
+            ;; TODO: write something that dispatches on pattern like
+            ;; we have for filters
+            (unless (eq (aref input 0) ?/)
+              (list "--basename"))
+            (sallet--smart-case input)
+            (list
+             (if (eq (aref input 0) ?/)
+                 (substring input 1)
+               input)))))))))
 
 (sallet-defsource locate (asyncio)
   "Grep."
@@ -1296,6 +1304,16 @@ ROOT is the directory from where we launch ag(1)."
    (sallet-make-generator-linewise-asyncio
     (sallet-locate-make-process-creator)
     'identity))
+  (matcher (lambda (candidates state)
+             (let* ((prompt (sallet-state-get-prompt state))
+                    (indices (sallet-make-candidate-indices candidates)))
+               ;; TODO: Add searching by extension
+               (sallet-compose-filters-by-pattern
+                '(("\\`/\\(.*\\)" 1 sallet-filter-substring)
+                  (t sallet-filter-substring))
+                candidates
+                indices
+                prompt))))
   (renderer (lambda (candidate _ user-data)
               (sallet-fontify-regexp-matches
                (plist-get user-data :regexp-matches)
