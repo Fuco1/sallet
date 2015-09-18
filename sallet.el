@@ -1275,6 +1275,39 @@ ROOT is the directory from where we launch ag(1)."
   (interactive)
   (sallet (list sallet-source-ag)))
 
+(defun sallet-locate-make-process-creator ()
+  "Return a process creator for locate sallet."
+  (let ((old ""))
+    (lambda (prompt)
+      (let ((input (split-string prompt " ")))
+        (when (or (not old)
+                  (not (equal (car input) old)))
+          (setq old (car input))
+          (apply
+           'start-process
+           "locate" nil "locate"
+           (-concat
+            (sallet--smart-case (car input))
+            (list (car input)))))))))
+
+(sallet-defsource locate (asyncio)
+  "Grep."
+  (generator
+   (sallet-make-generator-linewise-asyncio
+    (sallet-locate-make-process-creator)
+    'identity))
+  (renderer (lambda (candidate _ user-data)
+              (sallet-fontify-regexp-matches
+               (plist-get user-data :regexp-matches)
+               candidate)))
+  (action (lambda (c) (find-file c))))
+
+(defun sallet-locate ()
+  "Run locate sallet."
+  (interactive)
+  (sallet (list sallet-source-locate)))
+
+
 (defun sallet-source-get-matcher (source)
   (oref source matcher))
 (defun sallet-source-get-sorter (source)
