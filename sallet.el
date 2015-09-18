@@ -175,6 +175,17 @@ Uses the `flx' algorithm."
   (if (equal "" pattern) indices
     (--keep (sallet-predicate-flx (sallet-candidate-aref candidates it) it pattern) indices)))
 
+(defun sallet-filter-path-flx (candidates indices pattern)
+  "Match PATTERN against path CANDIDATES at INDICES.
+
+CANDIDATES is a vector of candidates.
+
+INDICES is a list of processed candidates.
+
+Uses the `flx' algorithm."
+  (if (equal "" pattern) indices
+    (--keep (sallet-predicate-path-flx (sallet-candidate-aref candidates it) it pattern) indices)))
+
 ;; TODO: this shouldn't be written in terms of regexp matching but
 ;; something like flx only that it takes substrigs.  So we should
 ;; match "more important" parts first and score properly etc.
@@ -257,6 +268,23 @@ candidate should not pass the filter."
              (with-current-buffer (sallet-candidate-aref candidates it) default-directory)
              it quoted-pattern) indices)))
 
+(defun sallet--filter-flx-then-substring (candidates indices pattern flx-filter flx-score)
+  "Match PATTERN against CANDIDATES with flx- or substring-matching.
+
+FLX-FILTER is a filter using some flx algorithm, typically with
+special preferences (file paths, general strings) for different
+kinds of candidates.
+
+FLX-SCORE is the property on which we decide whether to use flx
+or substring maching.
+
+This is an internal method, for the general logic see
+`sallet-filter-flx-then-substring'."
+  (if (or (not (consp (car indices)))
+          (not (plist-member (cdar indices) :flx-score)))
+      (funcall flx-filter  candidates indices pattern)
+    (sallet-filter-substring candidates indices (regexp-quote pattern))))
+
 (defun sallet-filter-flx-then-substring (candidates indices pattern)
   "Match PATTERN against CANDIDATES with flx- or substring-matching.
 
@@ -266,10 +294,22 @@ We use following check to determine which algorithm to use:
 1. Pick the first index from INDICES.
 2. If it contains metadata related to flx-matching, we substring
    match, otherwise flx-matching was never performed so we flx-match."
-  (if (or (not (consp (car indices)))
-          (not (plist-member (cdar indices) :flx-score)))
-      (sallet-filter-flx candidates indices pattern)
-    (sallet-filter-substring candidates indices (regexp-quote pattern))))
+  (sallet--filter-flx-then-substring
+   candidates indices pattern
+   'sallet-filter-flx :flx-score))
+
+(defun sallet-filter-path-flx-then-substring (candidates indices pattern)
+  "Match PATTERN against path CANDIDATES with flx- or substring-matching.
+
+CANDIDATES are strings.
+
+We use following check to determine which algorithm to use:
+1. Pick the first index from INDICES.
+2. If it contains metadata related to flx-matching, we substring
+   match, otherwise flx-matching was never performed so we flx-match."
+  (sallet--filter-flx-then-substring
+   candidates indices pattern
+   'sallet-filter-path-flx :flx-score-path))
 
 ;; TODO: turn into a transformer returning a filter closure
 (defun sallet-pipe-filters (filters candidates indices pattern)
