@@ -1327,7 +1327,7 @@ ROOT is the directory from where we launch ag(1)."
 (defun sallet-source-is-async (source)
   (oref source async))
 (defun sallet-source-get-process (source)
-  (when (slot-exists-p source :process)
+  (when (slot-exists-p source 'process)
     (oref source process)))
 
 (defun sallet-source-set-candidates (source candidates)
