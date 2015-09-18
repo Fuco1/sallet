@@ -1058,10 +1058,7 @@ Return a generator."
     (let ((prompt (sallet-state-get-prompt state)))
       (when (>= (length prompt) min-prompt-length)
         (-when-let (proc (funcall process-creator prompt))
-          (-when-let (old-proc (sallet-source-get-process source))
-            (set-process-filter old-proc nil)
-            (set-process-sentinel old-proc nil)
-            (ignore-errors (kill-process old-proc)))
+          (sallet--kill-source-process source)
           (set-process-filter
            proc
            (sallet-process-filter-linewise-candidate-decorator
@@ -1485,8 +1482,17 @@ scrolling/position of selected/marked candidate."
       (ov (point) (+ 2 (point)) 'display ">>" 'sallet-selected-candidate-arrow t)
       (set-window-point (get-buffer-window (sallet-state-get-candidate-buffer state)) pos))))
 
-(defun sallet-cleanup-candidate-window ()
-  "Cleanup the candidates buffer."
+(defun sallet--kill-source-process (source)
+  "Kill process associated with SOURCE, if any."
+  (-when-let (old-proc (sallet-source-get-process source))
+    (set-process-filter old-proc nil)
+    (set-process-sentinel old-proc nil)
+    (ignore-errors (kill-process old-proc))))
+
+(defun sallet-cleanup-candidate-window (state)
+  "Cleanup the sallet STATE."
+  (--each (sallet-state-get-sources state)
+    (sallet--kill-source-process it))
   (-when-let (buffer (get-buffer "*Sallet candidates*"))
     (kill-buffer buffer))
   (--each (buffer-list)
@@ -1650,8 +1656,8 @@ The closure is stored in function slot.")
                                              map))
           (sallet-default-action))
       ;; TODO: do we want `kill-buffer-and-window?'
-      (quit (sallet-cleanup-candidate-window))
-      (error (sallet-cleanup-candidate-window)))))
+      (quit (sallet-cleanup-candidate-window state))
+      (error (sallet-cleanup-candidate-window state)))))
 
 ;; TODO: figure out how to avoid the global state here: sallet-state
 (defun sallet-candidate-up ()
@@ -1683,7 +1689,8 @@ The closure is stored in function slot.")
     (sallet-state-set-selected-candidate sallet-state next)))
 
 (defun sallet-default-action ()
-  (sallet-cleanup-candidate-window)
+  "Default sallet action."
+  (sallet-cleanup-candidate-window sallet-state)
   (-when-let ((source . cand) (sallet-state-get-selected-source sallet-state))
     (funcall (sallet-source-get-action source) cand)))
 
