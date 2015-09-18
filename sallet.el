@@ -1315,6 +1315,46 @@ ROOT is the directory from where we launch ag(1)."
   (interactive)
   (sallet (list sallet-source-ag)))
 
+(defun sallet-ag-files-make-process-creator (root)
+  "Return a process creator for ag-files sallet.
+
+ROOT is the directory from where we launch ag(1)."
+  (let ((old ""))
+    (lambda (prompt)
+      (let ((input (split-string prompt " ")))
+        (when (or (not old)
+                  (not (equal (car input) old)))
+          (setq old (car input))
+          (with-temp-buffer
+            (cd root)
+            (start-process
+             "ag" nil "ag" "--nocolor" "--literal"
+             "--smart-case" "-g" prompt)))))))
+
+(sallet-defsource ag-files (asyncio)
+  "Grep."
+  (ag-root nil)
+  (generator
+   '(sallet-make-generator-linewise-asyncio
+     (sallet-ag-files-make-process-creator
+      ;; TODO: we need to somehow store this thing in the source's
+      ;; property `ag-root'.
+      (read-directory-name
+       "Project root: "
+       (locate-dominating-file default-directory "GTAGS")))
+     'identity))
+  (renderer (lambda (candidate _ user-data)
+              (sallet-fontify-regexp-matches
+               (plist-get user-data :regexp-matches)
+               candidate)))
+  ;; TODO: finish the action
+  (action (lambda (c) (find-file c))))
+
+(defun sallet-ag-files ()
+  "Run ag sallet."
+  (interactive)
+  (sallet (list sallet-source-ag-files)))
+
 (defun sallet-locate-make-process-creator ()
   "Return a process creator for locate sallet."
   (let ((old ""))
