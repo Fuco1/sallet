@@ -1397,9 +1397,9 @@ ROOT is the directory from where we launch ag(1)."
   (matcher (lambda (candidates state)
              (let* ((prompt (sallet-state-get-prompt state))
                     (indices (sallet-make-candidate-indices candidates)))
-               ;; TODO: Add searching by extension
                (sallet-compose-filters-by-pattern
                 '(("\\`/\\(.*\\)" 1 sallet-filter-substring)
+                  ("\\`\\.\\(.*\\)" 1 sallet-filter-file-extension)
                   (t sallet-filter-substring))
                 candidates
                 indices
