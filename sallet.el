@@ -200,6 +200,16 @@ Uses substring matching."
   (let ((quoted-pattern (regexp-quote pattern)))
     (--keep (sallet-predicate-regexp (sallet-candidate-aref candidates it) it quoted-pattern) indices)))
 
+(defun sallet-filter-file-extension (candidates indices pattern)
+  "Match PATTERN against CANDIDATES at INDICES matching pattern as file extension.
+
+CANDIDATES is a vector of candidates.
+
+INDICES is a list of processed candidates."
+  (let ((quoted-pattern (concat "\\." (regexp-quote pattern) "[^.]*\\'")))
+    (--keep (sallet-predicate-regexp (sallet-candidate-aref candidates it) it quoted-pattern) indices)))
+
+
 (defun sallet-predicate-buffer-imenu (candidate index pattern)
   "Check if buffer contains `imenu' item flx-matching PATTERN.
 
