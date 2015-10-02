@@ -1196,6 +1196,7 @@ FILE-NAME is the file we are grepping."
     (sallet-gtags-files-make-process-creator)
     'identity
     1))
+  (project-root (locate-dominating-file default-directory "GTAGS"))
   (matcher sallet-matcher-default)
   ;; (matcher sallet-matcher-flx-then-substring)
   ;; TODO: add some sorter which does intelligent scoring for
@@ -1208,7 +1209,11 @@ FILE-NAME is the file we are grepping."
                '(sallet-fontify-flx-matches . :flx-matches))))
   (action (lambda (c)
             (-when-let (root (locate-dominating-file default-directory "GTAGS"))
-              (find-file (concat root "/" c))))))
+              (find-file (concat root "/" c)))))
+  (header (lambda (source)
+            (sallet--wrap-header-string
+             (format "File in project %s" (oref source project-root))
+             source))))
 
 (defun sallet-gtags-files ()
   "Run gtags files sallet."
