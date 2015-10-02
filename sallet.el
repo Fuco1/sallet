@@ -1085,8 +1085,9 @@ SWITCH is the command switch which we should use to toggle this
 behaviour, defaults to \"--ignore-case\".
 
 Returns a list with car being the SWITCH."
-  (unless (string-match-p "[A-Z]" pattern)
-    (list (or switch "--ignore-case"))))
+  (let ((case-fold-search nil))
+    (unless (string-match-p "[A-Z]" pattern)
+      (list (or switch "--ignore-case")))))
 
 (defun sallet-make-generator-linewise-asyncio
     (process-creator processor &optional min-prompt-length)
