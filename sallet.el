@@ -1556,6 +1556,36 @@ STATE is sallet state."
     (setq sallet-state state)
     state))
 
+(defun sallet--wrap-header-string (header-string source)
+  "Wrap HEADER-STRING for SOURCE with meta information."
+  (format
+   " • %s [%d/%d]"
+   header-string
+   (length (sallet-source-get-processed-candidates source))
+   (length (sallet-source-get-candidates source))))
+
+(defun sallet--propertize-header (header-string)
+  "Propertize HEADER-STRING with default sallet header face."
+  (propertize header-string 'face 'sallet-source-header))
+
+(defun sallet-render-header (source)
+  "Render header for sallet SOURCE."
+  (let ((processed-candidates (sallet-source-get-processed-candidates source)))
+    (when (and processed-candidates
+               (> (length processed-candidates) 0))
+      (let ((header (sallet-source-get-header source)))
+        (if (functionp header)
+            (insert
+             (let ((header-string (funcall header source)))
+               (if (text-property-not-all
+                    0 (length header-string) 'face nil header-string)
+                   header-string
+                 (sallet--propertize-header
+                  (concat header-string "\n")))))
+          (insert
+           (sallet--propertize-header
+            (concat (sallet--wrap-header-string header source) "\n"))))))))
+
 ;; TODO propertize the interesting stuff, define faces
 (defun sallet-render-source (state source offset)
   "Render.
@@ -1571,17 +1601,7 @@ Return number of rendered candidates."
            (renderer (sallet-source-get-renderer source))
            (coffset (- selected offset))
            (i 0))
-      ;; TODO: abstract header rendering
-      (when (and processed-candidates
-                 (> (length processed-candidates) 0))
-        (let ((header (sallet-source-get-header source)))
-          (if (functionp header)
-              (insert (funcall header source) "\n")
-            (insert (propertize (format " • %s [%d/%d]\n"
-                                        header
-                                        (length (sallet-source-get-processed-candidates source))
-                                        (length (sallet-source-get-candidates source)))
-                                'face 'sallet-source-header)))))
+      (sallet-render-header source)
       (-each processed-candidates
         (lambda (n)
           ;; `n' can be a number or a list returned from the
