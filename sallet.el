@@ -943,6 +943,9 @@ Any other non-prefixed pattern is matched using the following rules:
                              (t sallet-filter-flx-then-substring)) c i p))) a b))
 
 (defun sallet-imenu-candidates ()
+  ;; We need to clean the index for `imenu--make-index-alist' to
+  ;; refresh.
+  (setq imenu--index-alist nil)
   (let ((initial (symbol-name (symbol-at-point)))
         (cands (--map (if (cddr it) it (-snoc it ""))
                       (--remove (< (cadr it) 0) (sallet--imenu-flatten (imenu--make-index-alist))))))
