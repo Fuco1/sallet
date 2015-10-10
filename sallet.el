@@ -44,6 +44,7 @@
 (require 'sallet-buffer)
 (require 'sallet-recentf)
 (require 'sallet-imenu)
+(require 'sallet-occur)
 
 (defgroup sallet ()
   "Select candidates in a buffer."
@@ -164,83 +165,6 @@ Any other non-prefixed pattern is matched using the following rules:
                             (unless (get-file-buffer path)
                               (cons (substring-no-properties (car it)) path)))
                           (bmkp-file-alist-only)))))
-
-;; TODO: write docstring
-(defun sallet-occur-get-lines (buffer prompt &optional mode no-font-lock)
-  "Mode: :normal, :fuzzy, :regexp (default)"
-  (let ((pattern
-         (concat "\\("
-                 (cond
-                  ((eq mode :normal)
-                   (regexp-quote prompt))
-                  ((eq mode :fuzzy)
-                   (mapconcat 'identity
-                              (mapcar 'char-to-string (string-to-list prompt))
-                              ".*"))
-                  (t prompt))
-                 "\\)"))
-        re)
-    (with-current-buffer buffer
-      (goto-char (point-min))
-      (while (re-search-forward pattern nil t)
-        (let* ((lb (line-beginning-position))
-               (le (line-end-position))
-               (line (save-excursion
-                       (if no-font-lock
-                           (buffer-substring-no-properties lb le)
-                         (font-lock-fontify-region lb le)
-                         (buffer-substring lb le)))))
-          (push (list line (point) (line-number-at-pos)) re)))
-      (vconcat (nreverse re)))))
-
-(sallet-defsource occur nil
-  "Occur source."
-  (candidates nil)
-  (matcher nil)
-  (renderer (-lambda ((line-string _ line-number) _ _)
-              ;; TODO: add face to the number
-              (format "%5d:%s" line-number line-string)))
-  (generator '(let ((buffer (current-buffer)))
-                (lambda (_ state)
-                  (let ((prompt (sallet-state-get-prompt state)))
-                    ;; TODO: move this into a separate setting... this
-                    ;; is going to be quite common for "computing"
-                    ;; sources
-                    (when (>= (length prompt) 2)
-                      (sallet-occur-get-lines buffer prompt :normal))))))
-  (action (lambda (c)
-            ;; TODO: why isn't it enough to use `goto-char'?  Probably
-            ;; active window is badly re-set after candidate window is
-            ;; disposed
-            (set-window-point (selected-window) (cadr c)))))
-
-(sallet-defsource occur-async (occur)
-  "Async occur source."
-  (async t)
-  (renderer (-lambda ((line-string _ line-number) _ _)
-              ;; TODO: add face to the number
-              ;; TODO: fontify the result line here instead of in the async process
-              (format "%5d:%s" line-number line-string)))
-  ;; the buffer we search is the current buffer in the async instance
-  (generator (lambda (_ state)
-               (let ((prompt (sallet-state-get-prompt state)))
-                 ;; TODO: move this into a separate setting... this
-                 ;; is going to be quite common for "computing"
-                 ;; sources
-                 (when (>= (length prompt) 2)
-                   (sallet-occur-get-lines (current-buffer) prompt :normal :no-font-lock))))))
-
-(sallet-defsource occur-fuzzy (occur)
-  "Fuzzy occur source."
-  ;; matcher is used to rank & reorder best matches on top ...
-  (matcher sallet-matcher-flx)
-  (sorter sallet-sorter-flx)
-  ;; ... while generator is the stupidest matcher possible
-  (generator '(let ((buffer (current-buffer)))
-                (lambda (_ state)
-                  (let ((prompt (sallet-state-get-prompt state)))
-                    (when (>= (length prompt) 2)
-                      (sallet-occur-get-lines buffer prompt :fuzzy)))))))
 
 ;; TODO: add a user/source option to disable this
 (defun sallet--smart-case (pattern &optional switch)
