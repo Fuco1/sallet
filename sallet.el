@@ -37,6 +37,7 @@
 
 (require 'sallet-core)
 (require 'sallet-filters)
+(require 'sallet-faces)
 
 (defgroup sallet ()
   "Select candidates in a buffer."
@@ -237,70 +238,6 @@ and identity action."
   (process nil
            :documentation "Process generating candidates"))
 
-(defgroup sallet-faces nil
-  "Sallet faces."
-  :group 'sallet)
-
-(defface sallet-source-header
-  '((t (:inherit highlight)))
-  "Face used to fontify source header."
-  :group 'sallet-faces)
-
-(defface sallet-buffer-ordinary
-  '((t (:inherit font-lock-type-face)))
-  "Face used to fontify ordinary buffers."
-  :group 'sallet-faces)
-
-(defface sallet-buffer-modified
-  '((t (:inherit font-lock-warning-face)))
-  "Face used to fontify modified (unsaved) buffers."
-  :group 'sallet-faces)
-
-(defface sallet-buffer-compressed
-  '((t (:inherit font-lock-doc-face)))
-  "Face used to fontify buffers representing compressed files.
-
-Compressed files are those matching
-`ibuffer-compressed-file-name-regexp'."
-  :group 'sallet-faces)
-
-(defface sallet-buffer-read-only
-  '((t (:inherit font-lock-constant-face)))
-  "Face used to fontify read-only buffers."
-  :group 'sallet-faces)
-
-(defface sallet-buffer-special
-  '((t (:inherit font-lock-keyword-face)))
-  "Face used to fontify special buffers.
-
-Special buffers are those prefixed by *."
-  :group 'sallet-faces)
-
-(defface sallet-buffer-help
-  '((t (:inherit font-lock-comment-face)))
-  "Face used to fontify help buffers.
-
-Help buffers are those whose major mode matches
-`ibuffer-help-buffer-modes'."
-  :group 'sallet-faces)
-
-(defface sallet-buffer-directory
-  '((t (:inherit font-lock-function-name-face)))
-  "Face used to fontify directory buffers.
-
-Directory buffers are those whose major mode is `dired-mode'."
-  :group 'sallet-faces)
-
-(defface sallet-buffer-size
-  '((t (:foreground "RosyBrown")))
-  "Face used to fontify buffer size."
-  :group 'sallet-faces)
-
-(defface sallet-buffer-default-directory
-  '((t (:foreground "Sienna3")))
-  "Face used to fontify buffer's default directory or process."
-  :group 'sallet-faces)
-
 (defun sallet-buffer-fontify-buffer-name (candidate)
   "Fontify buffer name."
   (with-current-buffer candidate
@@ -317,79 +254,6 @@ Directory buffers are those whose major mode is `dired-mode'."
                  (buffer-read-only 'sallet-buffer-read-only)
                  (t 'sallet-buffer-ordinary))))
       (propertize (buffer-name) 'face face))))
-
-(defface sallet-regexp-match
-  '((t (:inherit font-lock-variable-name-face :weight bold)))
-  "Face used to fontify regexp matches."
-  :group 'sallet-faces)
-
-(defface sallet-substring-match
-  '((t (:inherit font-lock-variable-name-face :weight bold)))
-  "Face used to fontify substring matches."
-  :group 'sallet-faces)
-
-(defface sallet-flx-match
-  '((t (:inherit font-lock-variable-name-face :weight bold
-        :underline (:color foreground-color :style line))))
-  "Face used to fontify flx matches."
-  :group 'sallet-faces)
-
-(defun sallet--fontify-regions (regions string face)
-  "Highlight regions.
-
-REGIONS is a list of conses (BEG . END) where each cons delimits the region.
-
-STRING is the string we want to fontify."
-  (let ((new-string (copy-sequence string)))
-    (-each regions
-      (-lambda ((beg . end))
-        (add-text-properties beg end (list 'face face) new-string)))
-    new-string))
-
-(defun sallet-fontify-regexp-matches (matches string)
-  "Highlight regexp matches.
-
-MATCHES is a list of conses (BEG . END) where each cons delimits the matched region.
-
-STRING is the string we want to fontify."
-  (sallet--fontify-regions matches string 'sallet-regexp-match))
-
-(defun sallet-fontify-substring-matches (matches string)
-  "Highlight substring matches.
-
-MATCHES is a list of conses (BEG . END) where each cons delimits the matched region.
-
-STRING is the string we want to fontify."
-  (sallet--fontify-regions matches string 'sallet-substring-match))
-
-(defun sallet-fontify-flx-matches (matches string)
-  "Highlight flx matches.
-
-MATCHES is a list of indices where flx matched a letter to the input pattern.
-
-STRING is the string we want to fontify."
-  (let ((new-string (copy-sequence string)))
-    (--each matches
-      (add-text-properties it (1+ it) (list 'face 'sallet-flx-match) new-string))
-    new-string))
-
-(defun sallet-compose-fontifiers (string user-data &rest fontifiers)
-  "Fontify STRING using information from USER-DATA, applying FONTIFIERS in sequence.
-
-FONTIFIERS is an list of (FONTIFIER . ATTRIBUTE) or FONTIFIER.
-
-ATTRIBUTE is key into the USER-DATA.
-
-FONTIFIER is a function of one or two arguments.  If it has
-associated ATTRIBUTE, its value in USER-DATA is passed as first
-argument, the string to be fontified as second.  Otherwise just
-the string is passed to the function."
-  (--reduce-from (let ((user-value (when (consp it) (plist-get user-data (cdr it))))
-                       (fn (if (consp it) (car it) it)))
-                   (if (consp it)
-                       (funcall fn user-value acc)
-                     (funcall fn acc)))
-                 string fontifiers))
 
 (defun sallet-buffer-renderer (candidate _ user-data)
   "Render a buffer CANDIDATE."
