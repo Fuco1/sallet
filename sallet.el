@@ -475,8 +475,8 @@ ROOT is the directory from where we launch ag(1)."
             (concat (sallet--wrap-header-string header source) "\n"))))))))
 
 ;; TODO propertize the interesting stuff, define faces
-(defun sallet-render-source (state source offset)
-  "Render.
+(defun sallet-render-source (source state offset)
+  "Render SOURCE in STATE.
 
 OFFSET is the number of already rendered candidates before
 this source.
@@ -521,7 +521,7 @@ scrolling/position of selected/marked candidate."
       (let ((offset 0))
         (-each (sallet-state-get-sources state)
           (lambda (source)
-            (setq offset (+ offset (sallet-render-source state source offset)))))
+            (setq offset (+ offset (sallet-render-source source state offset)))))
         (insert "\n\n"))))
   ;; Draw the >> pointer to the currently active candidate
   (with-current-buffer (sallet-state-get-candidate-buffer state)
