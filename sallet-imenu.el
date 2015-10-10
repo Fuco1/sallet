@@ -65,12 +65,6 @@
              '(sallet-fontify-regexp-matches . :regexp-matches-path)
              '(sallet-fontify-flx-matches . :flx-matches-path)))))
 
-(defun sallet-imenu-matcher (a b)
-  (funcall (sallet-make-matcher (lambda (c i p)
-                          (sallet-compose-filters-by-pattern
-                           '(("\\`/\\(.*\\)" 1 sallet-filter-imenu-tags-flx)
-                             (t sallet-filter-flx-then-substring)) c i p))) a b))
-
 (defun sallet-imenu-candidates ()
   ;; We need to clean the index for `imenu--make-index-alist' to
   ;; refresh.
@@ -87,7 +81,11 @@
 (sallet-defsource imenu nil
   "Imenu."
   (candidates sallet-imenu-candidates)
-  (matcher sallet-imenu-matcher)
+  (matcher (sallet-make-matcher
+            (lambda (c i p)
+              (sallet-compose-filters-by-pattern
+               '(("\\`/\\(.*\\)" 1 sallet-filter-imenu-tags-flx)
+                 (t sallet-filter-flx-then-substring)) c i p))))
   (sorter sallet-sorter-flx)
   (renderer sallet-imenu-renderer)
   (action (-lambda ((_ pos))
