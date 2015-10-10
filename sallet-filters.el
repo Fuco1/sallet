@@ -147,7 +147,7 @@ or substring maching.
 This is an internal method, for the general logic see
 `sallet-filter-flx-then-substring'."
   (if (or (not (consp (car indices)))
-          (not (plist-member (cdar indices) :flx-score)))
+          (not (plist-member (cdar indices) flx-score)))
       (funcall flx-filter  candidates indices pattern)
     (sallet-filter-substring candidates indices (regexp-quote pattern))))
 
