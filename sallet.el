@@ -42,6 +42,7 @@
 (require 'sallet-faces)
 
 (require 'sallet-buffer)
+(require 'sallet-recentf)
 
 (defgroup sallet ()
   "Select candidates in a buffer."
@@ -92,50 +93,6 @@ substring-match each token to pass the test."
             (> a b)))))
 
 ;; TODO: define source for files in the current directory
-
-(defface sallet-recentf-buffer-name
-  '((t (:inherit font-lock-builtin-face)))
-  "Face used to fontify recentf buffer name."
-  :group 'sallet-faces)
-
-(defface sallet-recentf-file-path
-  '((t (:inherit sallet-buffer-default-directory)))
-  "Face used to fontify recentf file path."
-  :group 'sallet-faces)
-
-;; TODO: faces should come as optional parameters, this should be called "bookmark cons" renderer
-(defun sallet-recentf-renderer (candidate _ user-data)
-  "Render a recentf candidate."
-  (-let (((name . file) candidate))
-    (format "%-50s%s"
-            (sallet-fontify-flx-matches
-             (plist-get user-data :flx-matches)
-             (propertize name 'face 'sallet-recentf-buffer-name))
-            (propertize (abbreviate-file-name file) 'face 'sallet-recentf-file-path))))
-
-(sallet-defsource recentf nil
-  "Files saved on `recentf-list'."
-  (candidates (lambda ()
-                (unless recentf-mode (recentf-mode 1))
-                (--map
-                 (let ((name (file-name-nondirectory it)))
-                   (cons name it))
-                 recentf-list)))
-  ;; TODO: add matching on path with /
-  (matcher sallet-matcher-flx)
-  (renderer sallet-recentf-renderer)
-  (action (-lambda ((_ . file)) (find-file file)))
-  (header "Recently opened files"))
-
-(sallet-defsource recentf-closed-only (recentf)
-  "Files saved on `recentf-list', but without those whose buffer is already opened."
-  (candidates (lambda ()
-                (unless recentf-mode (recentf-mode 1))
-                (--keep
-                 (let ((name (file-name-nondirectory it)))
-                   (unless (get-file-buffer it)
-                     (cons name it)))
-                 recentf-list))))
 
 (defun sallet-filter-autobookmark-path-substring (candidates indices pattern)
   "Keep autobookmark CANDIDATES substring-matching PATTERN against file path."
