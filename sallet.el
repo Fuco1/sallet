@@ -35,86 +35,11 @@
 (require 'ibuffer)
 (require 'imenu)
 
+(require 'sallet-core)
 (defgroup sallet ()
   "Select candidates in a buffer."
   :group 'convenience
   :prefix "sallet-")
-
-(defun sallet-vector-logical-length (vector)
-  "Return logical length of VECTOR.
-
-Logical length is the number of non-nil elements from start."
-  (let ((i 0))
-    (catch 'end
-      (mapc (lambda (x) (if x (setq i (1+ i)) (throw 'end i))) vector)
-      (length vector))))
-
-(defun sallet-make-candidate-indices (candidates)
-  "Create the indices list for CANDIDATES.
-
-This is a list from 0 to (1- logical-length-of-candidates).  This
-list is used in the filtering pipeline and at the end the
-remaining indices point to the candidates structure and designate
-valid candidates."
-  (number-sequence 0 (1- (sallet-vector-logical-length candidates))))
-
-(defun sallet-car-maybe (cons-or-thing)
-  "Return `car' of CONS-OR-THING if it is a cons or itself otherwise."
-  (if (consp cons-or-thing) (car cons-or-thing) cons-or-thing))
-
-(defun sallet-aref (candidates index)
-  "Return element of CANDIDATES at INDEX.
-
-If INDEX is a number behaves just like `aref'.
-
-If INDEX is a cons, take its `car' and then behaves like `aref'."
-  (if (numberp index)
-      (aref candidates index)
-    (aref candidates (car index))))
-
-(defun sallet-candidate-aref (candidates index)
-  "Return candidate from CANDIDATES at INDEX.
-
-CANDIDATES is a vector of candidates.  If the element at index is
-a list, return its `car', otherwise return the element without change.
-
-INDEX is a number, index into the CANDIDATES array.  If the index
-is a list, take its `car'."
-  (sallet-car-maybe (aref candidates (sallet-car-maybe index))))
-
-(defun sallet-plist-update (plist property data update-function)
-  "Take PLIST and append DATA to PROPERTY.
-
-The value at PROPERTY is a list.
-
-UPDATE-FUNCTION is used to compute the new value inserted into
-the plist.  It takes two arguments, DATA and old value of
-PROPERTY."
-  (let ((old-data (plist-get plist property)))
-    (plist-put plist property (funcall update-function data old-data))))
-
-(defun sallet-update-index (index &rest properties)
-  "Update INDEX with PROPERTIES.
-
-PROPERTIES is a list of properties (PROPERTY NEW-VALUE UPDATE-FUNCTION).
-
-PROPERTY is the key under which the value is stored.
-
-NEW-VALUE is the value to combine with the old value.
-
-UPDATE-FUNCTION is used to compute the new value inserted into
-the plist.  It takes two arguments, NEW-VALUE and old value of
-PROPERTY.
-
-If UPDATE-FUNCTION is omitted the old value is replaced with NEW-VALUE."
-  (cons
-   (sallet-car-maybe index)
-   (--reduce-from (let* ((property (car it))
-                         (new-value (cadr it))
-                         (update-function (or (nth 2 it) (lambda (x _) x))))
-                    (sallet-plist-update acc property new-value update-function))
-                  (cdr-safe index)
-                  properties)))
 
 (defun sallet--predicate-flx (candidate index pattern matches-property score-property &optional flx-cache)
   "Match CANDIDATE at INDEX against PATTERN and update its properties.
