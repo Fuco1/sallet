@@ -49,49 +49,6 @@
   :group 'convenience
   :prefix "sallet-")
 
-(defun sallet-make-matcher (filter)
-  "Make a sallet matcher from a filter."
-  (lambda (candidates state)
-    (let ((prompt (sallet-state-get-prompt state))
-          (indices (sallet-make-candidate-indices candidates)))
-      (funcall filter candidates indices prompt))))
-
-(defun sallet-matcher-default (candidates state)
-  "Default matcher.
-
-The prompt is split on whitespace, then candidate must
-substring-match each token to pass the test."
-  (let ((prompt (sallet-state-get-prompt state))
-        (indices (sallet-make-candidate-indices candidates)))
-    (funcall (sallet-make-tokenized-filter 'sallet-filter-substring) candidates indices prompt)))
-
-(defun sallet-matcher-flx-then-substring (candidates state)
-  "Flx match on first token and then substring match on the rest."
-  (let ((prompt (sallet-state-get-prompt state))
-        (indices (sallet-make-candidate-indices candidates)))
-    (funcall (sallet-make-tokenized-filter 'sallet-filter-flx-then-substring) candidates indices prompt)))
-
-;; TODO: write a "defmatcher" macro which would automatically define
-;; prompt and indices variables
-(defun sallet-matcher-flx (candidates state)
-  "Match candidates using flx matching."
-  (let ((prompt (sallet-state-get-prompt state))
-        (indices (sallet-make-candidate-indices candidates)))
-    (sallet-filter-flx candidates indices prompt)))
-
-;; TODO: figure out how to compose this when multiple filters are in
-;; place and not all of them provide the sorting attribute
-(defun sallet-sorter-flx (processed-candidates _)
-  "Sort PROCESSED-CANDIDATES by :flx-score."
-  (sort processed-candidates
-        (lambda (a b)
-          ;; UGLY!!!!
-          (if (and (consp a) (consp b))
-              (-when-let* (((_ &keys :flx-score sa) a)
-                           ((_ &keys :flx-score sb) b))
-                (> sa sb))
-            (> a b)))))
-
 ;; TODO: define source for files in the current directory
 
 (defun sallet-filter-autobookmark-path-substring (candidates indices pattern)

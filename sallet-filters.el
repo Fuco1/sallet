@@ -29,6 +29,7 @@
 (require 'flx)
 
 (require 'sallet-core)
+(require 'sallet-state)
 
 
 ;;; Predicates
@@ -109,6 +110,7 @@ Uses the `flx' algorithm."
 ;; TODO: this shouldn't be written in terms of regexp matching but
 ;; something like flx only that it takes substrigs.  So we should
 ;; match "more important" parts first and score properly etc.
+;; TODO: make a specialized version for file names
 (defun sallet-filter-substring (candidates indices pattern)
   "Match PATTERN against CANDIDATES at INDICES.
 
@@ -250,6 +252,58 @@ to the asyncio process and the rest to the matcher."
            (new-pattern (mapconcat 'identity (cdr tokens) " ")))
       (if (equal new-pattern "") indices
         (funcall filter candidates indices new-pattern)))))
+
+
+;;; Matchers
+
+(defun sallet-matcher-default (candidates state)
+  "Default matcher.
+
+The prompt is split on whitespace, then candidate must
+substring-match each token to pass the test."
+  (let ((prompt (sallet-state-get-prompt state))
+        (indices (sallet-make-candidate-indices candidates)))
+    (funcall (sallet-make-tokenized-filter 'sallet-filter-substring) candidates indices prompt)))
+
+(defun sallet-matcher-flx-then-substring (candidates state)
+  "Flx match on first token and then substring match on the rest."
+  (let ((prompt (sallet-state-get-prompt state))
+        (indices (sallet-make-candidate-indices candidates)))
+    (funcall (sallet-make-tokenized-filter 'sallet-filter-flx-then-substring) candidates indices prompt)))
+
+;; TODO: write a "defmatcher" macro which would automatically define
+;; prompt and indices variables
+(defun sallet-matcher-flx (candidates state)
+  "Match candidates using flx matching."
+  (let ((prompt (sallet-state-get-prompt state))
+        (indices (sallet-make-candidate-indices candidates)))
+    (sallet-filter-flx candidates indices prompt)))
+
+
+;;; Matcher combinators
+
+(defun sallet-make-matcher (filter)
+  "Make a sallet matcher from a filter."
+  (lambda (candidates state)
+    (let ((prompt (sallet-state-get-prompt state))
+          (indices (sallet-make-candidate-indices candidates)))
+      (funcall filter candidates indices prompt))))
+
+
+;;; Sorters
+
+;; TODO: figure out how to compose this when multiple filters are in
+;; place and not all of them provide the sorting attribute
+(defun sallet-sorter-flx (processed-candidates _)
+  "Sort PROCESSED-CANDIDATES by :flx-score."
+  (sort processed-candidates
+        (lambda (a b)
+          ;; UGLY!!!!
+          (if (and (consp a) (consp b))
+              (-when-let* (((_ &keys :flx-score sa) a)
+                           ((_ &keys :flx-score sb) b))
+                (> sa sb))
+            (> a b)))))
 
 (provide 'sallet-filters)
 ;;; sallet-filters.el ends here
