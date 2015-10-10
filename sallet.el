@@ -134,38 +134,6 @@ Any other non-prefixed pattern is matched using the following rules:
   (action (-lambda ((_ . x)) (abm-restore-killed-buffer x)))
   (header "Autobookmarks"))
 
-;; TODO: this depends on bookmark+ (`bmkp-file-alist-only',
-;; `bmkp-jump-1'), should probably be moved to a different file.
-(sallet-defsource bookmarks-file-only nil
-  "Bookmarks source, files only."
-  (candidates (lambda () (--map
-                          (cons
-                           (substring-no-properties (car it))
-                           (cdr (assoc 'filename (cdr it))))
-                          (bmkp-file-alist-only))))
-  ;; TODO: enable matching on paths with /
-  (matcher sallet-matcher-flx)
-  ;; TODO: extract into generic "flx fontify string candidate"
-  ;; renderer
-  (renderer sallet-recentf-renderer ;; TODO: directory bookmarks should have different color
-            ;; (lambda (c _ user-data)
-            ;;   (sallet-fontify-flx-matches
-            ;;    (plist-get user-data :flx-matches)
-            ;;    (car c)))
-            )
-  (action (-lambda ((name))
-            ;; TODO: doesn't seem to work
-            (bmkp-jump-1 name 'switch-to-buffer nil)))
-  (header "Bookmarks"))
-
-(sallet-defsource bookmarks-file-only-closed-only (bookmarks-file-only)
-  "Bookmarks source, files only, closed files only."
-  (candidates (lambda () (--keep
-                          (let ((path (cdr (assoc 'filename (cdr it)))))
-                            (unless (get-file-buffer path)
-                              (cons (substring-no-properties (car it)) path)))
-                          (bmkp-file-alist-only)))))
-
 ;; TODO: add a user/source option to disable this
 (defun sallet--smart-case (pattern &optional switch)
   "Decide if we should turn on smart-case matching for PATTERN.
