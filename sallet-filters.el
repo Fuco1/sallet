@@ -41,7 +41,9 @@ MATCHES-PROPERTY is the name of property where matching positions
 of candidate are stored.
 
 SCORE-PROPERTY is the score of the flx match of this CANDIDATE
-against PATTERN. "
+against PATTERN.
+
+FLX-CACHE is a cache maintained by `flx' to reuse heatmaps."
   (-when-let (flx-data (flx-score candidate pattern flx-cache))
     (sallet-update-index
      index
@@ -86,7 +88,7 @@ of candidate are stored."
 
 ;; TODO: figure out how the caching works
 (defun sallet-filter-flx (candidates indices pattern)
-  "Match PATTERN against CANDIDATES at INDICES.
+  "Match CANDIDATES at INDICES against PATTERN.
 
 CANDIDATES is a vector of candidates.
 
@@ -97,7 +99,7 @@ Uses the `flx' algorithm."
     (--keep (sallet-predicate-flx (sallet-candidate-aref candidates it) it pattern) indices)))
 
 (defun sallet-filter-path-flx (candidates indices pattern)
-  "Match PATTERN against path CANDIDATES at INDICES.
+  "Match path CANDIDATES at INDICES against PATTERN.
 
 CANDIDATES is a vector of candidates.
 
@@ -112,7 +114,7 @@ Uses the `flx' algorithm."
 ;; match "more important" parts first and score properly etc.
 ;; TODO: make a specialized version for file names
 (defun sallet-filter-substring (candidates indices pattern)
-  "Match PATTERN against CANDIDATES at INDICES.
+  "Match CANDIDATES at INDICES against PATTERN.
 
 CANDIDATES is a vector of candidates.
 
@@ -123,7 +125,7 @@ Uses substring matching."
     (--keep (sallet-predicate-regexp (sallet-candidate-aref candidates it) it quoted-pattern) indices)))
 
 (defun sallet-filter-file-extension (candidates indices pattern)
-  "Match PATTERN against CANDIDATES at INDICES matching pattern as file extension.
+  "Match CANDIDATES at INDICES against PATTERN as file extension.
 
 CANDIDATES is a vector of candidates.
 
@@ -135,7 +137,7 @@ INDICES is a list of processed candidates."
 ;;; Filter combinators
 
 (defun sallet--filter-flx-then-substring (candidates indices pattern flx-filter flx-score)
-  "Match PATTERN against CANDIDATES with flx- or substring-matching.
+  "Match CANDIDATES at INDICES against PATTERN with flx- or substring-matching.
 
 FLX-FILTER is a filter using some flx algorithm, typically with
 special preferences (file paths, general strings) for different
@@ -152,7 +154,7 @@ This is an internal method, for the general logic see
     (sallet-filter-substring candidates indices (regexp-quote pattern))))
 
 (defun sallet-filter-flx-then-substring (candidates indices pattern)
-  "Match PATTERN against CANDIDATES with flx- or substring-matching.
+  "Match CANDIDATES at INDICES against PATTERN with flx- or substring-matching.
 
 CANDIDATES are strings.
 
@@ -165,7 +167,7 @@ We use following check to determine which algorithm to use:
    'sallet-filter-flx :flx-score))
 
 (defun sallet-filter-path-flx-then-substring (candidates indices pattern)
-  "Match PATTERN against path CANDIDATES with flx- or substring-matching.
+  "Match path CANDIDATES at INDICES against PATTERN with flx/substring-matching.
 
 CANDIDATES are strings.
 
@@ -179,7 +181,7 @@ We use following check to determine which algorithm to use:
 
 ;; TODO: turn into a transformer returning a filter closure
 (defun sallet-pipe-filters (filters candidates indices pattern)
-  "Run all FILTERS in sequence, filtering CANDIDATES against PATTERN."
+  "Run all FILTERS in sequence, filtering CANDIDATES at INDICES against PATTERN."
   (--reduce-from (funcall it candidates acc pattern) indices filters))
 
 ;; TODO: maybe we can add support for "... ..." patterns by "spliting
@@ -191,7 +193,7 @@ We use following check to determine which algorithm to use:
 ;; (similarly as we keep the pattern from one update ago).
 ;; TODO: turn into a transformer returning a filter closure
 (defun sallet-compose-filters-by-pattern (filter-alist candidates indices pattern)
-  "Filter CANDIDATES using rules from FILTER-ALIST.
+  "Compose filters to match tokens based on patterns.
 
 FILTER-ALIST is an alist of (SUBPATTERN . FILTERS) or (SUBPATTERN
 MATCH-GROUP . FILTERS).
@@ -206,7 +208,7 @@ filter INDICES through the associated list of filters.  The
 pattern passed to the filter is the value of first match group of
 SUBPATTERN or MATCH-GROUP if specified.
 
-The special SUBPATTERN `t' signifies a default branch.  As soon
+The special SUBPATTERN t signifies a default branch.  As soon
 as this SUBPATTERN is found the search stops and its filters are
 applied.
 
@@ -229,7 +231,7 @@ Return INDICES filtered in this manner by all the TOKENS."
     indices))
 
 (defun sallet-make-tokenized-filter (filter)
-  "Return a variant of FILTER which matches each token from input pattern separately.
+  "Transform FILTER to match each token from input pattern separately.
 
 Input pattern is split on whitespace to create list of tokens.
 Each candidate is then matched against each token.  Only
@@ -239,7 +241,7 @@ candidates matching all tokens will pass the test."
       (--reduce-from (funcall filter candidates acc it) indices tokens))))
 
 (defun sallet-ignore-first-token-filter (filter)
-  "Return a variant of FILTER which ignores first token of prompt.
+  "Transform FILTER to ignore the first token of prompt.
 
 Input pattern is split on whitespace to create list of tokens.
 The first token is dropped and then the resulting strings are
@@ -259,6 +261,10 @@ to the asyncio process and the rest to the matcher."
 (defun sallet-matcher-default (candidates state)
   "Default matcher.
 
+Take CANDIDATES, which is a vector of candidates from a source
+and a sallet STATE and return a list of indices of matching
+candidates.
+
 The prompt is split on whitespace, then candidate must
 substring-match each token to pass the test."
   (let ((prompt (sallet-state-get-prompt state))
@@ -266,7 +272,11 @@ substring-match each token to pass the test."
     (funcall (sallet-make-tokenized-filter 'sallet-filter-substring) candidates indices prompt)))
 
 (defun sallet-matcher-flx-then-substring (candidates state)
-  "Flx match on first token and then substring match on the rest."
+  "Match first token with `flx' and then substring match the rest.
+
+Take CANDIDATES, which is a vector of candidates from a source
+and a sallet STATE and return a list of indices of matching
+candidates."
   (let ((prompt (sallet-state-get-prompt state))
         (indices (sallet-make-candidate-indices candidates)))
     (funcall (sallet-make-tokenized-filter 'sallet-filter-flx-then-substring) candidates indices prompt)))
@@ -274,7 +284,11 @@ substring-match each token to pass the test."
 ;; TODO: write a "defmatcher" macro which would automatically define
 ;; prompt and indices variables
 (defun sallet-matcher-flx (candidates state)
-  "Match candidates using flx matching."
+  "Match candidates using `flx' matching.
+
+Take CANDIDATES, which is a vector of candidates from a source
+and a sallet STATE and return a list of indices of matching
+candidates."
   (let ((prompt (sallet-state-get-prompt state))
         (indices (sallet-make-candidate-indices candidates)))
     (sallet-filter-flx candidates indices prompt)))
@@ -283,7 +297,7 @@ substring-match each token to pass the test."
 ;;; Matcher combinators
 
 (defun sallet-make-matcher (filter)
-  "Make a sallet matcher from a filter."
+  "Make a sallet matcher from a FILTER."
   (lambda (candidates state)
     (let ((prompt (sallet-state-get-prompt state))
           (indices (sallet-make-candidate-indices candidates)))

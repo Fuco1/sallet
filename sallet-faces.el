@@ -114,7 +114,7 @@ Directory buffers are those whose major mode is `dired-mode'."
 ;;; Fontification helpers
 
 (defun sallet--fontify-regions (regions string face)
-  "Highlight regions.
+  "Highlight REGIONS of STRING using FACE.
 
 REGIONS is a list of conses (BEG . END) where each cons delimits the region.
 
@@ -126,23 +126,25 @@ STRING is the string we want to fontify."
     new-string))
 
 (defun sallet-fontify-regexp-matches (matches string)
-  "Highlight regexp matches.
+  "Highlight regexp MATCHES in STRING.
 
-MATCHES is a list of conses (BEG . END) where each cons delimits the matched region.
+MATCHES is a list of conses (BEG . END) where each cons delimits
+the matched region.
 
 STRING is the string we want to fontify."
   (sallet--fontify-regions matches string 'sallet-regexp-match))
 
 (defun sallet-fontify-substring-matches (matches string)
-  "Highlight substring matches.
+  "Highlight substring MATCHES in STRING.
 
-MATCHES is a list of conses (BEG . END) where each cons delimits the matched region.
+MATCHES is a list of conses (BEG . END) where each cons delimits
+the matched region.
 
 STRING is the string we want to fontify."
   (sallet--fontify-regions matches string 'sallet-substring-match))
 
 (defun sallet-fontify-flx-matches (matches string)
-  "Highlight flx matches.
+  "Highlight flx MATCHES in STRING.
 
 MATCHES is a list of indices where flx matched a letter to the input pattern.
 
@@ -153,9 +155,10 @@ STRING is the string we want to fontify."
     new-string))
 
 (defun sallet-compose-fontifiers (string user-data &rest fontifiers)
-  "Fontify STRING using information from USER-DATA, applying FONTIFIERS in sequence.
+  "Fontify STRING using information from USER-DATA by applying FONTIFIERS.
 
 FONTIFIERS is an list of (FONTIFIER . ATTRIBUTE) or FONTIFIER.
+Fontifiers are applied in sequence.
 
 ATTRIBUTE is key into the USER-DATA.
 

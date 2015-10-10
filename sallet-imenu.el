@@ -36,20 +36,21 @@
 
 
 (defun sallet--imenu-flatten (alist)
-  "Compute imenu candidates."
+  "Flatten an imenu ALIST."
   (--mapcat (if (imenu--subalist-p it)
                 (-map (-lambda ((name pos . tags)) (-cons* name pos (car it) tags)) (sallet--imenu-flatten (cdr it)))
               (list (list (car it) (cdr it))))
             alist))
 
 (defun sallet-filter-imenu-tags-flx (candidates indices pattern)
-  "Keep buffer CANDIDATES flx-matching PATTERN against imenu tags."
+  "Keep buffer CANDIDATES at INDICES flx-matching PATTERN against imenu tags."
   (--keep (sallet-predicate-path-flx
            (mapconcat 'identity (cddr (sallet-aref candidates it)) ", ")
            it pattern) indices))
 
-(defun sallet-imenu-renderer (c _ user-data)
-  (-let* (((x _ . tags) c)
+(defun sallet-imenu-renderer (candidate _state user-data)
+  "Render an imenu CANDIDATE."
+  (-let* (((x _ . tags) candidate)
           (face (cond ((member "Variables" tags)
                        'font-lock-variable-name-face)
                       ((member "Types" tags)
@@ -66,6 +67,7 @@
              '(sallet-fontify-flx-matches . :flx-matches-path)))))
 
 (defun sallet-imenu-candidates ()
+  "Compute imenu candidates."
   ;; We need to clean the index for `imenu--make-index-alist' to
   ;; refresh.
   (setq imenu--index-alist nil)

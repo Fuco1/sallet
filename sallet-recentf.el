@@ -41,8 +41,8 @@
   :group 'sallet-faces)
 
 ;; TODO: faces should come as optional parameters, this should be called "bookmark cons" renderer
-(defun sallet-recentf-renderer (candidate _ user-data)
-  "Render a recentf candidate."
+(defun sallet-recentf-renderer (candidate _state user-data)
+  "Render a recentf CANDIDATE."
   (-let (((name . file) candidate))
     (format "%-50s%s"
             (sallet-fontify-flx-matches

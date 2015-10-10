@@ -247,6 +247,8 @@ FILE-NAME is the file we are grepping."
   "Return a process creator for gtags tags sallet."
   (let ((old ""))
     (lambda (prompt)
+      ;; TODO: Extract this "run on change of first token only" logic,
+      ;; see `sallet-run-program-on-first'.
       (let ((input (split-string prompt " ")))
         (when (or (not old)
                   (not (equal (car input) old)))
@@ -272,14 +274,15 @@ FILE-NAME is the file we are grepping."
              )))))))
 
 ;; TODO: add a stack so we can pop back from where we came
-(defun sallet-gtags-tags-action (c)
+(defun sallet-gtags-tags-action (candidate)
+  "Display tag CANDIDATE in its buffer."
   (-when-let (root (locate-dominating-file default-directory "GTAGS"))
     (save-match-data
       (let (file line)
-        (string-match "^\\(.*?\\):\\(.*?\\):" c)
+        (string-match "^\\(.*?\\):\\(.*?\\):" candidate)
         ;; sigh...
-        (setq file  (match-string 1 c))
-        (setq line (match-string 2 c))
+        (setq file (match-string 1 candidate))
+        (setq line (match-string 2 candidate))
         (find-file (concat root "/" file))
         (goto-char (point-min))
         (forward-line (1- (string-to-number line)))
@@ -483,11 +486,8 @@ this source.
 
 Return number of rendered candidates."
   (with-current-buffer (sallet-state-get-candidate-buffer state)
-    (let* ((selected (sallet-state-get-selected-candidate state))
-           (prompt (sallet-state-get-prompt state))
-           (processed-candidates (sallet-source-get-processed-candidates source))
+    (let* ((processed-candidates (sallet-source-get-processed-candidates source))
            (renderer (sallet-source-get-renderer source))
-           (coffset (- selected offset))
            (i 0))
       (sallet-render-header source)
       (-each processed-candidates
@@ -628,6 +628,10 @@ The closure is stored in function slot.")
   (sallet-update-candidates state source))
 
 (defun sallet-process-sources (state)
+  "Process all sallet sources in STATE.
+
+There are three principal types of sources: sync, async and
+asyncio."
   ;; TODO: add old-prompt to state
   ;; TODO: add old-processed-candidates to state
   (-each (sallet-state-get-sources state)
@@ -652,6 +656,10 @@ The closure is stored in function slot.")
             (sallet-state-set-futures state (plist-put futures source-id proc))))))))
 
 (defun sallet-minibuffer-post-command (state)
+  "Function called in `post-command-hook' when sallet STATE is active.
+
+This function is added to minibuffer's `post-command-hook' and
+updates the candidate buffer."
   (let ((old-prompt (sallet-state-get-prompt state))
         (new-prompt (buffer-substring-no-properties 5 (point-max))))
     (unless (equal old-prompt new-prompt)
@@ -678,6 +686,7 @@ The closure is stored in function slot.")
 ;; TODO: add some simple default implementation for "line candidates
 ;; from process" and "grep-like candidates from process"
 (defun sallet (sources)
+  "Run sallet SOURCES."
   (let* ((buffer (get-buffer-create "*Sallet candidates*"))
          ;; make this lexically scoped
          (state (sallet-init-state sources buffer)))
@@ -695,7 +704,7 @@ The closure is stored in function slot.")
     ;; `helm-always-two-windows'.
     (switch-to-buffer buffer)
     (sallet-render-state state t)
-    (condition-case var
+    (condition-case _var
         (minibuffer-with-setup-hook (lambda () (sallet-minibuffer-setup state))
           ;; TODO: add support to pass maps
           ;; TODO propertize prompt
@@ -712,12 +721,14 @@ The closure is stored in function slot.")
 
 ;; TODO: figure out how to avoid the global state here: sallet-state
 (defun sallet-candidate-up ()
+  "Move up one candidate in the candidate buffer."
   (interactive)
   (when (< (sallet-state-get-selected-candidate sallet-state)
            (1- (sallet-state-get-number-of-all-candidates sallet-state)))
     (sallet-state-incf-selected-candidate sallet-state)))
 
 (defun sallet-candidate-down ()
+  "Move down one candidate in the candidate buffer."
   (interactive)
   (when (> (sallet-state-get-selected-candidate sallet-state) 0)
     (sallet-state-decf-selected-candidate sallet-state)))
@@ -769,6 +780,7 @@ sallet source `sallet-source-occur-fuzzy'."
   (sallet (list sallet-source-occur-fuzzy)))
 
 (defun sallet-occur-async ()
+  "Run async occur sallet."
   (interactive)
   (sallet (list sallet-source-occur-async)))
 
@@ -786,6 +798,7 @@ customize the matching algorithm, you can extend sallet source
   (sallet (list sallet-source-occur)))
 
 (defun sallet-imenu ()
+  "Run imenu sallet."
   (interactive)
   (sallet (list sallet-source-imenu)))
 

@@ -44,7 +44,7 @@
 ;; TODO: add a matcher for major mode based on extension and
 ;; auto-mode-alist
 (defun sallet-autobookmarks-matcher (candidates state)
-  "Match an autobookmark candidate using special rules.
+  "Match autobookmark CANDIDATES using special rules.
 
 First, the prompt is split on whitespace.  This creates a list of
 patterns.
@@ -72,8 +72,8 @@ Any other non-prefixed pattern is matched using the following rules:
      prompt)))
 
 ;; TODO: improve
-(defun sallet-autobookmarks-renderer (candidate _ user-data)
-  "Render an `autobookmarks-mode' candidate."
+(defun sallet-autobookmarks-renderer (candidate _state user-data)
+  "Render an `autobookmarks-mode' CANDIDATE."
   (-let* (((name path . data) candidate)
           ((&alist 'visits visits) data))
     (format "%-55s%5s  %s"

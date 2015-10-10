@@ -31,7 +31,13 @@
 
 ;; TODO: write docstring
 (defun sallet-occur-get-lines (buffer prompt &optional mode no-font-lock)
-  "Mode: :normal, :fuzzy, :regexp (default)"
+  "Find lines of BUFFER matching PROMPT.
+
+The optional argument MODE specifies the algorithm used and is
+one of: :normal, :fuzzy, :regexp (default).
+
+The optional argument NO-FONT-LOCK specifies whether we force
+font-locking of matched line or not (default on: we font-lock)."
   (let ((pattern
          (concat "\\("
                  (cond

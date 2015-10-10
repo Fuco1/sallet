@@ -80,6 +80,7 @@ computes it.")
   (decf (cdr (assoc 'selected-candidate state))))
 
 (defun sallet-state-get-number-of-all-candidates (state)
+  "Return the number of all candidates in this STATE."
   (-sum (--map (length (sallet-source-get-processed-candidates it))
                (sallet-state-get-sources state))))
 
@@ -105,6 +106,7 @@ STATE is sallet state."
                    (nth (- offset total-old) proc))))))))
 
 (defun sallet-init-state (sources candidate-buffer)
+  "Initialize state with SOURCES in CANDIDATE-BUFFER."
   (let ((state (list (cons 'sources (-keep 'sallet-init-source sources))
                      (cons 'current-buffer (current-buffer))
                      (cons 'prompt "")

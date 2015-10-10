@@ -151,7 +151,7 @@ and identity action."
   (elt (sallet-source-get-candidates source) n))
 
 (defun sallet-init-source (source)
-  "Initiate the source."
+  "Initiate the SOURCE."
   (-when-let (instance (funcall source (symbol-name source)))
     (let ((candidates (sallet-source-get-candidates instance)))
       (cond

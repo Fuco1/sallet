@@ -50,7 +50,7 @@ thematic and related to buffers is probably a good idea."
 ;; Buffer predicates and filters
 
 (defun sallet-predicate-buffer-imenu (candidate index pattern)
-  "Check if buffer contains `imenu' item flx-matching PATTERN.
+  "Check if buffer has an `imenu' item flx-matching pattern.
 
 CANDIDATE is a buffer or buffer name.
 
@@ -74,17 +74,17 @@ candidate should not pass the filter."
     index))
 
 (defun sallet-filter-buffer-imenu (candidates indices pattern)
-  "Keep buffer CANDIDATES flx-matching PATTERN against an imenu item."
+  "Keep buffer CANDIDATES at INDICES flx-matching PATTERN against an imenu item."
   (--keep (sallet-predicate-buffer-imenu (sallet-candidate-aref candidates it) it pattern) indices))
 
 (defun sallet-filter-buffer-major-mode (candidates indices pattern)
-  "Keep buffer CANDIDATES flx-matching PATTERN against current `major-mode'."
+  "Keep buffer CANDIDATES at INDICES flx-matching PATTERN against current `major-mode'."
   (--keep (sallet-predicate-buffer-major-mode
            (with-current-buffer (sallet-candidate-aref candidates it) (symbol-name major-mode))
            it pattern) indices))
 
 (defun sallet-predicate-buffer-fulltext (candidate index pattern)
-  "Check if buffer's `buffer-string' regexp-matches PATTERN.
+  "Check if buffer's `buffer-string' regexp-matches pattern.
 
 CANDIDATE is a buffer or buffer name.
 
@@ -101,19 +101,19 @@ candidate should not pass the filter."
     index))
 
 (defun sallet-filter-buffer-fulltext (candidates indices pattern)
-  "Keep buffer CANDIDATES regexp-matching PATTERN against `buffer-string'."
+  "Keep buffer CANDIDATES at INDICES regexp-matching PATTERN against `buffer-string'."
   (--keep (sallet-predicate-buffer-fulltext (sallet-candidate-aref candidates it) it pattern) indices))
 
 (defun sallet-filter-buffer-default-directory-flx (candidates indices pattern)
-  "Keep buffer CANDIDATES flx-matching PATTERN against `default-directory'."
+  "Keep buffer CANDIDATES at INDICES flx-matching PATTERN against `default-directory'."
   (--keep (sallet-predicate-path-flx
            (with-current-buffer (sallet-candidate-aref candidates it) default-directory)
            it pattern) indices))
 
 (defun sallet-filter-buffer-default-directory-substring (candidates indices pattern)
-  "Keep buffer CANDIDATES substring-matching PATTERN against `default-directory'."
+  "Keep buffer CANDIDATES at INDICES substring-matching PATTERN against `default-directory'."
   (let ((quoted-pattern (regexp-quote pattern)))
-    ;; TODO: replace with specialized substring matcher
+    ;; TODO: replace with specialized file substring matcher
     (--keep (sallet-predicate-path-regexp
              (with-current-buffer (sallet-candidate-aref candidates it) default-directory)
              it quoted-pattern) indices)))
@@ -121,7 +121,7 @@ candidate should not pass the filter."
 
 
 (defun sallet-buffer-fontify-buffer-name (candidate)
-  "Fontify buffer name."
+  "Fontify buffer CANDIDATE's name."
   (with-current-buffer candidate
     (let ((face (cond
                  ((and (buffer-file-name)
