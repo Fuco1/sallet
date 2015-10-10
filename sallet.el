@@ -569,8 +569,8 @@ The closure is stored in function slot.")
   (add-hook 'post-command-hook 'sallet-minibuffer-post-command-hook nil t))
 
 ;; TODO: figure out how to do the buffer passing fast
-(defun sallet-process-source-async (state source)
-  "Process SOURCE asynchronously in separate emacs."
+(defun sallet-process-source-async (source state)
+  "Process SOURCE in STATE asynchronously in separate Emacs."
   (let ((sallet-async-state (--remove
                              (memq (car it) '(sources
                                               futures
@@ -648,7 +648,7 @@ The closure is stored in function slot.")
               (let ((buffer (process-buffer process)))
                 (kill-process process)
                 (kill-buffer buffer))))
-          (let ((proc (sallet-process-source-async state source)))
+          (let ((proc (sallet-process-source-async source state)))
             (sallet-state-set-futures state (plist-put futures source-id proc))))))))
 
 (defun sallet-minibuffer-post-command (state)
