@@ -180,6 +180,37 @@ Additionally, any extra user data produced by matcher and/or sorter
 an optional third argument.
 
 * Auxiliary
+** Process creators
+A /process creator/ is a function of one argument, prompt, which is
+responsible for starting and returning the process which generates
+candidates.  It does not attach any filters or sentinels on it, it
+simply starts it and returns.  Other functions are then responsible to
+attach filters on this process to add candidates to the source's
+candidate vector.
+
+If you need to "store" information in the process creator (such as
+root directory of a search or any other state) you can create a
+closure with this information bound.  Most sources defined in sallet
+use auxiliary functions to create these closures, such as
+=sallet-grep-make-process-creator= which takes one argument, the file
+name of the file we are grepping, and returns a closure of one
+argument, the prompt, with the file name closed over.
+
+Various decorators exist to change behaviour of these process
+creators.  First is =sallet-process-creator-first-token-only=, which
+only passes the first whitespace-separated token to the decorated
+process creator.  If the first token hasn't changed the process is
+not needlessly rerun.
+
+This is useful when we want to generate some initial list of
+candidates and then further narrow in elisp without the extra overhead
+of re-launching possibly slow searches (think about =find(1)= returning
+thousands of candidates).
+
+Another decorator is =sallet-process-creator-start-on-prompt-length=.
+This decorator makes sure to only run the process creator if prompt
+length is greater than the specified limit.
+
 ** Process filters and decorators
 Because sallet provides async IO sources and the Emacs async IO is
 quite hairy, we provide some auxiliary decorators to deal with output
