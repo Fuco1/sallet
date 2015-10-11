@@ -97,6 +97,32 @@ Return a generator."
         (sit-for 0.01)
         proc))))
 
+(defun sallet-process-creator-first-token-only (process-creator)
+  "Decorate PROCESS-CREATOR to only receive first input token.
+
+PROCESS-CREATOR is responsible for creating a process which will
+generate candidates for current session and is called each time
+the prompt changes.
+
+This decorator interprets the prompt and only passes the first
+whitespace-separated token to the decorated PROCESS-CREATOR.
+Further, if this token hasn't changed the process is not
+restarted."
+  (let ((old ""))
+    (lambda (prompt)
+      (let ((input (split-string prompt " ")))
+        (when (or (not old)
+                  (not (equal (car input) old)))
+          (setq old (car input))
+          (funcall process-creator (car input)))))))
+
+(defun sallet-process-creator-start-on-prompt-length (process-creator &optional limit)
+  "Decorate PROCESS-CREATOR to only run if prompt is longer than LIMIT.
+
+Default limit is 3 characters."
+  (lambda (prompt)
+    (when (>= (length prompt) (or limit 3))
+      (funcall process-creator prompt))))
 
 ;; TODO: add arguments such as path and other "session" data we need
 ;; to pass to grep
@@ -196,49 +222,6 @@ FILE-NAME is the file we are grepping."
   "Run gtags files sallet."
   (interactive)
   (sallet (list sallet-source-gtags-files)))
-
-(defmacro sallet-run-program-on-first (&rest body)
-  "Run BODY." ;; TODO: better docs
-  (declare (indent 0))
-  `(let ((old ""))
-     (lambda (prompt)
-       (let ((input (split-string prompt " ")))
-         (when (or (not old)
-                   (not (equal (car input) old)))
-           (setq old (car input))
-           ;; TODO: write something to "start global in the root" or
-           ;; figure out a way to print paths from root, not relative.
-           ,@body)))))
-
-(defmacro sallet-run-program-on-first (program-creator)
-  "Run BODY." ;; TODO: better docs
-  (declare (indent 0))
-  (let ((old ""))
-    (lambda (prompt)
-      (let ((input (split-string prompt " ")))
-        (when (or (not old)
-                  (not (equal (car input) old)))
-          (setq old (car input))
-          (funcall program-creator (car input)))))))
-
-;; (sallet-run-program-on-first
-;;   (with-temp-buffer
-;;     ;; TODO: this should come from outside?
-;;     (cd (locate-dominating-file default-directory "GTAGS"))
-;;     (apply
-;;      'start-process
-;;      "global" nil "global" "--result" "grep" "-T"
-;;      (-concat
-;;       (sallet--smart-case (car input))
-;;       ;; TODO: extract this "match substring anywhere in the
-;;       ;; string" logic
-;;       (list (concat ".*" (car input) ".*")))
-;;      ;; TODO: extract this "fuzzy regexp" generator logic
-;;      ;; (mapconcat
-;;      ;;  (lambda (x) (char-to-string x))
-;;      ;;  (string-to-list (car input))
-;;      ;;  ".*")
-;;      )))
 
 (defun sallet-tags-make-process-creator ()
   "Return a process creator for gtags tags sallet."
