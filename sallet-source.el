@@ -87,7 +87,12 @@ and identity action."
             :documentation "write what a renderer is.")
   ;; action: TODO: (cons action-name action-function)
   ;; TODO: add support for actions which do not kill the session
-  (action identity)
+  (action (lambda (_source candidate) candidate)
+          :documentation
+    "Default action on the candidate when sallet session is finished.
+
+An action is a function of two arguments, the current source and
+the picked candidate.")
   ;; A function generating candidates, a list or vector of candidates.
   ;; Candidates can be either strings or any lists with first element
   ;; being used for matching (usually a string, but can be anything as

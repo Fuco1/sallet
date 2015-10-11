@@ -110,7 +110,7 @@ Any other non-prefixed pattern is matched using the following rules:
                         (abm-recent-buffers)))))
   (matcher sallet-autobookmarks-matcher)
   (renderer sallet-autobookmarks-renderer)
-  (action (-lambda ((_ . x)) (abm-restore-killed-buffer x)))
+  (action (-lambda (_source (_ . x)) (abm-restore-killed-buffer x)))
   (header "Autobookmarks"))
 
 (provide 'sallet-autobookmarks)

@@ -132,7 +132,7 @@ FILE-NAME is the file we are grepping."
              (sallet-make-tokenized-filter
               'sallet-filter-substring))))
   (renderer (lambda (c _ _) c))
-  (action (lambda (c) c)))
+  (action (lambda (_source c) c)))
 
 (defun sallet-grep ()
   "Run grep sallet."
@@ -187,9 +187,8 @@ FILE-NAME is the file we are grepping."
                candidate user-data
                '(sallet-fontify-regexp-matches . :regexp-matches)
                '(sallet-fontify-flx-matches . :flx-matches))))
-  (action (lambda (c)
-            (-when-let (root (locate-dominating-file default-directory "GTAGS"))
-              (find-file (concat root "/" c)))))
+  (action (lambda (source c)
+            (find-file (concat (oref source project-root) "/" c))))
   (header (lambda (source)
             (sallet--wrap-header-string
              (format "File in project %s" (oref source project-root))
@@ -274,7 +273,7 @@ FILE-NAME is the file we are grepping."
              )))))))
 
 ;; TODO: add a stack so we can pop back from where we came
-(defun sallet-gtags-tags-action (candidate)
+(defun sallet-gtags-tags-action (source candidate)
   "Display tag CANDIDATE in its buffer."
   (-when-let (root (locate-dominating-file default-directory "GTAGS"))
     (save-match-data
@@ -350,7 +349,7 @@ ROOT is the directory from where we launch ag(1)."
                (plist-get user-data :regexp-matches)
                candidate)))
   ;; TODO: finish the action
-  (action (lambda (c) c)))
+  (action (lambda (_source c) c)))
 
 (defun sallet-ag ()
   "Run ag sallet."
@@ -390,7 +389,7 @@ ROOT is the directory from where we launch ag(1)."
                (plist-get user-data :regexp-matches)
                candidate)))
   ;; TODO: finish the action
-  (action (lambda (c) (find-file c))))
+  (action (lambda (_source c) (find-file c))))
 
 (defun sallet-ag-files ()
   "Run ag sallet."
@@ -440,7 +439,7 @@ ROOT is the directory from where we launch ag(1)."
               (sallet-fontify-regexp-matches
                (plist-get user-data :regexp-matches)
                candidate)))
-  (action (lambda (c) (find-file c))))
+  (action (lambda (_source c) (find-file c))))
 
 (defun sallet-locate ()
   "Run locate sallet."
@@ -754,7 +753,7 @@ updates the candidate buffer."
   "Default sallet action."
   (sallet-cleanup-candidate-window sallet-state)
   (-when-let ((source . cand) (sallet-state-get-selected-source sallet-state))
-    (funcall (sallet-source-get-action source) cand)))
+    (funcall (sallet-source-get-action source) source cand)))
 
 (defun sallet-buffer ()
   "Display buffer-like candidates.

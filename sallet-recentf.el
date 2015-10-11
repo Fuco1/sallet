@@ -61,7 +61,7 @@
   ;; TODO: add matching on path with /
   (matcher sallet-matcher-flx)
   (renderer sallet-recentf-renderer)
-  (action (-lambda ((_ . file)) (find-file file)))
+  (action (-lambda (_source (_ . file)) (find-file file)))
   (header "Recently opened files"))
 
 (sallet-defsource recentf-closed-only (recentf)

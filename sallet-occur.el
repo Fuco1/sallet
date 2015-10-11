@@ -78,7 +78,7 @@ font-locking of matched line or not (default on: we font-lock)."
                     ;; sources
                     (when (>= (length prompt) 2)
                       (sallet-occur-get-lines buffer prompt :normal))))))
-  (action (lambda (c)
+  (action (lambda (_source c)
             ;; TODO: why isn't it enough to use `goto-char'?  Probably
             ;; active window is badly re-set after candidate window is
             ;; disposed

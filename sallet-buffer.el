@@ -235,7 +235,7 @@ Any other non-prefixed pattern is matched using the following rules:
                       (-cons* (cadr buffers) (car buffers) (cddr buffers))
                     buffers))))
   (matcher sallet-buffer-matcher)
-  (action switch-to-buffer)
+  (action (lambda (_source c) (switch-to-buffer c)))
   (header "Buffers")
   (renderer sallet-buffer-renderer))
 

@@ -90,7 +90,7 @@
                  (t sallet-filter-flx-then-substring)) c i p))))
   (sorter sallet-sorter-flx)
   (renderer sallet-imenu-renderer)
-  (action (-lambda ((_ pos))
+  (action (-lambda (_source (_ pos))
             (cond
              ((eq major-mode 'org-mode)
               (goto-char pos)

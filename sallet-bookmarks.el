@@ -51,7 +51,7 @@
             ;;    (plist-get user-data :flx-matches)
             ;;    (car c)))
             )
-  (action (-lambda ((name))
+  (action (-lambda (_source (name))
             ;; TODO: doesn't seem to work
             (bmkp-jump-1 name 'switch-to-buffer nil)))
   (header "Bookmarks"))
