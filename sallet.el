@@ -134,7 +134,9 @@ FILE-NAME is the file we are grepping."
              (sallet-make-tokenized-filter
               'sallet-filter-substring))))
   (renderer (lambda (c _ _) c))
-  (action (lambda (_source c) c)))
+  (action (lambda (_source c)
+            (goto-char (point-min))
+            (forward-line (1- (string-to-number (car (split-string c ":"))))))))
 
 (defun sallet-grep ()
   "Run grep sallet."
