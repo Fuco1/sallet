@@ -116,10 +116,12 @@ FILE-NAME is the file we are grepping."
         (when (or (not old)
                   (not (equal (car input) old)))
           (setq old (car input))
-          (start-process
+          (apply
+           'start-process
            "grep" nil "grep" "-n"
-           (car input)
-           file-name))))))
+           (-concat
+            (sallet--smart-case (car input))
+            (list (car input) file-name))))))))
 
 (sallet-defsource grep (asyncio)
   "Grep."
