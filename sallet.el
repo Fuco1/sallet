@@ -126,29 +126,25 @@ Default limit is 3 characters."
 
 ;; TODO: add arguments such as path and other "session" data we need
 ;; to pass to grep
-;; TODO: extract the "non-updating 2nd+ argument logic"
 (defun sallet-grep-make-process-creator (file-name)
   "Return a process creator for grep sallet.
 
 FILE-NAME is the file we are grepping."
-  (let ((old ""))
-    (lambda (prompt)
-      (let ((input (split-string prompt " ")))
-        (when (or (not old)
-                  (not (equal (car input) old)))
-          (setq old (car input))
-          (apply
-           'start-process
-           "grep" nil "grep" "-n"
-           (-concat
-            (sallet--smart-case (car input))
-            (list (car input) file-name))))))))
+  (lambda (prompt)
+    (apply
+     'start-process
+     "grep" nil "grep" "-n"
+     (-concat
+      (sallet--smart-case prompt)
+      (list prompt file-name)))))
 
 (sallet-defsource grep (asyncio)
   "Grep."
   (generator
    (sallet-make-generator-linewise-asyncio
-    (sallet-grep-make-process-creator (buffer-file-name))
+    (sallet-process-creator-min-prompt-length
+     (sallet-process-creator-first-token-only
+      (sallet-grep-make-process-creator (buffer-file-name))))
     'identity))
   (matcher (sallet-make-matcher
             (sallet-ignore-first-token-filter
