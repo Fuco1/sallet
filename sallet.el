@@ -155,12 +155,8 @@ Default limit is 3 characters."
 
 FILE-NAME is the file we are grepping."
   (lambda (prompt)
-    (apply
-     'start-process
-     "grep" nil "grep" "-n"
-     (-concat
-      (sallet--smart-case prompt)
-      (list prompt file-name)))))
+    (sallet-start-process "grep"
+      "-n" (sallet--smart-case prompt) prompt file-name)))
 
 (sallet-defsource grep (asyncio)
   "Grep."
