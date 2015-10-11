@@ -69,6 +69,30 @@ Returns a list with car being the SWITCH."
     (unless (string-match-p "[A-Z]" pattern)
       (list (or switch "--ignore-case")))))
 
+(defun sallet-process-args (args)
+  "Construct a list of arguments to pass to `start-process'.
+
+ARGS is a list of strings or lists.  If a string, it is copied to
+the output list verbatim.  If a list, its elements are copied to
+the output one by one, thus flattening the input by one level.
+This also means that nil inputs are ignored."
+  (let (re)
+    (-each args
+      (lambda (arg)
+        (if (listp arg)
+            (when arg (--each arg (push it re)))
+          (push arg re))))
+    (nreverse re)))
+
+(defun sallet-start-process (program &rest args)
+  "Run PROGRAM with ARGS.
+
+ARGS are preprocessed using `sallet-process-args'."
+  (declare (indent 1))
+  (apply 'start-process
+         program nil program
+         (sallet-process-args args)))
+
 (defun sallet-make-generator-linewise-asyncio (process-creator processor)
   "Make a linewise generator.
 
