@@ -83,6 +83,12 @@ and identity action."
            :documentation "write what a matcher is. function matching and ranking/sorting candidates")
   (sorter (lambda (x _) x)
           :documentation "Sorter.")
+  (init ignore
+        :documentation
+    "Arbitrary initialization function.
+
+The function is run in the context of the buffer where sallet was
+invoked and takes one argument, the current source.")
   (renderer (lambda (candidate state user-data) candidate)
             :documentation "write what a renderer is.")
   ;; action: TODO: (cons action-name action-function)
@@ -125,6 +131,8 @@ the picked candidate.")
   (oref source matcher))
 (defun sallet-source-get-sorter (source)
   (oref source sorter))
+(defun sallet-source-get-init (source)
+  (oref source init))
 (defun sallet-source-get-renderer (source)
   (oref source renderer))
 (defun sallet-source-get-candidates (source)
@@ -158,6 +166,7 @@ the picked candidate.")
 (defun sallet-init-source (source)
   "Initiate the SOURCE."
   (-when-let (instance (funcall source (symbol-name source)))
+    (funcall (sallet-source-get-init instance) instance)
     (let ((candidates (sallet-source-get-candidates instance)))
       (cond
        ((functionp candidates)
