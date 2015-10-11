@@ -116,7 +116,7 @@ restarted."
           (setq old (car input))
           (funcall process-creator (car input)))))))
 
-(defun sallet-process-creator-start-on-prompt-length (process-creator &optional limit)
+(defun sallet-process-creator-min-prompt-length (process-creator &optional limit)
   "Decorate PROCESS-CREATOR to only run if prompt is longer than LIMIT.
 
 Default limit is 3 characters."

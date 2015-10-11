@@ -207,7 +207,7 @@ candidates and then further narrow in elisp without the extra overhead
 of re-launching possibly slow searches (think about =find(1)= returning
 thousands of candidates).
 
-Another decorator is =sallet-process-creator-start-on-prompt-length=.
+Another decorator is =sallet-process-creator-min-prompt-length=.
 This decorator makes sure to only run the process creator if prompt
 length is greater than the specified limit.
 
