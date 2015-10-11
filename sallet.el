@@ -69,8 +69,7 @@ Returns a list with car being the SWITCH."
     (unless (string-match-p "[A-Z]" pattern)
       (list (or switch "--ignore-case")))))
 
-(defun sallet-make-generator-linewise-asyncio
-    (process-creator processor &optional min-prompt-length)
+(defun sallet-make-generator-linewise-asyncio (process-creator processor)
   "Make a linewise generator.
 
 PROCESS-CREATOR is a function which when called returns a process
@@ -80,28 +79,24 @@ current prompt.
 PROCESSOR is a function taking one line of output and producing a
 candidate.
 
-MIN-PROMPT-LENGTH is the length of prompt when we spawn the
-process for the first time.
-
 Return a generator."
-  (setq min-prompt-length (or min-prompt-length 3))
   (lambda (source state)
     (let ((prompt (sallet-state-get-prompt state)))
-      (when (>= (length prompt) min-prompt-length)
-        (-when-let (proc (funcall process-creator prompt))
-          (sallet--kill-source-process source)
-          (set-process-filter
-           proc
-           (sallet-process-filter-linewise-candidate-decorator
-            processor source state))
-          (set-process-sentinel
-           proc
-           (lambda (_process process-state)
-             (when (equal process-state "finished\n")
-               (sallet-update-candidates state source)
-               (sallet-render-state state t))))
-          (sit-for 0.01)
-          proc)))))
+      (-when-let (proc (funcall process-creator prompt))
+        (sallet--kill-source-process source)
+        (set-process-filter
+         proc
+         (sallet-process-filter-linewise-candidate-decorator
+          processor source state))
+        (set-process-sentinel
+         proc
+         (lambda (_process process-state)
+           (when (equal process-state "finished\n")
+             (sallet-update-candidates state source)
+             (sallet-render-state state t))))
+        (sit-for 0.01)
+        proc))))
+
 
 ;; TODO: add arguments such as path and other "session" data we need
 ;; to pass to grep
@@ -178,8 +173,7 @@ FILE-NAME is the file we are grepping."
   (generator
    (sallet-make-generator-linewise-asyncio
     (sallet-gtags-files-make-process-creator)
-    'identity
-    1))
+    'identity))
   (project-root (locate-dominating-file default-directory "GTAGS"))
   (matcher sallet-matcher-default)
   ;; (matcher sallet-matcher-flx-then-substring)
