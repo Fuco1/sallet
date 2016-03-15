@@ -239,5 +239,24 @@ Any other non-prefixed pattern is matched using the following rules:
   (header "Buffers")
   (renderer sallet-buffer-renderer))
 
+;; TODO: remove duplication with `buffer' source
+(sallet-defsource similar-buffer (buffer)
+  "Buffers with the same name but in a different file hierarchy."
+  (candidates (lambda ()
+                (let* ((current-name (cond
+                                      ((and (featurep 'uniquify)
+                                            (uniquify-buffer-base-name)))
+                                      ((buffer-name))))
+                       (buffers
+                        (--keep (let ((name (cond
+                                             ((and (featurep 'uniquify)
+                                                   (with-current-buffer it
+                                                     (uniquify-buffer-base-name))))
+                                             ((buffer-name it)))))
+                                  (when (string= name current-name) (buffer-name it)))
+                                (buffer-list))))
+                  buffers)))
+  (header "Similar buffers"))
+
 (provide 'sallet-buffer)
 ;;; sallet-buffer.el ends here
