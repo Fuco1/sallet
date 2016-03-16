@@ -255,9 +255,8 @@ Any other non-prefixed pattern is matched using the following rules:
                                              ((buffer-name it)))))
                                   (when (string= name current-name) (buffer-name it)))
                                 (buffer-list))))
-                  (if (< 1 (length buffers))
-                      (-cons* (cadr buffers) (car buffers) (cddr buffers))
-                    buffers))))
+                  (when (< 1 (length buffers))
+                    (-cons* (cadr buffers) (car buffers) (cddr buffers))))))
   (header "Similar buffers"))
 
 (provide 'sallet-buffer)
