@@ -69,6 +69,7 @@ Returns a list with car being the SWITCH."
     (unless (string-match-p "[A-Z]" pattern)
       (list (or switch "--ignore-case")))))
 
+;; TODO: move all the asyncio to a separate file
 (defun sallet-process-args (args)
   "Construct a list of arguments to pass to `start-process'.
 
@@ -703,13 +704,16 @@ updates the candidate buffer."
     (condition-case _var
         (minibuffer-with-setup-hook (lambda () (sallet-minibuffer-setup state))
           ;; TODO: add support to pass maps
-          ;; TODO propertize prompt
-          (read-from-minibuffer ">>> " nil (let ((map (make-sparse-keymap)))
-                                             (set-keymap-parent map minibuffer-local-map)
-                                             (define-key map (kbd "C-n") 'sallet-candidate-up)
-                                             (define-key map (kbd "C-p") 'sallet-candidate-down)
-                                             (define-key map (kbd "C-o") 'sallet-candidate-next-source)
-                                             map))
+          ;; TODO: propertize prompt
+          (read-from-minibuffer
+           ">>> " nil
+           (let ((map (make-sparse-keymap)))
+             ;; TODO: add C-v/M-v to quickly scroll the candidate list
+             (set-keymap-parent map minibuffer-local-map)
+             (define-key map (kbd "C-n") 'sallet-candidate-up)
+             (define-key map (kbd "C-p") 'sallet-candidate-down)
+             (define-key map (kbd "C-o") 'sallet-candidate-next-source)
+             map))
           (sallet-default-action))
       ;; TODO: do we want `kill-buffer-and-window?'
       (quit (sallet-cleanup-candidate-window state))
