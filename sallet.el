@@ -688,8 +688,11 @@ updates the candidate buffer."
          ;; make this lexically scoped
          (state (sallet-init-state sources buffer)))
     ;; TODO: add better modeline, show number of sources/candidates etc...
+    ;; TODO: add sallet-candidates-mode as major-mode
     (with-current-buffer buffer
       (kill-all-local-variables)
+      ;; FIXME: hotfix against sql-workbench
+      (setq-local font-lock-keywords nil)
       (setq truncate-lines t)
       (buffer-disable-undo)
       (setq cursor-type nil))
