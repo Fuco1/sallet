@@ -31,6 +31,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 'cl-lib)
 
 (require 'sallet-core)
 (require 'sallet-source)
@@ -75,9 +76,9 @@ computes it.")
   (setf (cdr (assoc 'futures state)) futures))
 
 (defun sallet-state-incf-selected-candidate (state)
-  (incf (cdr (assoc 'selected-candidate state))))
+  (cl-incf (cdr (assoc 'selected-candidate state))))
 (defun sallet-state-decf-selected-candidate (state)
-  (decf (cdr (assoc 'selected-candidate state))))
+  (cl-decf (cdr (assoc 'selected-candidate state))))
 
 (defun sallet-state-get-number-of-all-candidates (state)
   "Return the number of all candidates in this STATE."
