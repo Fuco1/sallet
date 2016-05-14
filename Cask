@@ -11,6 +11,7 @@
 (depends-on "async" "1.2")
 (depends-on "shut-up" "0.3.2")
 (depends-on "ov" "1.0")
+(depends-on "cl-lib" "0.3")
 
 (development
  (depends-on "ert-runner"))
