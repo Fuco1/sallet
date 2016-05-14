@@ -710,11 +710,12 @@ updates the candidate buffer."
           (read-from-minibuffer
            ">>> " nil
            (let ((map (make-sparse-keymap)))
-             ;; TODO: add C-v/M-v to quickly scroll the candidate list
              (set-keymap-parent map minibuffer-local-map)
              (define-key map (kbd "C-n") 'sallet-candidate-up)
              (define-key map (kbd "C-p") 'sallet-candidate-down)
              (define-key map (kbd "C-o") 'sallet-candidate-next-source)
+             (define-key map (kbd "C-v") 'sallet-scroll-up)
+             (define-key map (kbd "M-v") 'sallet-scroll-down)
              map))
           (sallet-default-action))
       ;; TODO: do we want `kill-buffer-and-window?'
@@ -751,6 +752,28 @@ updates the candidate buffer."
          (next (--first (< current it) offsets)))
     (unless next (setq next 0))
     (sallet-state-set-selected-candidate sallet-state next)))
+
+(defun sallet--scroll-offset ()
+  "Get the offset for scrolling up/down."
+  (/ (window-height
+      (get-buffer-window
+       (sallet-state-get-candidate-buffer sallet-state))) 2))
+
+(defun sallet-scroll-up ()
+  "Scroll candidates upwards, revealing later candidates."
+  (interactive)
+  (let ((index (min (+ (sallet-state-get-selected-candidate sallet-state)
+                       (sallet--scroll-offset))
+                    (1- (sallet-state-get-number-of-all-candidates sallet-state)))))
+    (sallet-state-set-selected-candidate sallet-state index)))
+
+(defun sallet-scroll-down ()
+  "Scroll candidates downwards, revealing previous candidates."
+  (interactive)
+  (let ((index (max (- (sallet-state-get-selected-candidate sallet-state)
+                       (sallet--scroll-offset))
+                    0)))
+    (sallet-state-set-selected-candidate sallet-state index)))
 
 (defun sallet-default-action ()
   "Default sallet action."
