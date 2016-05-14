@@ -14,4 +14,4 @@
 (depends-on "cl-lib" "0.3")
 
 (development
- (depends-on "ert-runner"))
+ (depends-on "buttercup"))
