@@ -337,6 +337,9 @@ ROOT is the directory from where we launch ag(1)."
   (generator
    '(sallet-make-generator-linewise-asyncio
      (sallet-ag-make-process-creator
+      ;; TODO: figure out how to pass the source into this
+      ;; function... because we determine the search root in the
+      ;; `init' function and not here.
       (read-directory-name
        "Project root: "
        (locate-dominating-file default-directory "GTAGS")))
