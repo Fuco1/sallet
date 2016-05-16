@@ -45,6 +45,7 @@
 (require 'sallet-imenu)
 (require 'sallet-occur)
 (require 'sallet-autobookmarks)
+(require 'sallet-registers)
 
 (defgroup sallet ()
   "Select candidates in a buffer."
@@ -884,6 +885,11 @@ STATE is a sallet state."
          (aset buffer n cand)
          (setq n (1+ n))
          (sallet-source-set-candidates source buffer))))))
+
+(defun sallet-register-point ()
+  "Sallet for point registers."
+  (interactive)
+  (sallet (list sallet-source-register-point)))
 
 (provide 'sallet)
 
