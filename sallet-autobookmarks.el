@@ -41,8 +41,12 @@
   "Keep autobookmark CANDIDATES flx-matching PATTERN against file path."
   (--keep (sallet-predicate-path-flx (cadr (sallet-aref candidates it)) it pattern) indices))
 
-;; TODO: add a matcher for major mode based on extension and
-;; auto-mode-alist
+(defun sallet-filter-autobookmark-mode-flx (candidates indices pattern)
+  "Keep autobookmark CANDIDATES flx-matching PATTERN against the major-mode they would open in."
+  (--keep (sallet-predicate-buffer-major-mode
+           (-let* (((_ _ . (&alist 'abm-auto-major-mode mm)) (sallet-aref candidates it))) mm)
+           it pattern) indices))
+
 (defun sallet-autobookmarks-matcher (candidates state)
   "Match autobookmark CANDIDATES using special rules.
 
@@ -55,6 +59,9 @@ file bookmark represents.
 A pattern starting with // substring-matches against the path to the
 file bookmark represents.
 
+A pattern starting with * flx-matches against the major mode the
+bookmark would open in.  This is guessed using `auto-mode-alist'.
+
 Any other non-prefixed pattern is matched using the following rules:
 
 - If the pattern is first of this type at the prompt, it is
@@ -66,6 +73,7 @@ Any other non-prefixed pattern is matched using the following rules:
     (sallet-compose-filters-by-pattern
      '(("\\`//\\(.*\\)" 1 sallet-filter-autobookmark-path-substring)
        ("\\`/\\(.*\\)" 1 sallet-filter-autobookmark-path-flx)
+       ("\\`\\*\\(.*\\)" 1 sallet-filter-autobookmark-mode-flx)
        (t sallet-filter-flx-then-substring))
      candidates
      indices
@@ -90,6 +98,26 @@ Any other non-prefixed pattern is matched using the following rules:
               '(sallet-fontify-regexp-matches . :regexp-matches-path)
               '(sallet-fontify-flx-matches . :flx-matches-path))))))
 
+
+(defvar sallet-autobookmarks--name-to-major-mode-cache (make-hash-table :test 'equal)
+  "Name-to-major-mode cache.")
+
+(defun sallet-autobookmarks--name-to-major-mode (name)
+  "Return `major-mode' in which file with NAME would open."
+  (-if-let (mm (gethash name sallet-autobookmarks--name-to-major-mode-cache)) mm
+    (puthash name
+             (cond
+              ((string-match-p "/\\'" name)
+               "dired-mode")
+              (t (catch 'match
+                   (--each auto-mode-alist
+                     (when (string-match-p (car it) name)
+                       (throw 'match (symbol-name
+                                      (if (listp (cdr it))
+                                          (-last-item (cdr it))
+                                        (cdr it)))))))))
+             sallet-autobookmarks--name-to-major-mode-cache)))
+
 (sallet-defsource autobookmarks nil
   "Files saved with `autobookmarks-mode'."
   (candidates (lambda ()
@@ -103,7 +131,12 @@ Any other non-prefixed pattern is matched using the following rules:
                                 ((assoc 'filename (cdr bookmark))
                                  (f-filename
                                   (cdr (assoc 'filename (cdr bookmark)))))))
-                     (cons name bookmark)))
+                     (when (string-match-p "/\\'" (car bookmark))
+                       (setq name (concat name "/")))
+                     (-snoc (cons name bookmark)
+                            (cons
+                             'abm-auto-major-mode
+                             (sallet-autobookmarks--name-to-major-mode name)))))
                  (-sort (-lambda ((_ . (&alist 'time a))
                                   (_ . (&alist 'time b)))
                           (time-less-p b a))
