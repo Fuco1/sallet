@@ -146,6 +146,11 @@ However, in most cases they should not do it and instead just pass the
 values directly, as modification of these values is responsibility of
 a pre-processing step, not matching/filtering step.
 
+In the case where the candidate is a list or a data structure, it is
+acceptable to do a projection and pass that into the predicate, but it
+has to be realized that this limits the reusability of the filter as
+it will only work with that data structure.
+
 Predicates have this interface:
 
 #+BEGIN_SRC elisp
@@ -158,6 +163,17 @@ PATTERN is a pattern we are matching against.
 
 Returns updated INDEX with optional added metadata or nil if this
 candidate should not pass the filter.")
+#+END_SRC
+
+A common implementation of a filter using a predicate is the following:
+
+#+BEGIN_SRC elisp
+(defun sallet-filter-<PREDICATE> (candidates indices pattern)
+  "Keep CANDIDATES at INDICES <predicate-matching> PATTERN."
+  ;; <PROJECTION> can be `sallet-candidate-aref' or any other function
+  ;; called on the result of `sallet-aref' (sallet-candidate-aref is
+  ;; an automatic projection on `car').
+  (--keep (sallet-predicate-<PREDICATE> (<PROJECTION> candidates it) it pattern) indices))
 #+END_SRC
 
 ** Sorter
