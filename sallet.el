@@ -181,41 +181,36 @@ FILE-NAME is the file we are grepping."
   (interactive)
   (sallet (list sallet-source-grep)))
 
-;; TODO: see `sallet-grep-make-process-creator'.
 (defun sallet-gtags-files-make-process-creator ()
   "Return a process creator for gtags-files sallet."
-  (let ((old ""))
-    (lambda (prompt)
-      (let ((input (split-string prompt " ")))
-        (when (or (not old)
-                  (not (equal (car input) old)))
-          (setq old (car input))
-          (with-temp-buffer
-            (cd (locate-dominating-file default-directory "GTAGS"))
-            (apply
-             'start-process
-             "global" nil "global" "-P"
-             (-concat
-              (sallet--smart-case (car input))
-              ;; TODO: for this kind of flex matching we should
-              ;; replace . with [^/] so that we search only in the
-              ;; base name and not the directory tree.  Additionally,
-              ;; / does flex matching on the path and non-prefixed
-              ;; second and further strings substring-match the entire
-              ;; path (if the first token starts with /, we use . in
-              ;; the pattern to get full list over the entire project)
-              ;; (list (mapconcat
-              ;;        (lambda (x) (char-to-string x))
-              ;;        (string-to-list (car input))
-              ;;        ".*"))
-              (list (concat ".*" (car input) ".*"))))))))))
+  (lambda (prompt)
+    (with-temp-buffer
+      (cd (locate-dominating-file default-directory "GTAGS"))
+      (apply
+       'start-process
+       "global" nil "global" "-P"
+       (-concat
+        (sallet--smart-case prompt)
+        ;; TODO: for this kind of flex matching we should
+        ;; replace . with [^/] so that we search only in the
+        ;; base name and not the directory tree.  Additionally,
+        ;; / does flex matching on the path and non-prefixed
+        ;; second and further strings substring-match the entire
+        ;; path (if the first token starts with /, we use . in
+        ;; the pattern to get full list over the entire project)
+        ;; (list (mapconcat
+        ;;        (lambda (x) (char-to-string x))
+        ;;        (string-to-list prompt)
+        ;;        ".*"))
+        (list (concat ".*" prompt ".*")))))))
 
 ;; TODO: after some timeout, start generating candidates automatically
 (sallet-defsource gtags-files (asyncio)
   "Grep."
   (generator
    (sallet-make-generator-linewise-asyncio
-    (sallet-gtags-files-make-process-creator)
+    (sallet-process-creator-first-token-only
+     (sallet-gtags-files-make-process-creator))
     'identity))
   (project-root (locate-dominating-file default-directory "GTAGS"))
   (matcher sallet-matcher-default)
