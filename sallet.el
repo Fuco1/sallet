@@ -395,32 +395,27 @@ ROOT is the directory from where we launch ag(1)."
 
 (defun sallet-locate-make-process-creator ()
   "Return a process creator for locate sallet."
-  (let ((old ""))
-    (lambda (prompt)
-      (let ((input (split-string prompt " ")))
-        (when (or (not old)
-                  (not (equal (car input) old)))
-          (setq old (car input))
-          (setq input (car input))
-          (apply
-           'start-process
-           "locate" nil "locate"
-           (-concat
-            ;; TODO: write something that dispatches on pattern like
-            ;; we have for filters
-            (unless (eq (aref input 0) ?/)
-              (list "--basename"))
-            (sallet--smart-case input)
-            (list
-             (if (eq (aref input 0) ?/)
-                 (substring input 1)
-               input)))))))))
+  (lambda (prompt)
+    (apply
+     'start-process
+     "locate" nil "locate"
+     (-concat
+      ;; TODO: write something that dispatches on pattern like
+      ;; we have for filters
+      (unless (eq (aref prompt 0) ?/)
+        (list "--basename"))
+      (sallet--smart-case prompt)
+      (list
+       (if (eq (aref prompt 0) ?/)
+           (substring prompt 1)
+         prompt))))))
 
 (sallet-defsource locate (asyncio)
   "Grep."
   (generator
    (sallet-make-generator-linewise-asyncio
-    (sallet-locate-make-process-creator)
+    (sallet-process-creator-first-token-only
+     (sallet-locate-make-process-creator))
     'identity))
   (matcher (lambda (candidates state)
              (let* ((prompt (sallet-state-get-prompt state))
