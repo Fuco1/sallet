@@ -118,6 +118,7 @@ Return a generator."
          (lambda (_process process-state)
            (when (equal process-state "finished\n")
              (sallet-update-candidates state source)
+             ;; TODO: do we want to render here?
              (sallet-render-state state t))))
         (sit-for 0.01)
         proc))))
@@ -427,6 +428,8 @@ ROOT is the directory from where we launch ag(1)."
                (sallet-compose-filters-by-pattern
                 '(("\\`/\\(.*\\)" 1 sallet-filter-substring)
                   ("\\`\\.\\(.*\\)" 1 sallet-filter-file-extension)
+                  ;; TODO: we should match first on the basename, then
+                  ;; on the rest
                   (t sallet-filter-substring))
                 candidates
                 indices
@@ -876,6 +879,8 @@ STATE is a sallet state."
              (sallet-source-set-candidates source new-buffer)))
          (when (= (mod n 256) 0)
            (sallet-update-candidates state source)
+           ;; TODO: do we really want to render from here?  Seems like
+           ;; too tight coupling
            (sallet-render-state state t))
          (aset buffer n cand)
          (setq n (1+ n))
