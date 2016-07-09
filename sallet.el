@@ -344,8 +344,13 @@ ROOT is the directory from where we launch ag(1)."
               (sallet-fontify-regexp-matches
                (plist-get user-data :regexp-matches)
                candidate)))
-  ;; TODO: finish the action
-  (action (lambda (_source c) c)))
+  (action (lambda (source c)
+            (-let (((file line column) (split-string c ":")))
+              (find-file (concat (oref source search-root) file))
+              (widen)
+              (goto-char (point-min))
+              (forward-line (1- (string-to-number line)))
+              (forward-char (1- (string-to-number column)))))))
 
 (defun sallet-ag ()
   "Run ag sallet."
