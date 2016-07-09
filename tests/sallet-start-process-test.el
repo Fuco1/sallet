@@ -1,4 +1,4 @@
- (require 'sallet)
+(require 'sallet)
 
 (describe "Process helpers"
   (it "should construct argument lists"
