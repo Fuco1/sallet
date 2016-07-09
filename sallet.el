@@ -313,18 +313,13 @@ FILE-NAME is the file we are grepping."
   "Return a process creator for gtags-files sallet.
 
 ROOT is the directory from where we launch ag(1)."
-  (let ((old ""))
-    (lambda (prompt)
-      (let ((input (split-string prompt " ")))
-        (when (or (not old)
-                  (not (equal (car input) old)))
-          (setq old (car input))
-          (with-temp-buffer
-            (cd root)
-            (start-process
-             "ag" nil "ag"
-             "--nocolor" "--literal" "--line-number" "--smart-case"
-             "--nogroup" "--column" prompt)))))))
+  (lambda (prompt)
+    (with-temp-buffer
+      (cd root)
+      (start-process
+       "ag" nil "ag"
+       "--nocolor" "--literal" "--line-number" "--smart-case"
+       "--nogroup" "--column" prompt))))
 
 ;; TODO: match only on content, add / matcher for path.  We should
 ;; acomplish this by generating better candidates, not just lines
@@ -335,7 +330,8 @@ ROOT is the directory from where we launch ag(1)."
    (lambda (source state)
      (funcall
       (sallet-make-generator-linewise-asyncio
-       (sallet-ag-make-process-creator (oref source search-root))
+       (sallet-process-creator-first-token-only
+        (sallet-ag-make-process-creator (oref source search-root)))
        'identity)
       source state)))
   (search-root)
