@@ -843,8 +843,7 @@ a process producing data and an Emacs function operating on the
 data which expects to get complete lines as input."
   (let ((data ""))
     (lambda (process string)
-      (let* ((data (concat data string))
-             (line-data (split-string data "\n")))
+      (let* ((line-data (split-string (concat data string) "\n")))
         (while (cdr line-data)
           (funcall filter process (car line-data))
           (!cdr line-data))
