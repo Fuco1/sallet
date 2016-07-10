@@ -321,6 +321,10 @@ ROOT is the directory from where we launch ag(1)."
        "--nocolor" "--literal" "--line-number" "--smart-case"
        "--nogroup" "--column" prompt))))
 
+(defun sallet-ag-processor (input)
+  (-let (((file line column content) (s-split-up-to ":" input 4)))
+    (list content file line column)))
+
 ;; TODO: match only on content, add / matcher for path.  We should
 ;; acomplish this by generating better candidates, not just lines
 ;; (identity)
@@ -332,7 +336,7 @@ ROOT is the directory from where we launch ag(1)."
       (sallet-make-generator-linewise-asyncio
        (sallet-process-creator-first-token-only
         (sallet-ag-make-process-creator (oref source search-root)))
-       'identity)
+       'sallet-ag-processor)
       source state)))
   (search-root)
   (init (lambda (source)
@@ -340,17 +344,18 @@ ROOT is the directory from where we launch ag(1)."
                 (read-directory-name
                  "Project root: "
                  (locate-dominating-file default-directory "GTAGS")))))
-  (renderer (lambda (candidate _ user-data)
-              (sallet-fontify-regexp-matches
-               (plist-get user-data :regexp-matches)
-               candidate)))
-  (action (lambda (source c)
-            (-let (((file line column) (split-string c ":")))
-              (find-file (concat (oref source search-root) file))
-              (widen)
-              (goto-char (point-min))
-              (forward-line (1- (string-to-number line)))
-              (forward-char (1- (string-to-number column)))))))
+  (renderer (-lambda ((content file line column) _ user-data)
+              (format "%s:%s:%s:%s"
+                      file line column
+                      (sallet-fontify-regexp-matches
+                       (plist-get user-data :regexp-matches)
+                       content))))
+  (action (-lambda (source (_ file line column))
+            (find-file (concat (oref source search-root) file))
+            (widen)
+            (goto-char (point-min))
+            (forward-line (1- (string-to-number line)))
+            (forward-char (1- (string-to-number column))))))
 
 (defun sallet-ag ()
   "Run ag sallet."
