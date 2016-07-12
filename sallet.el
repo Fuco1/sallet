@@ -390,6 +390,8 @@ ROOT is the directory from where we launch ag(1)."
 (sallet-defsource ag-files (asyncio)
   "Grep."
   (generator
+   ;; TODO: this is the exact same as ag except for the creator and
+   ;; processor.  Add a common wrapper?
    (lambda (source state)
      (funcall
       (sallet-make-generator-linewise-asyncio
