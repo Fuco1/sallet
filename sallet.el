@@ -308,6 +308,24 @@ FILE-NAME is the file we are grepping."
   (interactive)
   (sallet (list sallet-source-gtags-tags)))
 
+;; TODO: add projectile support
+(defun sallet--set-search-root (source)
+  "Set search root for SOURCE.
+
+The user is asked interactively for search root.
+
+If the `default-directory' is inside a gtags project, the project
+root is supplied as the default choice.
+
+Otherwise the user is asked to pick the search root starting at
+the `default-directory'."
+  (unless (slot-exists-p source 'search-root)
+    (error "Slot `search-root' does not exist"))
+  (oset source search-root
+        (read-directory-name
+         "Project root: "
+         (locate-dominating-file default-directory "GTAGS"))))
+
 ;; TODO: see `sallet-grep-make-process-creator'.
 (defun sallet-ag-make-process-creator (root)
   "Return a process creator for gtags-files sallet.
@@ -339,11 +357,7 @@ ROOT is the directory from where we launch ag(1)."
        'sallet-ag-processor)
       source state)))
   (search-root)
-  (init (lambda (source)
-          (oset source search-root
-                (read-directory-name
-                 "Project root: "
-                 (locate-dominating-file default-directory "GTAGS")))))
+  (init 'sallet--set-search-root)
   (renderer (-lambda ((content file line column) _ user-data)
               (format "%s:%s:%s:%s"
                       file line column
