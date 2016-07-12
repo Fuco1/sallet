@@ -389,17 +389,16 @@ ROOT is the directory from where we launch ag(1)."
 
 (sallet-defsource ag-files (asyncio)
   "Grep."
-  (ag-root nil)
   (generator
-   '(sallet-make-generator-linewise-asyncio
-     (sallet-process-creator-first-token-only
-      (sallet-ag-files-make-process-creator
-       ;; TODO: we need to somehow store this thing in the source's
-       ;; property `ag-root'.
-       (read-directory-name
-        "Project root: "
-        (locate-dominating-file default-directory "GTAGS"))))
-     'identity))
+   (lambda (source state)
+     (funcall
+      (sallet-make-generator-linewise-asyncio
+       (sallet-process-creator-first-token-only
+        (sallet-ag-files-make-process-creator (oref source search-root)))
+       'identity)
+      source state)))
+  (search-root)
+  (init 'sallet--set-search-root)
   (renderer (lambda (candidate _ user-data)
               (sallet-fontify-regexp-matches
                (plist-get user-data :regexp-matches)
