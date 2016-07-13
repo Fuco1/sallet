@@ -29,6 +29,7 @@
 
 (require 'sallet-source)
 
+;; TODO: add a decorator to "start process in a directory"
 ;; TODO: see `sallet-grep-make-process-creator'.
 (defun sallet-ag-make-process-creator (root)
   "Return a process creator for gtags-files sallet.
@@ -85,6 +86,7 @@ ROOT is the directory from where we launch ag(1)."
        "ag" nil "ag" "--nocolor" "--literal"
        "--smart-case" "-g" prompt))))
 
+;; TODO: add "search-root" source/parent
 (sallet-defsource ag-files (asyncio)
   "Grep."
   (generator
