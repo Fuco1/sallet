@@ -43,6 +43,17 @@ ROOT is the directory from where we launch ag(1)."
        "--nocolor" "--literal" "--line-number" "--smart-case"
        "--nogroup" "--column" prompt))))
 
+(defun sallet-ag-files-make-process-creator (root)
+  "Return a process creator for ag-files sallet.
+
+ROOT is the directory from where we launch ag(1)."
+  (lambda (prompt)
+    (with-temp-buffer
+      (cd root)
+      (start-process
+       "ag" nil "ag" "--nocolor" "--literal"
+       "--smart-case" "-g" prompt))))
+
 (defun sallet-ag-processor (input)
   (-let (((file line column content) (s-split-up-to ":" input 4)))
     (list content file line column)))
@@ -74,17 +85,6 @@ ROOT is the directory from where we launch ag(1)."
             (goto-char (point-min))
             (forward-line (1- (string-to-number line)))
             (forward-char (1- (string-to-number column))))))
-
-(defun sallet-ag-files-make-process-creator (root)
-  "Return a process creator for ag-files sallet.
-
-ROOT is the directory from where we launch ag(1)."
-  (lambda (prompt)
-    (with-temp-buffer
-      (cd root)
-      (start-process
-       "ag" nil "ag" "--nocolor" "--literal"
-       "--smart-case" "-g" prompt))))
 
 ;; TODO: add "search-root" source/parent
 (sallet-defsource ag-files (asyncio)
