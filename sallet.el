@@ -425,6 +425,8 @@ Return number of rendered candidates."
   (with-current-buffer (sallet-state-get-candidate-buffer state)
     (let* ((processed-candidates (sallet-source-get-processed-candidates source))
            (renderer (sallet-source-get-renderer source))
+           (before-candidate-render-hook
+            (sallet-source-get-before-candidate-render-hook source))
            (i 0))
       (sallet-render-header source)
       (-each processed-candidates
@@ -434,6 +436,8 @@ Return number of rendered candidates."
           ;; is arbitrary meta data ignored at this stage (it is
           ;; useful when at the sorter stage)
           (let* ((candidate (sallet-source-get-candidate source (sallet-car-maybe n))))
+            (when (functionp before-candidate-render-hook)
+              (funcall before-candidate-render-hook candidate state (cdr-safe n)))
             (insert (propertize "  " 'sallet-candidate-index (+ offset i))
                     ;; TODO: cache the already rendered lines also
                     ;; between sallet calls, there's quite a lot of
