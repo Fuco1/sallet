@@ -441,7 +441,7 @@ Return number of rendered candidates."
           ;; useful when at the sorter stage)
           (let* ((candidate (sallet-source-get-candidate source (sallet-car-maybe n))))
             (when (functionp before-candidate-render-hook)
-              (funcall before-candidate-render-hook candidate state (cdr-safe n)))
+              (funcall before-candidate-render-hook candidate state n))
             (insert (propertize "  " 'sallet-candidate-index (+ offset i))
                     ;; TODO: cache the already rendered lines also
                     ;; between sallet calls, there's quite a lot of
