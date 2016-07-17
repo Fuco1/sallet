@@ -425,9 +425,13 @@ Return number of rendered candidates."
   (with-current-buffer (sallet-state-get-candidate-buffer state)
     (let* ((processed-candidates (sallet-source-get-processed-candidates source))
            (renderer (sallet-source-get-renderer source))
+           (before-render-hook
+            (sallet-source-get-before-render-hook source))
            (before-candidate-render-hook
             (sallet-source-get-before-candidate-render-hook source))
            (i 0))
+      (when (functionp before-render-hook)
+        (funcall before-render-hook source state))
       (sallet-render-header source)
       (-each processed-candidates
         (lambda (n)
