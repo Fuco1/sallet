@@ -73,9 +73,20 @@ ROOT is the directory from where we launch ag(1)."
       source state)))
   (search-root)
   (init 'sallet--set-search-root)
-  (renderer (-lambda ((content file line column) _ user-data)
-              (format "%s:%s:%s:%s"
-                      file line column
+  (before-candidate-render-hook
+   (eval '(let ((old-file "")
+                (last-index 999999))
+            (-lambda ((_ file) state (n))
+              (when (<= n last-index)
+                (setq old-file ""))
+              (unless (equal old-file file)
+                (setq old-file file)
+                (insert (format "%s\n" file)))
+              (setq last-index n)))
+         t))
+  (renderer (-lambda ((content _ line column) _ user-data)
+              (format "%s:%s:%s"
+                      line column
                       (sallet-fontify-regexp-matches
                        (plist-get user-data :regexp-matches)
                        content))))
