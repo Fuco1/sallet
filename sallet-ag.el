@@ -76,13 +76,17 @@ ROOT is the directory from where we launch ag(1)."
   (before-candidate-render-hook
    (eval '(let ((old-file "")
                 (last-index 999999))
-            (-lambda ((_ file) state (n))
-              (when (<= n last-index)
+            (-lambda ((_ file) state index)
+              (when (<= (sallet-car-maybe index) last-index)
                 (setq old-file ""))
               (unless (equal old-file file)
                 (setq old-file file)
-                (insert (format "%s\n" file)))
-              (setq last-index n)))
+                (insert (format
+                         "%s\n"
+                         (sallet-fontify-flx-matches
+                          (plist-get (cdr-safe index) :flx-matches-path)
+                          file))))
+              (setq last-index (sallet-car-maybe index))))
          t))
   (renderer (-lambda ((content _ line column) _ user-data)
               (format "%s:%s:%s"
