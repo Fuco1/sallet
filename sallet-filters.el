@@ -86,6 +86,9 @@ of candidate are stored."
 
 ;;; Filters
 
+;; TODO: add a filter constructor which will take a predicate, a
+;; candidate preprocessor and return a filter
+
 ;; TODO: figure out how the caching works
 (defun sallet-filter-flx (candidates indices pattern)
   "Match CANDIDATES at INDICES against PATTERN.
@@ -166,6 +169,8 @@ We use following check to determine which algorithm to use:
    candidates indices pattern
    'sallet-filter-flx :flx-score))
 
+;; TODO: we also need to specify the substring match filter, otherwise
+;; it can grab wrong parts of the candidate
 (defun sallet-filter-path-flx-then-substring (candidates indices pattern)
   "Match path CANDIDATES at INDICES against PATTERN with flx/substring-matching.
 
