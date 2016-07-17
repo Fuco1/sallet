@@ -58,6 +58,20 @@ ROOT is the directory from where we launch ag(1)."
   (-let (((file line column content) (s-split-up-to ":" input 4)))
     (list content file line column)))
 
+(defun sallet-filter-ag-path-flx (candidates indices pattern)
+  "Keep ag CANDIDATES flx-matching PATTERN against file path."
+  (--keep (sallet-predicate-path-flx (cadr (sallet-aref candidates it)) it pattern) indices))
+
+(defun sallet-ag-matcher (candidates state)
+  (let* ((prompt (sallet-state-get-prompt state))
+         (indices (sallet-make-candidate-indices candidates)))
+    (sallet-compose-filters-by-pattern
+     '(("\\`/\\(.*\\)" 1 sallet-filter-ag-path-flx)
+       (t sallet-filter-substring))
+     candidates
+     indices
+     prompt)))
+
 ;; TODO: match only on content, add / matcher for path.  We should
 ;; acomplish this by generating better candidates, not just lines
 ;; (identity)
@@ -94,6 +108,7 @@ ROOT is the directory from where we launch ag(1)."
                       (sallet-fontify-regexp-matches
                        (plist-get user-data :regexp-matches)
                        content))))
+  (matcher sallet-ag-matcher)
   (action (-lambda (source (_ file line column))
             (find-file (concat (oref source search-root) file))
             (widen)
