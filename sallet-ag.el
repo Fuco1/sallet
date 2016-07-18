@@ -99,7 +99,8 @@ ROOT is the directory from where we launch ag(1)."
                          "%s\n"
                          (sallet-fontify-flx-matches
                           (plist-get (cdr-safe index) :flx-matches-path)
-                          file))))
+                          (propertize
+                           file 'face 'sallet-buffer-default-directory)))))
               (setq last-index (sallet-car-maybe index))))
          t))
   (renderer (-lambda ((content _ line column) _ user-data)
