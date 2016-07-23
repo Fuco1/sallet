@@ -117,7 +117,6 @@ ROOT is the directory from where we launch ag(1)."
             (forward-line (1- (string-to-number line)))
             (forward-char (1- (string-to-number column))))))
 
-;; TODO: add "search-root" source/parent
 (sallet-defsource ag-files (asyncio)
   "Grep."
   (generator
