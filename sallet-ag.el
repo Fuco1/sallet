@@ -117,6 +117,11 @@ ROOT is the directory from where we launch ag(1)."
             (forward-line (1- (string-to-number line)))
             (forward-char (1- (string-to-number column))))))
 
+;; TODO: add a mechanism to initialize arguments through `interactive'
+;; and/or direct parameters.  `init' should have an interactive spec
+;; and we should export a constructor.  Usage: run ag-files in current
+;; directory instead of asking the user for the root (for
+;; `sallet-buffer')
 (sallet-defsource ag-files (asyncio)
   "Grep."
   (generator
