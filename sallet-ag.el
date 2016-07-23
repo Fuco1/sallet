@@ -136,8 +136,8 @@ ROOT is the directory from where we launch ag(1)."
               (sallet-fontify-regexp-matches
                (plist-get user-data :regexp-matches)
                candidate)))
-  ;; TODO: finish the action
-  (action (lambda (_source c) (find-file c))))
+  (action (lambda (source file)
+            (find-file (concat (oref source search-root) file)))))
 
 (provide 'sallet-ag)
 ;;; sallet-ag.el ends here
