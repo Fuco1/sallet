@@ -377,6 +377,7 @@ the `default-directory'."
               (sallet-fontify-regexp-matches
                (plist-get user-data :regexp-matches)
                candidate)))
+  (header "mlocate")
   (action (lambda (_source c)
             (if (sallet--xdg-can-open-p c)
                 (call-process "xdg-open" nil 0 nil c)
