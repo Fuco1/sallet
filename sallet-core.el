@@ -103,5 +103,20 @@ If UPDATE-FUNCTION is omitted the old value is replaced with NEW-VALUE."
                   (cdr-safe index)
                   properties)))
 
+(defun sallet--xdg-can-open-p (file)
+  "Return non-nil if FILE can be opened with xdg-open(1)."
+  (let* ((mime-type (with-temp-buffer
+                      (call-process
+                       "xdg-mime" nil (current-buffer) nil
+                       "query" "filetype"
+                       (expand-file-name file))
+                      (buffer-string)))
+         (desktop-file (with-temp-buffer
+                         (call-process
+                          "xdg-mime" nil (current-buffer) nil
+                          "query" "default" (s-trim mime-type))
+                         (buffer-string))))
+    (not (equal "" (s-trim desktop-file)))))
+
 (provide 'sallet-core)
 ;;; sallet-core.el ends here
