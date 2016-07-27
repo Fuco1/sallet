@@ -355,7 +355,10 @@ the `default-directory'."
          prompt))))))
 
 (sallet-defsource locate (asyncio)
-  "Grep."
+  "Run locate(1).
+
+Candidates are opened with xdg-open(1) if possible or inside
+emacs using `find-file' if no launcher is defined."
   (generator
    (sallet-make-generator-linewise-asyncio
     (sallet-process-creator-first-token-only
