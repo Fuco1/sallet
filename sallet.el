@@ -283,7 +283,7 @@ FILE-NAME is the file we are grepping."
         (recenter-top-bottom)))))
 
 (sallet-defsource gtags-tags (asyncio)
-  "Grep."
+  "Run global(1) to generate tag candidates."
   (generator
    ;; TODO: We should be generating better candidates, not just lines
    ;; (identity)
