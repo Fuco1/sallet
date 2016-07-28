@@ -361,8 +361,9 @@ Candidates are opened with xdg-open(1) if possible or inside
 emacs using `find-file' if no launcher is defined."
   (generator
    (sallet-make-generator-linewise-asyncio
-    (sallet-process-creator-first-token-only
-     (sallet-locate-make-process-creator))
+    (sallet-process-creator-min-prompt-length
+     (sallet-process-creator-first-token-only
+      (sallet-locate-make-process-creator)))
     'identity))
   (matcher (lambda (candidates state)
              (let* ((prompt (sallet-state-get-prompt state))
