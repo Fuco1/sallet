@@ -53,7 +53,12 @@
   :group 'convenience
   :prefix "sallet-")
 
-;; TODO: define source for files in the current directory
+(sallet-defsource default-directory-files ()
+  "List files in `default-directory.'"
+  (candidates (-map 'f-filename (f-files default-directory)))
+  (header "Default directory")
+  (action (lambda (_ c)
+            (find-file (concat default-directory "/" c)))))
 
 ;; TODO: add a user/source option to disable this
 (defun sallet--smart-case (pattern &optional switch)
