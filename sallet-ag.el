@@ -29,7 +29,6 @@
 
 (require 'sallet-source)
 
-;; TODO: add a decorator to "start process in a directory"
 ;; TODO: see `sallet-grep-make-process-creator'.
 (defun sallet-ag-make-process-creator (root)
   "Return a process creator for gtags-files sallet.

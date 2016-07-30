@@ -129,6 +129,14 @@ Return a generator."
         (sit-for 0.01)
         proc))))
 
+(defun sallet-process-run-in-directory (process-creator directory)
+  "Run PROCESS-CREATOR in DIRECTORY."
+  (lambda (prompt)
+    (when directory
+      (with-temp-buffer
+        (cd directory)
+        (funcall process-creator prompt)))))
+
 (defun sallet-process-creator-first-token-only (process-creator)
   "Decorate PROCESS-CREATOR to only receive first input token.
 
