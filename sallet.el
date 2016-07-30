@@ -222,10 +222,11 @@ FILE-NAME is the file we are grepping."
   "Grep."
   (generator
    (sallet-make-generator-linewise-asyncio
-    (sallet-process-creator-first-token-only
-     (sallet-process-run-in-directory
-      (sallet-gtags-files-make-process-creator)
-      (locate-dominating-file default-directory "GTAGS")))
+    (sallet-process-creator-min-prompt-length
+     (sallet-process-creator-first-token-only
+      (sallet-process-run-in-directory
+       (sallet-gtags-files-make-process-creator)
+       (locate-dominating-file default-directory "GTAGS"))))
     'identity))
   (project-root (locate-dominating-file default-directory "GTAGS"))
   (matcher sallet-matcher-default)
