@@ -199,25 +199,23 @@ FILE-NAME is the file we are grepping."
 (defun sallet-gtags-files-make-process-creator ()
   "Return a process creator for gtags-files sallet."
   (lambda (prompt)
-    (with-temp-buffer
-      (cd (locate-dominating-file default-directory "GTAGS"))
-      (apply
-       'start-process
-       "global" nil "global" "-P"
-       (-concat
-        (sallet--smart-case prompt)
-        ;; TODO: for this kind of flex matching we should
-        ;; replace . with [^/] so that we search only in the
-        ;; base name and not the directory tree.  Additionally,
-        ;; / does flex matching on the path and non-prefixed
-        ;; second and further strings substring-match the entire
-        ;; path (if the first token starts with /, we use . in
-        ;; the pattern to get full list over the entire project)
-        ;; (list (mapconcat
-        ;;        (lambda (x) (char-to-string x))
-        ;;        (string-to-list prompt)
-        ;;        ".*"))
-        (list (concat ".*" prompt ".*")))))))
+    (apply
+     'start-process
+     "global" nil "global" "-P"
+     (-concat
+      (sallet--smart-case prompt)
+      ;; TODO: for this kind of flex matching we should
+      ;; replace . with [^/] so that we search only in the
+      ;; base name and not the directory tree.  Additionally,
+      ;; / does flex matching on the path and non-prefixed
+      ;; second and further strings substring-match the entire
+      ;; path (if the first token starts with /, we use . in
+      ;; the pattern to get full list over the entire project)
+      ;; (list (mapconcat
+      ;;        (lambda (x) (char-to-string x))
+      ;;        (string-to-list prompt)
+      ;;        ".*"))
+      (list (concat ".*" prompt ".*"))))))
 
 ;; TODO: after some timeout, start generating candidates automatically
 (sallet-defsource gtags-files (asyncio)
@@ -225,7 +223,9 @@ FILE-NAME is the file we are grepping."
   (generator
    (sallet-make-generator-linewise-asyncio
     (sallet-process-creator-first-token-only
-     (sallet-gtags-files-make-process-creator))
+     (sallet-process-run-in-directory
+      (sallet-gtags-files-make-process-creator)
+      (locate-dominating-file default-directory "GTAGS")))
     'identity))
   (project-root (locate-dominating-file default-directory "GTAGS"))
   (matcher sallet-matcher-default)
