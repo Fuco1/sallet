@@ -210,30 +210,32 @@ Any other non-prefixed pattern is matched using the following rules:
      indices
      prompt)))
 
+(defun sallet-buffer-candidates ()
+  (let ((buffers
+         ;; TODO: preprocess candidates to include
+         ;; major-mode and directory so we don't have to
+         ;; query it multiple times (in filtering and
+         ;; rendering)
+         (--keep (let ((name (buffer-name it)))
+                   ;; TODO: add a variable where users
+                   ;; can write regexps to exclude
+                   ;; buffers
+                   (unless (string-match-p "^ " name) name))
+                 (buffer-list))))
+    (if (< 1 (length buffers))
+        ;; swap the current buffer with the last
+        ;; recently visited other buffer, so we default
+        ;; to toggling
+        (-cons* (cadr buffers) (car buffers) (cddr buffers))
+      buffers)))
+
 ;; TODO: sorting is now done the same way as `buffer-list' returns the
 ;; results, in LRU order.  We should also try to add some weight to
 ;; the flx score.  One possibility is to add +100, and decreasing, to
 ;; the flx-score for more recent buffers.
 (sallet-defsource buffer nil
   "Buffer source."
-  (candidates (lambda ()
-                (let ((buffers
-                       ;; TODO: preprocess candidates to include
-                       ;; major-mode and directory so we don't have to
-                       ;; query it multiple times (in filtering and
-                       ;; rendering)
-                       (--keep (let ((name (buffer-name it)))
-                                 ;; TODO: add a variable where users
-                                 ;; can write regexps to exclude
-                                 ;; buffers
-                                 (unless (string-match-p "^ " name) name))
-                               (buffer-list))))
-                  (if (< 1 (length buffers))
-                      ;; swap the current buffer with the last
-                      ;; recently visited other buffer, so we default
-                      ;; to toggling
-                      (-cons* (cadr buffers) (car buffers) (cddr buffers))
-                    buffers))))
+  (candidates sallet-buffer-candidates)
   (matcher sallet-buffer-matcher)
   (action (lambda (_source c) (switch-to-buffer c)))
   (header "Buffers")

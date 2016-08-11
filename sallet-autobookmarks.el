@@ -118,29 +118,31 @@ Any other non-prefixed pattern is matched using the following rules:
                                         (cdr it)))))))))
              sallet-autobookmarks--name-to-major-mode-cache)))
 
+(defun sallet-autobookmarks-candidates ()
+  (require 'autobookmarks)
+  (-keep
+   (lambda (bookmark)
+     (-when-let (name
+                 (cond
+                  ((assoc 'defaults (cdr bookmark))
+                   (cadr (assoc 'defaults (cdr bookmark))))
+                  ((assoc 'filename (cdr bookmark))
+                   (f-filename
+                    (cdr (assoc 'filename (cdr bookmark)))))))
+       (when (string-match-p "/\\'" (car bookmark))
+         (setq name (concat name "/")))
+       (-snoc (cons name bookmark)
+              (cons
+               'abm-auto-major-mode
+               (sallet-autobookmarks--name-to-major-mode name)))))
+   (-sort (-lambda ((_ . (&alist 'time a))
+                    (_ . (&alist 'time b)))
+            (time-less-p b a))
+          (abm-recent-buffers))))
+
 (sallet-defsource autobookmarks nil
   "Files saved with `autobookmarks-mode'."
-  (candidates (lambda ()
-                (require 'autobookmarks)
-                (-keep
-                 (lambda (bookmark)
-                   (-when-let (name
-                               (cond
-                                ((assoc 'defaults (cdr bookmark))
-                                 (cadr (assoc 'defaults (cdr bookmark))))
-                                ((assoc 'filename (cdr bookmark))
-                                 (f-filename
-                                  (cdr (assoc 'filename (cdr bookmark)))))))
-                     (when (string-match-p "/\\'" (car bookmark))
-                       (setq name (concat name "/")))
-                     (-snoc (cons name bookmark)
-                            (cons
-                             'abm-auto-major-mode
-                             (sallet-autobookmarks--name-to-major-mode name)))))
-                 (-sort (-lambda ((_ . (&alist 'time a))
-                                  (_ . (&alist 'time b)))
-                          (time-less-p b a))
-                        (abm-recent-buffers)))))
+  (candidates sallet-autobookmarks-candidates)
   (matcher sallet-autobookmarks-matcher)
   (renderer sallet-autobookmarks-renderer)
   (action (-lambda (_source (_ . x)) (abm-restore-killed-buffer x)))
