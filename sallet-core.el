@@ -118,5 +118,14 @@ If UPDATE-FUNCTION is omitted the old value is replaced with NEW-VALUE."
                          (buffer-string))))
     (not (equal "" (s-trim desktop-file)))))
 
+(defun sallet--find-file-in-emacs-p (file)
+  "Return non-nil if Emacs should try to open FILE."
+  (let ((mime-type (with-temp-buffer
+                     (call-process
+                      "file" nil (current-buffer)
+                      nil "-b" "--mime-type" file)
+                     (buffer-string))))
+    (string-match-p "^\\(inode\\|text\\)/" mime-type)))
+
 (provide 'sallet-core)
 ;;; sallet-core.el ends here

@@ -371,8 +371,8 @@ the `default-directory'."
 (sallet-defsource locate (asyncio)
   "Run locate(1).
 
-Candidates are opened with xdg-open(1) if possible or inside
-emacs using `find-file' if no launcher is defined."
+Text files or directories are opened inside emacs while the rest
+is opened through xdg-open(1)."
   (generator
    (sallet-make-generator-linewise-asyncio
     (sallet-process-creator-min-prompt-length
@@ -397,9 +397,9 @@ emacs using `find-file' if no launcher is defined."
                candidate)))
   (header "locate")
   (action (lambda (_source c)
-            (if (sallet--xdg-can-open-p c)
-                (call-process "xdg-open" nil 0 nil c)
-              (find-file c)))))
+            (if (sallet--find-file-in-emacs-p c)
+                (find-file c)
+              (call-process "xdg-open" nil 0 nil c)))))
 
 (defun sallet-locate ()
   "Run locate sallet."
