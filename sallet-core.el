@@ -26,6 +26,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 's)
 
 (defun sallet-vector-logical-length (vector)
   "Return logical length of VECTOR.
