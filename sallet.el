@@ -29,6 +29,7 @@
 (require 'async)
 (require 'flx)
 (require 'ov)
+(require 'f)
 
 (require 'eieio)
 (require 'ibuffer)

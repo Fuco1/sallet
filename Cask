@@ -7,6 +7,7 @@
 
 (depends-on "dash" "2.10.0")
 (depends-on "s" "1.9.0")
+(depends-on "f" "0.18.2")
 (depends-on "flx" "0.4")
 (depends-on "async" "1.2")
 (depends-on "shut-up" "0.3.2")
