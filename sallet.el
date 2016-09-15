@@ -352,6 +352,7 @@ the `default-directory'."
   (interactive)
   (sallet (list sallet-source-ag-files)))
 
+;; TODO: restart the process only if args change
 (defun sallet-locate-make-process-creator (source)
   "Return a process creator for locate sallet.
 
@@ -433,8 +434,6 @@ is opened through xdg-open(1)."
                (sallet-compose-filters-by-pattern
                 '(("\\`/\\(.*\\)" 1 sallet-locate-filter-substring)
                   ("\\`\\.\\(.*\\)" 1 sallet-filter-file-extension)
-                  ;; TODO: we should match first on the basename, then
-                  ;; on the rest
                   (t sallet-locate-filter-substring))
                 candidates
                 indices
