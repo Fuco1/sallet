@@ -363,7 +363,7 @@ SOURCE is the invoked sallet source."
            (args (-concat
                   ;; TODO: write something that dispatches on pattern like
                   ;; we have for filters
-                  (when whole? (list "--wholename"))
+                  (list (if whole? "--wholename" "--basename"))
                   (when all? (list "--all"))
                   (sallet--smart-case prompt)
                   (cons
