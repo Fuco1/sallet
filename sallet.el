@@ -374,6 +374,46 @@ SOURCE is the invoked sallet source."
       (sallet-source-set-header source (concat "locate " (s-join " " args)))
       (apply 'start-process "locate" nil "locate" args))))
 
+(defun sallet-locate-filter-substring (candidates indices pattern)
+  "Match CANDIDATES at INDICES against PATTERN.
+
+CANDIDATES is a vector of candidates.
+
+INDICES is a list of processed candidates.
+
+Uses substring matching.
+
+First, try to match the basename, then match the entire path.
+Files with match in the basename are tagged for priority sorting
+by the sorter.  Also, regular files are tagged to be sorted over
+directories."
+  (let ((quoted-pattern (regexp-quote pattern)))
+    (-keep
+     (lambda (index)
+       (let* ((candidate (sallet-candidate-aref candidates index))
+              (base (f-base candidate))
+              (directory (f-dirname candidate))
+              (offset (1+ (length directory))))
+         (cond
+          ((string-match quoted-pattern base)
+           (sallet-update-index
+            index
+            (list :regexp-matches
+              (cons
+               (+ offset (match-beginning 0))
+               (+ offset (match-end 0)))
+              'cons)
+            (list :is-base t)
+            (list :is-file (f-file? candidate))))
+          ((string-match quoted-pattern directory)
+           (sallet-update-index
+            index
+            (list :regexp-matches
+              (cons (match-beginning 0) (match-end 0))
+              'cons)
+            (list :is-file (f-file? candidate)))))))
+     indices)))
+
 (sallet-defsource locate (asyncio)
   "Run locate(1).
 
@@ -391,14 +431,25 @@ is opened through xdg-open(1)."
              (let* ((prompt (sallet-state-get-prompt state))
                     (indices (sallet-make-candidate-indices candidates)))
                (sallet-compose-filters-by-pattern
-                '(("\\`/\\(.*\\)" 1 sallet-filter-substring)
+                '(("\\`/\\(.*\\)" 1 sallet-locate-filter-substring)
                   ("\\`\\.\\(.*\\)" 1 sallet-filter-file-extension)
                   ;; TODO: we should match first on the basename, then
                   ;; on the rest
-                  (t sallet-filter-substring))
+                  (t sallet-locate-filter-substring))
                 candidates
                 indices
                 prompt))))
+  (sorter (lambda (c _)
+            (-sort (-lambda (a b)
+                     (if (and (consp a) (consp b))
+                         (-let* (((_ &keys :is-base a :is-file fa) a)
+                                 ((_ &keys :is-base b :is-file fb) b))
+                           (cond
+                            ((and a b)
+                             (and fa (not fb)))
+                            (t (and a (not b)))))
+                       t))
+                   c)))
   (renderer (lambda (candidate _ user-data)
               (sallet-fontify-regexp-matches
                (plist-get user-data :regexp-matches)
