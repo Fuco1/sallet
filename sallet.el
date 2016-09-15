@@ -352,22 +352,27 @@ the `default-directory'."
   (interactive)
   (sallet (list sallet-source-ag-files)))
 
-(defun sallet-locate-make-process-creator ()
-  "Return a process creator for locate sallet."
+(defun sallet-locate-make-process-creator (source)
+  "Return a process creator for locate sallet.
+
+SOURCE is the invoked sallet source."
   (lambda (prompt)
-    (apply
-     'start-process
-     "locate" nil "locate"
-     (-concat
-      ;; TODO: write something that dispatches on pattern like
-      ;; we have for filters
-      (unless (eq (aref prompt 0) ?/)
-        (list "--basename"))
-      (sallet--smart-case prompt)
-      (list
-       (if (eq (aref prompt 0) ?/)
-           (substring prompt 1)
-         prompt))))))
+    (let* ((tokens (split-string prompt))
+           (whole? (eq (aref prompt 0) ?/))
+           (all? (and whole? (>= (length tokens) 1)))
+           (args (-concat
+                  ;; TODO: write something that dispatches on pattern like
+                  ;; we have for filters
+                  (when whole? (list "--wholename"))
+                  (when all? (list "--all"))
+                  (sallet--smart-case prompt)
+                  (cons
+                   (if (eq (aref (car tokens) 0) ?/)
+                       (substring (car tokens) 1)
+                     (car tokens))
+                   (when all? (cdr tokens))))))
+      (sallet-source-set-header source (concat "locate " (s-join " " args)))
+      (apply 'start-process "locate" nil "locate" args))))
 
 (sallet-defsource locate (asyncio)
   "Run locate(1).
@@ -375,11 +380,13 @@ the `default-directory'."
 Text files or directories are opened inside emacs while the rest
 is opened through xdg-open(1)."
   (generator
-   (sallet-make-generator-linewise-asyncio
-    (sallet-process-creator-min-prompt-length
-     (sallet-process-creator-first-token-only
-      (sallet-locate-make-process-creator)))
-    'identity))
+   (lambda (source state)
+     (funcall
+      (sallet-make-generator-linewise-asyncio
+       (sallet-process-creator-min-prompt-length
+        (sallet-locate-make-process-creator source))
+       'identity)
+      source state)))
   (matcher (lambda (candidates state)
              (let* ((prompt (sallet-state-get-prompt state))
                     (indices (sallet-make-candidate-indices candidates)))
