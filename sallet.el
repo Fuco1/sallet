@@ -420,7 +420,7 @@ is opened through xdg-open(1)."
    " • %s [%d/%d]"
    header-string
    (length (sallet-source-get-processed-candidates source))
-   (length (sallet-source-get-candidates source))))
+   (sallet-vector-logical-length (sallet-source-get-candidates source))))
 
 (defun sallet--propertize-header (header-string)
   "Propertize HEADER-STRING with default sallet header face."
