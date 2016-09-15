@@ -856,7 +856,8 @@ STATE is a sallet state."
          (when (= (mod n 256) 0)
            (sallet-update-candidates state source)
            ;; TODO: do we really want to render from here?  Seems like
-           ;; too tight coupling
+           ;; too tight coupling.  Maybe fire some "redraw please"
+           ;; event
            (sallet-render-state state t))
          (aset buffer n cand)
          (setq n (1+ n))
