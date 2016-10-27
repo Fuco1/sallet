@@ -48,6 +48,7 @@
 (require 'sallet-autobookmarks)
 (require 'sallet-registers)
 (require 'sallet-ag)
+(require 'sallet-man)
 
 (defgroup sallet ()
   "Select candidates in a buffer."
@@ -346,6 +347,12 @@ the `default-directory'."
         (read-directory-name
          "Project root: "
          (locate-dominating-file default-directory "GTAGS"))))
+
+;; TODO: make this wrapper automatic
+(defun sallet-man ()
+  "Run man sallet."
+  (interactive)
+  (sallet (list sallet-source-man)))
 
 (defun sallet-ag ()
   "Run ag sallet."
