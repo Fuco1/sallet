@@ -32,6 +32,7 @@
 
 (sallet-defsource projectile-projects nil
   (candidates (lambda () (projectile-relevant-known-projects)))
+  (matcher sallet-matcher-flx)
   (action (lambda (_source c) (projectile-switch-project-by-name c)))
   (header "Jump to project"))
 
