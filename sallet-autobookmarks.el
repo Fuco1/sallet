@@ -26,6 +26,7 @@
 ;;; Code:
 
 (require 'dash)
+(require 'autobookmarks)
 
 (require 'sallet-source)
 (require 'sallet-state)
@@ -119,7 +120,6 @@ Any other non-prefixed pattern is matched using the following rules:
              sallet-autobookmarks--name-to-major-mode-cache)))
 
 (defun sallet-autobookmarks-candidates ()
-  (require 'autobookmarks)
   (-keep
    (lambda (bookmark)
      (-when-let (name
