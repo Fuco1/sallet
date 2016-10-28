@@ -46,6 +46,7 @@
 (require 'sallet-imenu)
 (require 'sallet-occur)
 (require 'sallet-autobookmarks)
+(require 'sallet-projectile)
 (require 'sallet-registers)
 (require 'sallet-ag)
 (require 'sallet-man)
