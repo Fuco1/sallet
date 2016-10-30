@@ -26,7 +26,7 @@
 ;;; Code:
 
 (require 'dash)
-(require 'projectile)
+(require 'projectile nil t)
 
 (require 'sallet-source)
 
