@@ -26,7 +26,6 @@
 ;;; Code:
 
 (require 'dash)
-(require 'autobookmarks)
 
 (require 'sallet-source)
 (require 'sallet-state)
@@ -142,6 +141,7 @@ Any other non-prefixed pattern is matched using the following rules:
 
 (sallet-defsource autobookmarks nil
   "Files saved with `autobookmarks-mode'."
+  (init (lambda (_) (require 'autobookmarks)))
   (candidates sallet-autobookmarks-candidates)
   (matcher sallet-autobookmarks-matcher)
   (renderer sallet-autobookmarks-renderer)
