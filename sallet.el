@@ -407,7 +407,10 @@ directories."
        (let* ((candidate (sallet-candidate-aref candidates index))
               (base (f-base candidate))
               (directory (f-dirname candidate))
-              (offset (1+ (length directory))))
+              (offset (length directory))
+              (offset (if (eq (aref directory (1- offset)) ?/)
+                          offset
+                        (1+ offset))))
          (cond
           ((string-match quoted-pattern base)
            (sallet-update-index
