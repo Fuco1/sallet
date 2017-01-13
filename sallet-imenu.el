@@ -73,7 +73,10 @@
   (setq imenu--index-alist nil)
   (let ((initial (symbol-name (symbol-at-point)))
         (cands (--map (if (cddr it) it (-snoc it ""))
-                      (--remove (< (cadr it) 0) (sallet--imenu-flatten (imenu--make-index-alist))))))
+                      (--remove
+                       (or (not (markerp (cadr it)))
+                           (< (cadr it) 0))
+                       (sallet--imenu-flatten (imenu--make-index-alist))))))
     (if initial
         (-if-let (initial (--first (equal (car it) initial) cands))
             (cons initial (--remove (equal initial it) cands))
