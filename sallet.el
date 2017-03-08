@@ -543,7 +543,8 @@ Return number of rendered candidates."
                     ;; between sallet calls, there's quite a lot of
                     ;; chance it will come again, like with buffers or
                     ;; so
-                    (funcall renderer candidate state (cdr-safe n))
+                    (or (funcall renderer candidate state (cdr-safe n))
+                        (propertize "ERROR WHILE COMPUTING CANDIDATE" 'face font-lock-warning-face))
                     "\n"))
           (setq i (1+ i))))
       i)))
