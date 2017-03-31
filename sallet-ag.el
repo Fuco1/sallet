@@ -54,7 +54,7 @@ ROOT is the directory from where we launch ag(1)."
        "--smart-case" "-g" prompt))))
 
 (defun sallet-ag-processor (input)
-  (-let (((file line column content) (s-split-up-to ":" input 4)))
+  (-let (((file line column content) (s-split-up-to ":" input 3)))
     (list content file line column)))
 
 (defun sallet-filter-ag-path-flx (candidates indices pattern)
