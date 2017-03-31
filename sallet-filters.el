@@ -263,6 +263,8 @@ to the asyncio process and the rest to the matcher."
 
 ;;; Matchers
 
+;; TODO: Go over the matchers and check if they actually need the
+;; entire state.
 (defun sallet-matcher-default (candidates state)
   "Default matcher.
 
@@ -301,6 +303,8 @@ candidates."
 
 ;;; Matcher combinators
 
+;; TODO: Start replacing built-in manually crafted matchers with calls
+;; to this
 (defun sallet-make-matcher (filter)
   "Make a sallet matcher from a FILTER."
   (lambda (candidates state)

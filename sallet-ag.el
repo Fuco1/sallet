@@ -66,6 +66,12 @@ ROOT is the directory from where we launch ag(1)."
          (indices (sallet-make-candidate-indices candidates)))
     (sallet-compose-filters-by-pattern
      '(("\\`/\\(.*\\)" 1 sallet-filter-ag-path-flx)
+       ;; TODO: each sallet should somehow specify if it is doing
+       ;; "smart case" and if so, wrap the calls to these with
+       ;; `case-fold-search'.  See for example `sallet-ag'.  We should
+       ;; only do the wrap once somewhere high-up to not kill
+       ;; performance (see the `case-fold-search' caching in
+       ;; smartparens `sp--with-case-sensitive' for an example).
        (t sallet-filter-substring))
      candidates
      indices
@@ -103,6 +109,10 @@ ROOT is the directory from where we launch ag(1)."
               (setq last-index (sallet-car-maybe index))))
          t))
   (renderer (-lambda ((content _ line column) _ user-data)
+              ;; TODO: fontify the line/column with different colors
+              ;; (set up our own faces for that, something like
+              ;; sallet-grep-line and sallet-grep-column... we will
+              ;; use these for all the "grep"-like sallets)
               (format "%s:%s:%s"
                       line column
                       (sallet-fontify-regexp-matches

@@ -132,6 +132,7 @@ Return a generator."
         (sit-for 0.01)
         proc))))
 
+;; TODO: rename to process-creator prefix
 (defun sallet-process-run-in-directory (process-creator directory)
   "Run PROCESS-CREATOR in DIRECTORY."
   (lambda (prompt)
@@ -228,6 +229,9 @@ SOURCE is the invoked sallet source."
   (generator
    (lambda (source state)
      (funcall
+      ;; TODO: add some threading interface to compose these? It is
+      ;; impossible to understand which argument comes to which
+      ;; decorator
       (sallet-make-generator-linewise-asyncio
        (sallet-process-creator-min-prompt-length
         (sallet-process-creator-first-token-only
@@ -905,6 +909,8 @@ are placed in this source's candidates vector.
 
 STATE is a sallet state."
   (let ((n 0))
+    ;; TODO: abstract the vector logic here into some "dynamic array"
+    ;; data structure.  Write tests for it.
     (sallet-source-set-candidates source (make-vector 32 nil))
     (sallet-process-filter-line-buffering-decorator
      (lambda (_process string)
