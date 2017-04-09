@@ -46,6 +46,7 @@
 (require 'sallet-imenu)
 (require 'sallet-occur)
 (require 'sallet-autobookmarks)
+(require 'sallet-bookmarks)
 (require 'sallet-projectile)
 (require 'sallet-registers)
 (require 'sallet-ag)
@@ -940,6 +941,11 @@ STATE is a sallet state."
   "Sallet for point registers."
   (interactive)
   (sallet (list sallet-source-register-point)))
+
+(defun sallet-bookmarks ()
+  "Sallet for bookmarks"
+  (interactive)
+  (sallet (list sallet-source-bookmarks)))
 
 (provide 'sallet)
 
