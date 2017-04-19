@@ -85,6 +85,14 @@ computes it.")
   (-sum (--map (length (sallet-source-get-processed-candidates it))
                (sallet-state-get-sources state))))
 
+(defun sallet--goto-candidate (state)
+  "Move point to current candidate in STATE."
+  (-when-let (pos (text-property-any
+                   (point-min) (point-max)
+                   'sallet-candidate-index
+                   (sallet-state-get-selected-candidate state)))
+    (goto-char pos)))
+
 (defun sallet-state-get-selected-source (state)
   "Return the currently selected source and candidate.
 

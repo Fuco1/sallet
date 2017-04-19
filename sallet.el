@@ -788,22 +788,21 @@ updates the candidate buffer."
   (when (> (sallet-state-get-selected-candidate sallet-state) 0)
     (sallet-state-decf-selected-candidate sallet-state)))
 
+;; TODO: abstract the work with text properties
 (defun sallet-candidate-next-source ()
   "Set the current selected candidate to the first candidate of next source."
   (interactive)
-  (let* ((current (sallet-state-get-selected-candidate sallet-state))
-         ;; TODO: rewrite using text properties: mark the header with
-         ;; some property when rendering, then find the next such
-         ;; property after the point, go to the next line, extract the
-         ;; candidate index, set it as current candidate
-         (candidates-per-source (--remove
-                                 (= 0 it)
-                                 (--map (length (sallet-source-get-processed-candidates it))
-                                        (sallet-state-get-sources sallet-state))))
-         (offsets (-butlast (nreverse (--reduce-from (cons (+ it (car acc)) acc) (list 0) candidates-per-source))))
-         (next (--first (< current it) offsets)))
-    (unless next (setq next 0))
-    (sallet-state-set-selected-candidate sallet-state next)))
+  (with-current-buffer (sallet-state-get-candidate-buffer sallet-state)
+    (save-excursion
+      (when (sallet--goto-candidate sallet-state)
+        (let ((next (next-single-property-change (point) 'sallet-source)))
+          (if (not next)
+              (sallet-state-set-selected-candidate sallet-state 0)
+            (goto-char next)
+            (forward-line)
+            (--if-let (get-text-property (point) 'sallet-candidate-index)
+                (sallet-state-set-selected-candidate sallet-state it)
+              (sallet-state-set-selected-candidate sallet-state 0))))))))
 
 (defun sallet--scroll-offset ()
   "Get the offset for scrolling up/down."
