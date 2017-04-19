@@ -502,18 +502,19 @@ is opened through xdg-open(1)."
   (let ((processed-candidates (sallet-source-get-processed-candidates source)))
     (when (and processed-candidates
                (> (length processed-candidates) 0))
-      (let ((header (sallet-source-get-header source)))
-        (if (functionp header)
-            (insert
-             (let ((header-string (funcall header source)))
-               (if (text-property-not-all
-                    0 (length header-string) 'face nil header-string)
-                   header-string
-                 (sallet--propertize-header
-                  (concat header-string "\n")))))
-          (insert
-           (sallet--propertize-header
-            (concat (sallet--wrap-header-string header source) "\n"))))))))
+      (let* ((header (sallet-source-get-header source))
+             (header-string
+              (if (functionp header)
+                  (let ((header-string (funcall header source)))
+                    (if (text-property-not-all
+                         0 (length header-string) 'face nil header-string)
+                        header-string
+                      (sallet--propertize-header
+                       (concat header-string "\n"))))
+                (sallet--propertize-header
+                 (concat (sallet--wrap-header-string header source) "\n")))))
+        (put-text-property 0 1 'sallet-source (eieio-object-class source) header-string)
+        header-string))))
 
 ;; TODO propertize the interesting stuff, define faces
 (defun sallet-render-source (source state offset)
@@ -533,7 +534,7 @@ Return number of rendered candidates."
            (i 0))
       (when (functionp before-render-hook)
         (funcall before-render-hook source state))
-      (sallet-render-header source)
+      (--when-let (sallet-render-header source) (insert it))
       (-each processed-candidates
         (lambda (n)
           ;; `n' can be a number or a list returned from the
