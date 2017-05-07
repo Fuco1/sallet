@@ -93,6 +93,16 @@ computes it.")
                    (sallet-state-get-selected-candidate state)))
     (goto-char pos)))
 
+(defun sallet-state--get-source-bounds (source state)
+  "Find bounds of this SOURCE in current STATE."
+  (with-current-buffer (sallet-state-get-candidate-buffer state)
+    (save-excursion
+      (-when-let (beg (text-property-any
+                       (point-min) (point-max)
+                       'sallet-source (eieio-object-class source)))
+        (let ((end (next-single-property-change (1+ beg) 'sallet-source)))
+          (cons beg (or end (point-max))))))))
+
 (defun sallet-state-get-selected-source (state)
   "Return the currently selected source and candidate.
 
