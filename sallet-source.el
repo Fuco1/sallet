@@ -81,8 +81,7 @@ Sets default matcher `sallet-matcher-default', identity renderer
 and identity action."
   (matcher sallet-matcher-default
            :documentation "write what a matcher is. function matching and ranking/sorting candidates")
-  (sorter (lambda (x _) x)
-          :documentation "Sorter.")
+  (sorter nil :documentation "Sorter.")
   (init ignore
         :documentation
     "Arbitrary initialization function.
