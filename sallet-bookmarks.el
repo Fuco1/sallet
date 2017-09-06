@@ -39,6 +39,7 @@
     (`elfeed-search-bookmark-handler "Elfeed search")
     (`Info-bookmark-jump "Info")
     (`bmkp-jump-dired "Dired")
+    (`eshell-bookmark--restore "Eshell")
     (_ "File")))
 
 (defun sallet--bookmarks-get-face (type)
