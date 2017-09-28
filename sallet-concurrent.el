@@ -1,5 +1,8 @@
 ;; -*- lexical-binding: t -*-
 
+(require 'deferred)
+(require 'sallet-core)
+
 (defun -insert-by! (item comparator list)
   "Insert new ITEM according to COMPARATOR into a sorted LIST."
   (if (not list)
@@ -22,113 +25,248 @@
       start)))
 
 (defun csallet-occur-generator (prompt buffer)
-  (let ((continue (point-min)))
-    (lambda (end-time)
-      (let (re)
+  (let ((continue (point-min))
+        (cur-line 0))
+    (lambda (_)
+      (let ((re nil)
+            (end-time (time-add (current-time) (list 0 0 10000 0))))
         (with-current-buffer buffer
           (save-excursion
-            (goto-char continue)
-            (while (and
-                    (time-less-p (current-time) end-time)
-                    (setq continue (re-search-forward prompt nil t)))
-              (push (thing-at-point 'line) re)
-              (forward-line)
-              (setq continue (point)))
+            (when continue
+              (goto-char continue)
+              (while (and
+                      (time-less-p (current-time) end-time)
+                      (search-forward prompt nil t))
+                (setq cur-line (+ cur-line (count-lines continue (point))))
+                (push (list (thing-at-point 'line)
+                            (list :line cur-line)) re)
+                (forward-line)
+                (setq continue (point)))
+              (setq continue nil))
             (list :candidates (nreverse re)
                   :finished (not continue))))))))
 
+(defun csallet-make-cached-generator (generator)
+  "Make cached generator.
+
+GENERATOR is a function which returns a simple list of
+candidates, all of them in single invocation.
+
+First time the resulting function is called it will return all
+the generated data.  On the subsequent calls it returns no
+additional candidates and declares itself as finished."
+  (let (already-run)
+    ;; ignored argument due to deferred requiring it in the callback
+    (lambda (_)
+      (list :candidates (unless already-run
+                          (prog1 (funcall generator)
+                            (setq already-run t)))
+            :finished t))))
+
+(defun csallet-make-buffered-processor (processor)
+  (let ((processable-candidates nil))
+    (lambda (additional-candidates)
+      (setq processable-candidates
+            (-concat processable-candidates additional-candidates))
+      (let ((end-time (time-add (current-time) (list 0 0 10000 0)))
+            (re nil))
+        (-each-while
+            processable-candidates
+            (lambda (_) (time-less-p (current-time) end-time))
+          (lambda (candidate)
+            (-when-let (valid-candidate (funcall processor candidate))
+              (push valid-candidate re))
+            (!cdr processable-candidates)))
+        (list :candidates (nreverse re)
+              :finished (= 0 (length processable-candidates)))))))
+
 (defun csallet-occur-filter (candidate user-data pattern)
-  (when (string-match-p pattern candidate)
+  (when (string-match-p (regexp-quote pattern) candidate)
     (list candidate user-data)))
 
-;; TODO: add some utility to make "buffering matcher"
+(defun csallet-buffer-filter (candidate user-data pattern)
+  (when (string-match-p (regexp-quote pattern) candidate)
+    (list candidate user-data)))
 
 (defun csallet-occur-matcher (prompt)
-  (lambda (candidates)
-    (--keep (csallet-occur-filter it nil prompt) candidates)))
-
-;; (defun csallet-occur-sorter (comparator)
-;;   (let (sorted-candidates
-;;         (tick 1))
-;;     (lambda (additional-candidates)
-;;       (-each additional-candidates
-;;         (-lambda ((candidate user-data))
-;;           (let ((updated-user-data (plist-put user-data :tick tick)))
-;;             (setq sorted-candidates
-;;                   (-insert-by! (list candidate updated-user-data)
-;;                                (-on comparator 'car)
-;;                                sorted-candidates)))))
-;;       (cl-incf tick)
-;;       sorted-candidates)))
+  (csallet-make-buffered-processor
+   (lambda (candidate)
+     (csallet-occur-filter (sallet-car-maybe candidate)
+                           (sallet-list-maybe candidate 'cadr)
+                           prompt))))
 
 (defun csallet-occur-render-candidate (candidate)
   (-let* (((candidate user-data) candidate))
-    (format "%s: %s" (plist-get user-data :tick) candidate)))
+    (format "%5d: %s"
+            (plist-get user-data :line)
+            candidate)))
 
-;; (defun csallet-occur-renderer (sallet-buffer)
-;;   (let ((last-tick 0))
-;;     (lambda (candidates)
-;;       (with-current-buffer sallet-buffer
-;;         (goto-char (point-min))
-;;         (-each candidates
-;;           (-lambda ((candidate
-;;                      (user-data &as &plist :tick tick)))
-;;             ;; (insert (csallet-occur-render-candidate candidate user-data))
-;;             (if (> tick last-tick)
-;;                 (insert (csallet-occur-render-candidate candidate user-data))
-;;               (forward-line 1))
-;;             ))
-;;         (cl-incf last-tick)))))
+(defun csallet-make-buffered-sorter (indexer)
+  (let ((processable-candidates nil)
+        (sorted-candidates nil))
+    (lambda (additional-candidates)
+      (setq processable-candidates (-concat processable-candidates additional-candidates))
+      (let ((end-time (time-add (current-time) (list 0 0 50000 0)))
+            (re nil))
+        (-each-while processable-candidates
+            (lambda (_) (time-less-p (current-time) end-time))
+          (lambda (candidate)
+            (let ((index (funcall indexer candidate)))
+              (setq sorted-candidates
+                    (-insert-at index candidate sorted-candidates ))
+              (let* ((user-data (cadr candidate))
+                     (user-data (plist-put user-data :index index)))
+                (push (list (car candidate) user-data) re))
+              (!cdr processable-candidates))))
+        (list :candidates (nreverse re)
+              :finished (= 0 (length processable-candidates)))))))
 
-(defun csallet-occur-updater (sallet-buffer comparator renderer)
-  (csallet-make-updater sallet-buffer comparator renderer))
-
-;; TODO: figure out how to postpone/queue update here
-(defun csallet-make-updater (sallet-buffer comparator renderer)
-  (let (sorted-candidates
+(defun csallet-make-buffered-updater (sallet-buffer comparator renderer)
+  (let ((sorted-candidates nil)
+        (processable-candidates nil)
         (comparator (lambda (a b)
                       (let ((result (funcall comparator a b)))
                         (unless result
                           (forward-line 1))
                         result))))
     (lambda (additional-candidates)
-      (with-current-buffer sallet-buffer
-        (-each additional-candidates
+      (setq processable-candidates (-concat processable-candidates additional-candidates))
+      (let ((end-time (time-add (current-time) (list 0 0 50000 0))))
+        (-each-while processable-candidates
+            (lambda (_) (time-less-p (current-time) end-time))
           (-lambda (candidate)
-            (goto-char (point-min))
-            (setq sorted-candidates
-                  (-insert-by! candidate comparator sorted-candidates))
-            (insert (funcall renderer candidate))))))))
+            (with-current-buffer sallet-buffer
+              (!cdr processable-candidates)
+              (goto-char (point-min))
+              (setq sorted-candidates
+                    (-insert-by! candidate comparator sorted-candidates))
+              (insert (funcall renderer candidate)))))
+        (list :finished (= 0 (length processable-candidates)))))))
 
-(defun csallet-start-pipeline (generator
-                               matcher
-                               updater)
-  (let ((run-list))
+(defun csallet-occur-updater (sallet-buffer comparator renderer)
+  (csallet-make-buffered-updater sallet-buffer comparator renderer))
+
+(defun csallet-bind-processor (processor)
+  (-lambda ((&plist :candidates candidates
+                    :finished finished))
+    (-let (((&plist :candidates updated-candidates
+                    :finished next-finished)
+            (funcall processor candidates)))
+      (list :candidates updated-candidates
+            :finished (and finished next-finished)))))
+
+(defun csallet-make-pipeline (generator
+                              matcher
+                              updater)
+  (let ((current-deferred))
     (lambda (op)
       (pcase op
         (`start
-         (setq future
-               (deferred:next
-                 (deferred:lambda ()
-                   (-let* ((end-time (time-add (current-time) (list 0 0 10000 0)))
-                           ((&plist :candidates candidates
-                                    :finished finished)
-                            (funcall generator end-time)))
-                     (push (deferred:$
-                             (deferred:succeed candidates)
-                             (deferred:nextc it matcher)
-                             (deferred:nextc it updater))
-                           run-list)
-                     (unless finished
-                       (let ((next (deferred:next self)))
-                         (push next run-list)
-                         next))))))
-         (push future run-list))
+         (deferred:nextc (deferred:succeed nil)
+           (deferred:lambda (done)
+             (unless done
+               (deferred:$
+                 (setq current-deferred (deferred:wait 1))
+                 (deferred:nextc it (csallet-bind-processor generator))
+                 (deferred:nextc it (csallet-bind-processor matcher))
+                 (deferred:nextc it (csallet-bind-processor updater))
+                 (deferred:nextc it
+                   (-lambda ((&plist :finished finished)) finished))
+                 (deferred:nextc it self))))))
         (`cancel
-         (--each run-list (deferred:cancel it)))))))
+         (let ((this current-deferred)
+               next)
+           (while (setq next (deferred-next this))
+             (deferred:cancel this)
+             (setq this next))
+           (deferred:cancel this)))))))
 
-(csallet-start-pipeline
- (csallet-occur-generator "a" (current-buffer))
- (csallet-occur-matcher "a")
- (csallet-occur-sorter (lambda (_ _) nil))
- (csallet-occur-renderer (get-buffer-create "*concurrent sallet*")))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; SOURCES
+
+(defun csallet-source-occur ()
+  (let ((current-buffer (current-buffer)))
+    (lambda (prompt)
+      (when (> (length prompt) 0)
+        (csallet-make-pipeline
+         (csallet-occur-generator prompt current-buffer)
+         (csallet-occur-matcher prompt)
+         (csallet-occur-updater
+          (get-buffer-create "*sallet-concurrent*")
+          (-lambda ((a) (b)) (< (length a) (length b)))
+          'csallet-occur-render-candidate))))))
+
+(defun csallet-occur ()
+  (interactive)
+  (csallet (csallet-source-occur)))
+
+(defun csallet-buffer-updater (sallet-buffer renderer)
+  (let ((processor
+         (csallet-make-buffered-processor
+          (lambda (candidate)
+            (insert (funcall renderer candidate) "\n")))))
+    (lambda (additional-candidates)
+      (with-current-buffer sallet-buffer
+        (funcall processor additional-candidates)))))
+
+(defun csallet-buffer-render-candidate (candidate)
+  (car candidate))
+
+(defun csallet-source-buffer ()
+  (lambda (prompt)
+    (csallet-make-pipeline
+     (csallet-make-cached-generator 'sallet-buffer-candidates)
+     (csallet-occur-matcher prompt)
+     (csallet-buffer-updater
+      (get-buffer-create "*sallet-concurrent*")
+      'csallet-buffer-render-candidate))))
+
+(defun csallet-buffer ()
+  (interactive)
+  (csallet (csallet-source-buffer)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; RUNTIME
+
+(defvar csallet--deferred nil)
+
+(defun csallet--cleanup ()
+  (when csallet--deferred
+    (unwind-protect
+        (funcall csallet--deferred 'cancel)
+      (setq csallet--deferred nil))))
+
+(defun csallet (source)
+  (condition-case _var
+      (minibuffer-with-setup-hook (lambda () (csallet--minibuffer-setup source))
+        (csallet--run-source "" source)
+        ;; TODO: add support to pass maps
+        ;; TODO: propertize prompt
+        (read-from-minibuffer ">>> ")
+        (csallet--cleanup))
+    (quit (csallet--cleanup))
+    (error (csallet--cleanup))))
+
+(defvar csallet--minibuffer-post-command-hook nil
+  "Closure used to update sallet window on minibuffer events.
+
+The closure is stored in function slot.")
+
+(defun csallet--minibuffer-setup (source)
+  "Setup `post-command-hook' in minibuffer to update sallet STATE."
+  (fset 'csallet--minibuffer-post-command-hook
+        (let ((old-prompt ""))
+          (lambda ()
+            (let ((prompt (buffer-substring-no-properties 5 (point-max))))
+              (unless (equal old-prompt prompt)
+                (setq old-prompt prompt)
+                (csallet--run-source prompt source))))))
+  (add-hook 'post-command-hook 'csallet--minibuffer-post-command-hook nil t))
+
+(defun csallet--run-source (prompt source)
+  (csallet--cleanup)
+  (with-current-buffer (get-buffer-create "*sallet-concurrent*")
+    (erase-buffer))
+  (setq csallet--deferred (funcall source prompt))
+  (when csallet--deferred
+    (funcall csallet--deferred 'start)))

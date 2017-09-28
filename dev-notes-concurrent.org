@@ -1,0 +1,3 @@
+* Concurrent sallet
+
+The second evolution of sallet with concurrency built-in for everything.  This needs a little bit of architecture overhaul, especially what concerns generating candidates the rest of the pipeline
