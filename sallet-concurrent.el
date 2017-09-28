@@ -25,6 +25,7 @@
       start)))
 
 (defun csallet-occur-generator (prompt buffer)
+  "Generate list of lines matching PROMPT in BUFFER."
   (let ((continue (point-min))
         (cur-line 0))
     (lambda (_)
@@ -64,6 +65,18 @@ additional candidates and declares itself as finished."
             :finished t))))
 
 (defun csallet-make-buffered-processor (processor)
+  "Make a buffered timesharing function out of PROCESSOR.
+
+PROCESSOR is a function taking in one candidate and returning
+either nil if the candidate should be discarded or an updated
+candidate (really any non-nil value) which will be passed to the
+next stage.
+
+Return a function taking in a list of candidates to process.  If
+the candidates can not be processed in the allocated time (10ms)
+they are buffered internally.  On the next invocation the
+passed-in candidates are added to the end of the buffer and the
+buffered candidates are processed first."
   (let ((processable-candidates nil))
     (lambda (additional-candidates)
       (setq processable-candidates
