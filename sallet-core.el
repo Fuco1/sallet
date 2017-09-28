@@ -50,6 +50,10 @@ valid candidates."
   "Return `car' of CONS-OR-THING if it is a cons or itself otherwise."
   (if (consp cons-or-thing) (car cons-or-thing) cons-or-thing))
 
+(defun sallet-list-maybe (cons-or-thing accessor)
+  "If CONS-OR-THING is not cons, return itself, else call ACCESSOR on it."
+  (if (consp cons-or-thing) (funcall accessor cons-or-thing) cons-or-thing))
+
 (defun sallet-aref (candidates index)
   "Return element of CANDIDATES at INDEX.
 
