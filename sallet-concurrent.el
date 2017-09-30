@@ -254,12 +254,9 @@ candidate and user-data)."
   (csallet (csallet-source-occur)))
 
 (defun csallet-buffer-updater (sallet-buffer renderer)
-  (let ((processor
-         (csallet-make-buffered-processor
-          (lambda (candidate)
-            (insert (funcall renderer candidate) "\n")))))
-    (lambda (additional-candidates)
-      (funcall processor additional-candidates))))
+  (csallet-make-buffered-processor
+   (lambda (candidate)
+     (insert (funcall renderer candidate) "\n"))))
 
 (defun csallet-buffer-render-candidate (candidate)
   (sallet-buffer-renderer (car candidate) nil (cadr candidate)))
