@@ -380,6 +380,27 @@ cancelled."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SOURCES
 
+(defun csallet-source-ag ()
+  (lambda (prompt canvas)
+    (csallet-make-pipeline
+     canvas
+     (csallet-make-process-generator
+      (lambda (buffer prompt)
+        (when (> (length prompt) 0)
+          (start-process
+           "ag" buffer "ag"
+           "--nocolor" "--literal" "--line-number" "--smart-case"
+           "--nogroup" "--column" "--" prompt)))
+      'identity prompt)
+     (lambda (candidates _) `(:candidates ,candidates))
+     (csallet-make-buffered-stage
+      (-lambda ((candidate))
+        (insert candidate "\n"))))))
+
+(defun csallet-ag ()
+  (interactive)
+  (csallet (csallet-source-ag)))
+
 (defun csallet-source-locate ()
   (lambda (prompt canvas)
     (csallet-make-pipeline
@@ -454,7 +475,10 @@ cancelled."
 
 (defun csallet-mixed ()
   (interactive)
-  (csallet (csallet-source-buffer) (csallet-source-locate)))
+  (csallet
+   (csallet-source-buffer)
+   (csallet-source-locate)
+   (csallet-source-ag)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RUNTIME
