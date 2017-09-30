@@ -93,11 +93,28 @@ buffered candidates are processed first."
         (list :candidates (nreverse re)
               :finished (= 0 (length processable-candidates)))))))
 
-(defun csallet-occur-filter (candidate user-data pattern)
-  (when (string-match-p (regexp-quote pattern) candidate)
-    (list candidate user-data)))
+(defun csallet-sallet-filter-wrapper (filter prompt)
+  "Wrap a sallet FILTER to behave like csallet candidate processor.
 
-(defun csallet-buffer-filter (candidate user-data pattern)
+FILTER has the sallet interface, so on input it expects
+
+- a vector of candidates
+- a list of indices
+- the pattern to search.
+
+PROMPT is the patter passed to FILTER.
+
+Return a function taking in csallet candidate (a list of
+candidate and user-data)."
+  (lambda (candidate)
+    (-when-let (((_ . user-data))
+                (funcall filter
+                         (vector (sallet-car-maybe candidate))
+                         (list (list 0 (sallet-list-maybe candidate 'cadr)))
+                         prompt))
+      (list candidate user-data))))
+
+(defun csallet-occur-filter (candidate user-data pattern)
   (when (string-match-p (regexp-quote pattern) candidate)
     (list candidate user-data)))
 
@@ -148,12 +165,12 @@ buffered candidates are processed first."
         (-each-while processable-candidates
             (lambda (_) (time-less-p (current-time) end-time))
           (-lambda (candidate)
-            (with-current-buffer sallet-buffer
-              (!cdr processable-candidates)
-              (goto-char (point-min))
-              (setq sorted-candidates
-                    (-insert-by! candidate comparator sorted-candidates))
-              (insert (funcall renderer candidate)))))
+            (!cdr processable-candidates)
+            (goto-char (point-min))
+            ;; (forward-line 1)
+            (setq sorted-candidates
+                  (-insert-by! candidate comparator sorted-candidates))
+            (insert (funcall renderer candidate))))
         (list :finished (= 0 (length processable-candidates)))))))
 
 (defun csallet-occur-updater (sallet-buffer comparator renderer)
@@ -168,7 +185,8 @@ buffered candidates are processed first."
       (list :candidates updated-candidates
             :finished (and finished next-finished)))))
 
-(defun csallet-make-pipeline (generator
+(defun csallet-make-pipeline (canvas
+                              generator
                               matcher
                               updater)
   (let ((current-deferred))
@@ -182,7 +200,13 @@ buffered candidates are processed first."
                  (setq current-deferred (deferred:wait 1))
                  (deferred:nextc it (csallet-bind-processor generator))
                  (deferred:nextc it (csallet-bind-processor matcher))
-                 (deferred:nextc it (csallet-bind-processor updater))
+                 (deferred:nextc it
+                   (csallet-bind-processor
+                    (lambda (candidates)
+                      (csallet-with-canvas canvas
+                        (goto-char (point-max))
+                        ;; (backward-char)
+                        (funcall updater candidates)))))
                  (deferred:nextc it
                    (-lambda ((&plist :finished finished)) finished))
                  (deferred:nextc it self))))))
@@ -194,14 +218,24 @@ buffered candidates are processed first."
              (setq this next))
            (deferred:cancel this)))))))
 
+(defmacro csallet-with-canvas (canvas &rest body)
+  (declare (indent 1))
+  `(with-current-buffer (overlay-buffer ,canvas)
+     (save-excursion
+       (save-restriction
+         (widen)
+         (narrow-to-region (overlay-start ,canvas) (1- (overlay-end ,canvas)))
+         ,@body))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SOURCES
 
 (defun csallet-source-occur ()
   (let ((current-buffer (current-buffer)))
-    (lambda (prompt)
+    (lambda (prompt canvas)
       (when (> (length prompt) 0)
         (csallet-make-pipeline
+         canvas
          (csallet-occur-generator prompt current-buffer)
          (csallet-occur-matcher prompt)
          (csallet-occur-updater
@@ -219,17 +253,31 @@ buffered candidates are processed first."
           (lambda (candidate)
             (insert (funcall renderer candidate) "\n")))))
     (lambda (additional-candidates)
-      (with-current-buffer sallet-buffer
-        (funcall processor additional-candidates)))))
+      (funcall processor additional-candidates))))
 
 (defun csallet-buffer-render-candidate (candidate)
-  (car candidate))
+  (sallet-buffer-renderer (car candidate) nil (cadr candidate)))
+
+(defun csallet-buffer-matcher (prompt)
+  (csallet-make-buffered-processor
+   (csallet-sallet-filter-wrapper
+    (lambda (candidates indices pattern)
+      (sallet-compose-filters-by-pattern
+       '(("\\`\\*\\(.*\\)" 1 sallet-filter-buffer-major-mode)
+         ("\\`@\\(.*\\)" 1 sallet-filter-buffer-imenu)
+         ("\\`#\\(.*\\)" 1 sallet-filter-buffer-fulltext)
+         ("\\`//\\(.*\\)" 1 sallet-filter-buffer-default-directory-substring)
+         ("\\`/\\(.*\\)" 1 sallet-filter-buffer-default-directory-flx)
+         (t sallet-filter-flx-then-substring))
+       candidates indices pattern))
+    prompt)))
 
 (defun csallet-source-buffer ()
-  (lambda (prompt)
+  (lambda (prompt canvas)
     (csallet-make-pipeline
+     canvas
      (csallet-make-cached-generator 'sallet-buffer-candidates)
-     (csallet-occur-matcher prompt)
+     (csallet-buffer-matcher prompt)
      (csallet-buffer-updater
       (get-buffer-create "*sallet-concurrent*")
       'csallet-buffer-render-candidate))))
@@ -238,21 +286,29 @@ buffered candidates are processed first."
   (interactive)
   (csallet (csallet-source-buffer)))
 
+(defun csallet-mixed ()
+  (interactive)
+  (csallet (csallet-source-buffer) (csallet-source-occur)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RUNTIME
 
-(defvar csallet--deferred nil)
+(defvar csallet--running-sources nil)
+
+(defun csallet--cleanup-source (running-source)
+  (ignore-errors
+    (when running-source
+      (funcall running-source 'cancel))))
 
 (defun csallet--cleanup ()
-  (when csallet--deferred
-    (unwind-protect
-        (funcall csallet--deferred 'cancel)
-      (setq csallet--deferred nil))))
+  (unwind-protect
+      (mapc 'csallet--cleanup-source csallet--running-sources)
+    (setq csallet--running-sources nil)))
 
-(defun csallet (source)
+(defun csallet (&rest sources)
   (condition-case _var
-      (minibuffer-with-setup-hook (lambda () (csallet--minibuffer-setup source))
-        (csallet--run-source "" source)
+      (minibuffer-with-setup-hook (lambda () (csallet--minibuffer-setup sources))
+        (csallet--run-sources "" sources)
         ;; TODO: add support to pass maps
         ;; TODO: propertize prompt
         (read-from-minibuffer ">>> ")
@@ -265,7 +321,7 @@ buffered candidates are processed first."
 
 The closure is stored in function slot.")
 
-(defun csallet--minibuffer-setup (source)
+(defun csallet--minibuffer-setup (sources)
   "Setup `post-command-hook' in minibuffer to update sallet STATE."
   (fset 'csallet--minibuffer-post-command-hook
         (let ((old-prompt ""))
@@ -273,13 +329,34 @@ The closure is stored in function slot.")
             (let ((prompt (buffer-substring-no-properties 5 (point-max))))
               (unless (equal old-prompt prompt)
                 (setq old-prompt prompt)
-                (csallet--run-source prompt source))))))
+                (csallet--run-sources prompt sources))))))
   (add-hook 'post-command-hook 'csallet--minibuffer-post-command-hook nil t))
 
-(defun csallet--run-source (prompt source)
+(defun csallet--run-sources (prompt sources)
   (csallet--cleanup)
-  (with-current-buffer (get-buffer-create "*sallet-concurrent*")
-    (erase-buffer))
-  (setq csallet--deferred (funcall source prompt))
-  (when csallet--deferred
-    (funcall csallet--deferred 'start)))
+  (let ((sallet-buffer (get-buffer-create "*sallet-concurrent*")))
+    (with-current-buffer sallet-buffer
+      (kill-all-local-variables)
+      (setq truncate-lines t)
+      (buffer-disable-undo)
+      ;; (setq cursor-type nil)
+      (ov-clear)
+      (erase-buffer))
+    (let ((canvases
+           (with-current-buffer sallet-buffer
+             (--map
+              (let ((canvas (make-overlay (point) (progn (insert "\n") (point)))))
+                ;; (overlay-put canvas 'display "")
+                (overlay-put canvas 'face (list :background (ov--random-color)))
+                canvas)
+              sources))))
+      (setq csallet--running-sources
+            (-map
+             (-lambda ((canvas . source))
+               (csallet--run-source source prompt canvas))
+             (-zip canvases sources))))))
+
+(defun csallet--run-source (source prompt canvas)
+  (-when-let (pipeline (funcall source prompt canvas))
+    (funcall pipeline 'start)
+    pipeline))
