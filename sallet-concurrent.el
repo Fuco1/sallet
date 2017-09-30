@@ -207,6 +207,12 @@ ones and overrule settings in the other lists."
                             pipeline-data
                             next-pipeline-data)))))
 
+(defun csallet--candidate-counter (property-name)
+  "Return a function counting input candidates and saving the count in PROPERTY-NAME."
+  (lambda (candidates _)
+    (list :candidates candidates
+          :pipeline-data `(,property-name ,(length candidates)))))
+
 (defun csallet-make-pipeline (canvas
                               generator
                               matcher
@@ -227,15 +233,11 @@ ones and overrule settings in the other lists."
                  (deferred:nextc it (csallet-bind-processor generator))
                  (deferred:nextc it
                    (csallet-bind-processor
-                    (lambda (candidates _)
-                      (list :candidates candidates
-                            :pipeline-data `(:generated-count ,(length candidates))))))
+                    (csallet--candidate-counter :generated-count)))
                  (deferred:nextc it (csallet-bind-processor matcher))
                  (deferred:nextc it
                    (csallet-bind-processor
-                    (lambda (candidates _)
-                      (list :candidates candidates
-                            :pipeline-data `(:matched-count ,(length candidates))))))
+                    (csallet--candidate-counter :matched-count)))
                  (deferred:nextc it
                    (csallet-bind-processor
                     (csallet--run-in-canvas updater canvas)))
