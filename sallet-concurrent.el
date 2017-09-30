@@ -185,6 +185,16 @@ candidate and user-data)."
       (list :candidates updated-candidates
             :finished (and finished next-finished)))))
 
+(defun csallet--run-updater-in-canvas (updater canvas)
+  "Run UPDATER in CANVAS."
+  (lambda (candidates)
+    ;; enable visibility when we render the first candidate
+    (when (> (length candidates) 0)
+      (overlay-put canvas 'display nil))
+    (csallet-with-canvas canvas
+      (goto-char (point-max))
+      (funcall updater candidates))))
+
 (defun csallet-make-pipeline (canvas
                               generator
                               matcher
@@ -202,11 +212,7 @@ candidate and user-data)."
                  (deferred:nextc it (csallet-bind-processor matcher))
                  (deferred:nextc it
                    (csallet-bind-processor
-                    (lambda (candidates)
-                      (csallet-with-canvas canvas
-                        (goto-char (point-max))
-                        ;; (backward-char)
-                        (funcall updater candidates)))))
+                    (csallet--run-updater-in-canvas updater canvas)))
                  (deferred:nextc it
                    (-lambda ((&plist :finished finished)) finished))
                  (deferred:nextc it self))))))
@@ -346,7 +352,7 @@ The closure is stored in function slot.")
            (with-current-buffer sallet-buffer
              (--map
               (let ((canvas (make-overlay (point) (progn (insert "\n") (point)))))
-                ;; (overlay-put canvas 'display "")
+                (overlay-put canvas 'display "")
                 (overlay-put canvas 'face (list :background (ov--random-color)))
                 canvas)
               sources))))
