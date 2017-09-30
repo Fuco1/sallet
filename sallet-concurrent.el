@@ -86,31 +86,36 @@ The return value is a plist with two keys:
          (process nil)
          (continue (point-min)))
     (list
-     :constructor (lambda (_ _)
-                    (unless process
-                      (setq process (funcall process-creator buffer prompt)))
-                    (let ((end-time (time-add (current-time) (list 0 0 10000 0)))
-                          (re nil))
-                      (with-current-buffer buffer
-                        (when (and (process-live-p process)
-                                   continue)
-                          (goto-char continue)
-                          (while (and
-                                  (save-excursion
-                                    (goto-char (line-end-position))
-                                    (looking-at-p "\n"))
-                                  (time-less-p (current-time) end-time))
-                            (let ((candidate
-                                   (funcall processor (buffer-substring-no-properties
-                                                       (point) (line-end-position)))))
-                              (push (list candidate nil) re))
-                            (forward-line 1)
-                            (setq continue (point)))))
-                      (list :candidates (nreverse re)
-                            :finished (not (process-live-p process)))))
-     :destructor (lambda ()
-                   (when (and process (process-live-p process))
-                     (kill-process process))))))
+     :constructor
+      (lambda (_ _)
+        (unless process
+          (setq process (funcall process-creator buffer prompt)))
+        (let ((end-time (time-add (current-time) (list 0 0 10000 0)))
+              (re nil))
+          (with-current-buffer buffer
+            (when continue
+              (goto-char continue)
+              (while (and
+                      continue
+                      (save-excursion
+                        (goto-char (line-end-position))
+                        (looking-at-p "\n"))
+                      (time-less-p (current-time) end-time))
+                (if (and (not (process-live-p process))
+                         (or (looking-at-p "^$")
+                             (eobp)))
+                    (setq continue nil)
+                  (let ((candidate
+                         (funcall processor (buffer-substring-no-properties
+                                             (point) (line-end-position)))))
+                    (push (list candidate nil) re))
+                  (forward-line 1)
+                  (setq continue (point))))))
+          (list :candidates (nreverse re)
+                :finished (not continue))))
+      :destructor (lambda ()
+                    (when (and process (process-live-p process))
+                      (kill-process process))))))
 
 (defun csallet-make-buffered-stage (processor)
   "Make a buffered stage function out of PROCESSOR.
@@ -306,6 +311,7 @@ cancelled."
              (unless done
                (deferred:$
                  (setq current-deferred (deferred:wait 1))
+                 (deferred:nextc it (lambda (_) `(:finished t)))
                  (deferred:nextc it (csallet-bind-processor generator))
                  (deferred:nextc it
                    (csallet-bind-processor
