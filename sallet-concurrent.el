@@ -62,8 +62,7 @@ additional candidates and declares itself as finished."
     (lambda (_ _)
       (list :candidates (unless already-run
                           (prog1 (funcall generator)
-                            (setq already-run t)))
-            :finished t))))
+                            (setq already-run t)))))))
 
 (defun csallet-make-buffered-processor (processor)
   "Make a buffered timesharing function out of PROCESSOR.
@@ -195,10 +194,13 @@ ones and overrule settings in the other lists."
   (-lambda ((&plist :candidates candidates
                     :finished finished
                     :pipeline-data pipeline-data))
-    (-let (((&plist :candidates next-candidates
-                    :finished next-finished
-                    :pipeline-data next-pipeline-data)
-            (funcall processor candidates pipeline-data)))
+    (-let* (((data &as &plist
+                   :candidates next-candidates
+                   :pipeline-data next-pipeline-data)
+             (funcall processor candidates pipeline-data))
+            (next-finished (if (plist-member data :finished)
+                               (setq next-finished (plist-get data :finished))
+                             t)))
       (list :candidates next-candidates
             :finished (and finished next-finished)
             :pipeline-data (csallet--merge-plists
@@ -222,20 +224,17 @@ ones and overrule settings in the other lists."
              (unless done
                (deferred:$
                  (setq current-deferred (deferred:wait 1))
-                 (deferred:nextc it (lambda (_) (list :finished t)))
                  (deferred:nextc it (csallet-bind-processor generator))
                  (deferred:nextc it
                    (csallet-bind-processor
                     (lambda (candidates _)
                       (list :candidates candidates
-                            :finished t
                             :pipeline-data `(:generated-count ,(length candidates))))))
                  (deferred:nextc it (csallet-bind-processor matcher))
                  (deferred:nextc it
                    (csallet-bind-processor
                     (lambda (candidates _)
                       (list :candidates candidates
-                            :finished t
                             :pipeline-data `(:matched-count ,(length candidates))))))
                  (deferred:nextc it
                    (csallet-bind-processor
@@ -253,7 +252,7 @@ ones and overrule settings in the other lists."
                                          total-matched
                                          total-generated)
                                  'face 'sallet-source-header)))
-                      (list :candidates candidates :finished t))))
+                      (list :candidates candidates))))
                  (deferred:nextc it self))))))
         (`cancel
          (let ((this current-deferred)
