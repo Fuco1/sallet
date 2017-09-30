@@ -30,6 +30,7 @@
         (cur-line 0))
     (lambda (_)
       (let ((re nil)
+            (has-match nil)
             (end-time (time-add (current-time) (list 0 0 10000 0))))
         (with-current-buffer buffer
           (save-excursion
@@ -37,13 +38,13 @@
               (goto-char continue)
               (while (and
                       (time-less-p (current-time) end-time)
-                      (search-forward prompt nil t))
+                      (setq has-match (search-forward prompt nil t)))
                 (setq cur-line (+ cur-line (count-lines continue (point))))
                 (push (list (thing-at-point 'line)
                             (list :line cur-line)) re)
                 (forward-line)
                 (setq continue (point)))
-              (setq continue nil))
+              (unless has-match (setq continue nil)))
             (list :candidates (nreverse re)
                   :finished (not continue))))))))
 
