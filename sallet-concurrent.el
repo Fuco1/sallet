@@ -28,7 +28,7 @@
   "Generate list of lines matching PROMPT in BUFFER."
   (let ((continue (point-min))
         (cur-line 0))
-    (lambda (_)
+    (lambda (_ _)
       (let ((re nil)
             (has-match nil)
             (end-time (time-add (current-time) (list 0 0 10000 0))))
@@ -59,7 +59,7 @@ the generated data.  On the subsequent calls it returns no
 additional candidates and declares itself as finished."
   (let (already-run)
     ;; ignored argument due to deferred requiring it in the callback
-    (lambda (_)
+    (lambda (_ _)
       (list :candidates (unless already-run
                           (prog1 (funcall generator)
                             (setq already-run t)))
@@ -79,7 +79,7 @@ they are buffered internally.  On the next invocation the
 passed-in candidates are added to the end of the buffer and the
 buffered candidates are processed first."
   (let ((processable-candidates nil))
-    (lambda (additional-candidates)
+    (lambda (additional-candidates pipeline-data)
       (setq processable-candidates
             (-concat processable-candidates additional-candidates))
       (let ((end-time (time-add (current-time) (list 0 0 10000 0)))
@@ -135,7 +135,7 @@ candidate and user-data)."
 (defun csallet-make-buffered-sorter (indexer)
   (let ((processable-candidates nil)
         (sorted-candidates nil))
-    (lambda (additional-candidates)
+    (lambda (additional-candidates pipeline-data)
       (setq processable-candidates (-concat processable-candidates additional-candidates))
       (let ((end-time (time-add (current-time) (list 0 0 50000 0)))
             (re nil))
@@ -160,7 +160,7 @@ candidate and user-data)."
                         (unless result
                           (forward-line 1))
                         result))))
-    (lambda (additional-candidates)
+    (lambda (additional-candidates pipeline-data)
       (setq processable-candidates (-concat processable-candidates additional-candidates))
       (let ((end-time (time-add (current-time) (list 0 0 50000 0))))
         (-each-while processable-candidates
@@ -176,45 +176,82 @@ candidate and user-data)."
 (defun csallet-occur-updater (sallet-buffer comparator renderer)
   (csallet-make-buffered-updater sallet-buffer comparator renderer))
 
+;; copied from org-combine-plists
+(defun csallet--merge-plists (&rest plists)
+  "Create a single property list from all plists in PLISTS.
+The process starts by copying the first list, and then setting properties
+from the other lists.  Settings in the last list are the most significant
+ones and overrule settings in the other lists."
+  (let ((rtn (copy-sequence (pop plists)))
+        p v ls)
+    (while plists
+      (setq ls (pop plists))
+      (while ls
+        (setq p (pop ls) v (pop ls))
+        (setq rtn (plist-put rtn p v))))
+    rtn))
+
 (defun csallet-bind-processor (processor)
   (-lambda ((&plist :candidates candidates
-                    :finished finished))
-    (-let (((&plist :candidates updated-candidates
-                    :finished next-finished)
-            (funcall processor candidates)))
-      (list :candidates updated-candidates
-            :finished (and finished next-finished)))))
-
-(defun csallet--run-updater-in-canvas (updater canvas)
-  "Run UPDATER in CANVAS."
-  (lambda (candidates)
-    ;; enable visibility when we render the first candidate
-    (when (> (length candidates) 0)
-      (overlay-put canvas 'display nil))
-    (csallet-with-canvas canvas
-      (goto-char (point-max))
-      (funcall updater candidates))))
+                    :finished finished
+                    :pipeline-data pipeline-data))
+    (-let (((&plist :candidates next-candidates
+                    :finished next-finished
+                    :pipeline-data next-pipeline-data)
+            (funcall processor candidates pipeline-data)))
+      (list :candidates next-candidates
+            :finished (and finished next-finished)
+            :pipeline-data (csallet--merge-plists
+                            pipeline-data
+                            next-pipeline-data)))))
 
 (defun csallet-make-pipeline (canvas
                               generator
                               matcher
                               updater)
-  (let ((current-deferred))
+  (let ((current-deferred)
+        (total-generated 0)
+        (total-matched 0))
     (lambda (op)
       (pcase op
         (`start
          (deferred:nextc (deferred:succeed nil)
            (deferred:lambda (done)
+             (when (consp done)
+               (setq done (plist-get done :finished)))
              (unless done
                (deferred:$
                  (setq current-deferred (deferred:wait 1))
+                 (deferred:nextc it (lambda (_) (list :finished t)))
                  (deferred:nextc it (csallet-bind-processor generator))
+                 (deferred:nextc it
+                   (csallet-bind-processor
+                    (lambda (candidates _)
+                      (list :candidates candidates
+                            :finished t
+                            :pipeline-data `(:generated-count ,(length candidates))))))
                  (deferred:nextc it (csallet-bind-processor matcher))
                  (deferred:nextc it
                    (csallet-bind-processor
-                    (csallet--run-updater-in-canvas updater canvas)))
+                    (lambda (candidates _)
+                      (list :candidates candidates
+                            :finished t
+                            :pipeline-data `(:matched-count ,(length candidates))))))
                  (deferred:nextc it
-                   (-lambda ((&plist :finished finished)) finished))
+                   (csallet-bind-processor
+                    (csallet--run-in-canvas updater canvas)))
+                 (deferred:nextc it
+                   (csallet-bind-processor
+                    (-lambda (candidates (&plist :generated-count generated-count
+                                                 :matched-count matched-count))
+                      (cl-incf total-generated generated-count)
+                      (cl-incf total-matched matched-count)
+                      (csallet-at-header canvas
+                        (delete-region (point) (1+ (line-end-position)))
+                        (insert (format "==== source [%d/%d] ====\n"
+                                        total-matched
+                                        total-generated)))
+                      (list :candidates candidates :finished t))))
                  (deferred:nextc it self))))))
         (`cancel
          (let ((this current-deferred)
@@ -224,13 +261,34 @@ candidate and user-data)."
              (setq this next))
            (deferred:cancel this)))))))
 
+(defun csallet--run-in-canvas (processor canvas)
+  "Run PROCESSOR in CANVAS."
+  (lambda (candidates pipeline-data)
+    ;; enable visibility when we render the first candidate
+    (when (> (length candidates) 0)
+      (overlay-put canvas 'display nil))
+    (csallet-with-canvas canvas
+      (goto-char (point-max))
+      (funcall processor candidates pipeline-data))))
+
 (defmacro csallet-with-canvas (canvas &rest body)
   (declare (indent 1))
   `(with-current-buffer (overlay-buffer ,canvas)
      (save-excursion
        (save-restriction
          (widen)
-         (narrow-to-region (overlay-start ,canvas) (1- (overlay-end ,canvas)))
+         (goto-char (overlay-start ,canvas))
+         (forward-line 1)
+         (narrow-to-region (point) (1- (overlay-end ,canvas)))
+         ,@body))))
+
+(defmacro csallet-at-header (canvas &rest body)
+  (declare (indent 1))
+  `(with-current-buffer (overlay-buffer ,canvas)
+     (save-excursion
+       (save-restriction
+         (widen)
+         (goto-char (overlay-start ,canvas))
          ,@body))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -348,7 +406,7 @@ The closure is stored in function slot.")
     (let ((canvases
            (with-current-buffer sallet-buffer
              (--map
-              (let ((canvas (make-overlay (point) (progn (insert "\n") (point)))))
+              (let ((canvas (make-overlay (point) (progn (insert "====\n\n") (point)))))
                 (overlay-put canvas 'display "")
                 (overlay-put canvas 'face (list :background (ov--random-color)))
                 canvas)
