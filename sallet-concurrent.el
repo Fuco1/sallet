@@ -64,6 +64,42 @@ additional candidates and declares itself as finished."
                           (prog1 (funcall generator)
                             (setq already-run t)))))))
 
+(defun csallet-make-process-generator (process-creator processor prompt)
+  "Make a generator processing process output line by line.
+
+PROCESS-CREATOR is a function which returns a running process
+responsible for generating the candidates.  It takes two
+arguments, a buffer which is the buffer where the output is
+buffered and the PROMPT.
+
+PROCESSOR is a function taking one argument, the current line,
+and returns a candidate.
+
+PROMPT is the current prompt."
+  (let* ((buffer (generate-new-buffer " *sallet-concurrent-process*"))
+         (process (funcall process-creator buffer prompt))
+         (continue (point-min)))
+    (lambda (_ _)
+      (let ((end-time (time-add (current-time) (list 0 0 10000 0)))
+            (re nil))
+        (with-current-buffer buffer
+          (when (and (process-live-p process)
+                     continue)
+            (goto-char continue)
+            (while (and
+                    (save-excursion
+                      (goto-char (line-end-position))
+                      (looking-at-p "\n"))
+                    (time-less-p (current-time) end-time))
+              (let ((candidate
+                     (funcall processor (buffer-substring-no-properties
+                                         (point) (line-end-position)))))
+                (push (list candidate nil) re))
+              (forward-line 1)
+              (setq continue (point)))))
+        (list :candidates (nreverse re)
+              :finished (not (process-live-p process)))))))
+
 (defun csallet-make-buffered-stage (processor)
   "Make a buffered stage function out of PROCESSOR.
 
@@ -297,6 +333,33 @@ ones and overrule settings in the other lists."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SOURCES
 
+(defun csallet-source-locate ()
+  (let ((current-buffer (current-buffer))
+        ;; TODO: temporary, we need to figure out where to park the
+        ;; process so we can manage it between invocations
+        (process nil))
+    (lambda (prompt canvas)
+      (when (> (length prompt) 0)
+        (csallet-make-pipeline
+         canvas
+         (csallet-make-process-generator
+          (lambda (buffer prompt)
+            (when (and process
+                       (process-live-p process))
+              (kill-process process))
+            (setq process
+                  (start-process "locate" buffer "locate"
+                                 "--all" "--ignore-case" prompt)))
+          'identity prompt)
+         (lambda (candidates _) `(:candidates ,candidates))
+         (csallet-make-buffered-stage
+          (-lambda ((candidate))
+            (insert candidate "\n"))))))))
+
+(defun csallet-locate ()
+  (interactive)
+  (csallet (csallet-source-locate)))
+
 (defun csallet-source-occur ()
   (let ((current-buffer (current-buffer)))
     (lambda (prompt canvas)
@@ -352,7 +415,7 @@ ones and overrule settings in the other lists."
 
 (defun csallet-mixed ()
   (interactive)
-  (csallet (csallet-source-buffer) (csallet-source-occur)))
+  (csallet (csallet-source-buffer) (csallet-source-locate)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RUNTIME
