@@ -248,9 +248,11 @@ ones and overrule settings in the other lists."
                       (cl-incf total-matched matched-count)
                       (csallet-at-header canvas
                         (delete-region (point) (1+ (line-end-position)))
-                        (insert (format "==== source [%d/%d] ====\n"
-                                        total-matched
-                                        total-generated)))
+                        (insert (propertize
+                                 (format " • source [%d/%d]\n"
+                                         total-matched
+                                         total-generated)
+                                 'face 'sallet-source-header)))
                       (list :candidates candidates :finished t))))
                  (deferred:nextc it self))))))
         (`cancel
@@ -406,9 +408,9 @@ The closure is stored in function slot.")
     (let ((canvases
            (with-current-buffer sallet-buffer
              (--map
-              (let ((canvas (make-overlay (point) (progn (insert "====\n\n") (point)))))
+              (let ((canvas (make-overlay (point) (progn (insert "\n\n") (point)))))
                 (overlay-put canvas 'display "")
-                (overlay-put canvas 'face (list :background (ov--random-color)))
+                ;; (overlay-put canvas 'face (list :background (ov--random-color)))
                 canvas)
               sources))))
       (setq csallet--running-sources
