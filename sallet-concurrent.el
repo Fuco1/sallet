@@ -64,8 +64,8 @@ additional candidates and declares itself as finished."
                           (prog1 (funcall generator)
                             (setq already-run t)))))))
 
-(defun csallet-make-buffered-processor (processor)
-  "Make a buffered timesharing function out of PROCESSOR.
+(defun csallet-make-buffered-stage (processor)
+  "Make a buffered stage function out of PROCESSOR.
 
 PROCESSOR is a function taking in one candidate and returning
 either nil if the candidate should be discarded or an updated
@@ -119,7 +119,7 @@ candidate and user-data)."
     (list candidate user-data)))
 
 (defun csallet-occur-matcher (prompt)
-  (csallet-make-buffered-processor
+  (csallet-make-buffered-stage
    (lambda (candidate)
      (csallet-occur-filter (sallet-car-maybe candidate)
                            (sallet-list-maybe candidate 'cadr)
@@ -315,7 +315,7 @@ ones and overrule settings in the other lists."
   (csallet (csallet-source-occur)))
 
 (defun csallet-buffer-updater (sallet-buffer renderer)
-  (csallet-make-buffered-processor
+  (csallet-make-buffered-stage
    (lambda (candidate)
      (insert (funcall renderer candidate) "\n"))))
 
@@ -323,7 +323,7 @@ ones and overrule settings in the other lists."
   (sallet-buffer-renderer (car candidate) nil (cadr candidate)))
 
 (defun csallet-buffer-matcher (prompt)
-  (csallet-make-buffered-processor
+  (csallet-make-buffered-stage
    (csallet-sallet-filter-wrapper
     (lambda (candidates indices pattern)
       (sallet-compose-filters-by-pattern
