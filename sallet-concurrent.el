@@ -168,7 +168,6 @@ candidate and user-data)."
           (-lambda (candidate)
             (!cdr processable-candidates)
             (goto-char (point-min))
-            ;; (forward-line 1)
             (setq sorted-candidates
                   (-insert-by! candidate comparator sorted-candidates))
             (insert (funcall renderer candidate))))
