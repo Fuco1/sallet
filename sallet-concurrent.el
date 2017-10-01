@@ -481,6 +481,15 @@ cancelled."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RUNTIME
 
+(defun csallet--get-buffer ()
+  (get-buffer-create "*sallet-concurrent*"))
+
+(defmacro with-csallet-buffer (&rest body)
+  "Eval BODY inside `helm-buffer'."
+  (declare (indent 0) (debug t))
+  `(with-current-buffer (csallet--get-buffer)
+     ,@body))
+
 (defvar csallet--running-sources nil)
 
 (defun csallet--cleanup-source (running-source)
@@ -522,27 +531,27 @@ The closure is stored in function slot.")
 
 (defun csallet--run-sources (prompt sources)
   (csallet--cleanup)
-  (let ((sallet-buffer (get-buffer-create "*sallet-concurrent*")))
-    (with-current-buffer sallet-buffer
-      (kill-all-local-variables)
-      (setq truncate-lines t)
-      (buffer-disable-undo)
-      ;; (setq cursor-type nil)
-      (ov-clear)
-      (erase-buffer))
-    (let ((canvases
-           (with-current-buffer sallet-buffer
+  (with-csallet-buffer
+    (kill-all-local-variables)
+    (setq truncate-lines t)
+    (buffer-disable-undo)
+    ;; (setq cursor-type nil)
+    (ov-clear)
+    (erase-buffer))
+  (let ((canvases
+         (with-csallet-buffer
+           (save-excursion
              (--map
               (let ((canvas (make-overlay (point) (progn (insert "\n\n") (point)))))
                 (overlay-put canvas 'display "")
                 ;; (overlay-put canvas 'face (list :background (ov--random-color)))
                 canvas)
-              sources))))
-      (setq csallet--running-sources
-            (-map
-             (-lambda ((canvas . source))
-               (csallet--run-source source prompt canvas))
-             (-zip canvases sources))))))
+              sources)))))
+    (setq csallet--running-sources
+          (-map
+           (-lambda ((canvas . source))
+             (csallet--run-source source prompt canvas))
+           (-zip canvases sources)))))
 
 (defun csallet--run-source (source prompt canvas)
   (-when-let (pipeline (funcall source prompt canvas))
