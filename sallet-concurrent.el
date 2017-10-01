@@ -336,7 +336,10 @@ cancelled."
                                    (format " • source [%d/%d]\n"
                                            total-matched
                                            total-generated)
-                                   'face 'sallet-source-header)))
+                                   'face 'sallet-source-header))
+                        (put-text-property
+                         (point) (1+ (line-end-position))
+                         'csallet-header t))
                       (list :candidates candidates))))
                  (deferred:nextc it self))))))
         (`cancel
@@ -368,6 +371,13 @@ cancelled."
          (forward-line 1)
          (narrow-to-region (point) (1- (overlay-end ,canvas)))
          ,@body))))
+
+(defmacro csallet-with-current-source (ov-variable &rest body)
+  "Bind the current canvas to OV-VARIABLE, then execute BODY in candidate buffer."
+  (declare (indent 1) (debug (symbolp body)))
+  `(with-csallet-buffer
+     (let ((,ov-variable (ov-at)))
+       ,@body)))
 
 (defmacro csallet-at-header (canvas &rest body)
   (declare (indent 1))
@@ -506,12 +516,87 @@ cancelled."
   (condition-case _var
       (minibuffer-with-setup-hook (lambda () (csallet--minibuffer-setup sources))
         (csallet--run-sources "" sources)
+        (csallet--maybe-update-keymap)
         ;; TODO: add support to pass maps
         ;; TODO: propertize prompt
-        (read-from-minibuffer ">>> ")
+        (read-from-minibuffer
+         ">>> " nil
+         (let ((map (make-sparse-keymap)))
+           (set-keymap-parent map minibuffer-local-map)
+           (define-key map (kbd "C-n") 'csallet-candidate-down)
+           (define-key map (kbd "C-p") 'csallet-candidate-up)
+           (define-key map (kbd "C-o") 'csallet-candidate-next-source)
+           (define-key map (kbd "C-v") 'csallet-scroll-up)
+           (define-key map (kbd "M-v") 'csallet-scroll-down)
+           map))
         (csallet--cleanup))
     (quit (csallet--cleanup))
     (error (csallet--cleanup))))
+
+(defun csallet--set-window-point ()
+  (set-window-point (get-buffer-window (csallet--get-buffer)) (point)))
+
+(defun csallet-next-candidate (_canvas)
+  (forward-line 1)
+  (csallet--set-window-point))
+
+(defun csallet-previous-candidate (_canvas)
+  (forward-line -1)
+  (csallet--set-window-point))
+
+(defun csallet-first-candidate-p (canvas)
+  (save-excursion
+    (forward-line -1)
+    (get-text-property (point) 'csallet-header)))
+
+(defun csallet-last-candidate-p (canvas)
+  (save-excursion
+    (forward-line 1)
+    (= (point) (1- (ov-end canvas)))))
+
+(defun csallet-candidate-up ()
+  (interactive)
+  (csallet-with-current-source canvas
+    (let ((prev-fn (or (ov-val canvas 'csallet-previous-candidate-function)
+                       'csallet-previous-candidate))
+          (first-candidate-fn (or (ov-val canvas 'csallet-first-candidate-p-function)
+                                  'csallet-first-candidate-p)))
+      ;; if we are at the very first candidate of the source, jump to
+      ;; previous source instead
+      (if (funcall first-candidate-fn canvas)
+          (--when-let (ov-prev (1+ (ov-beg canvas)))
+            (when (not (equal it canvas))
+              (goto-char (ov-end it))
+              (forward-line -2)
+              (csallet--set-window-point)))
+        (funcall prev-fn canvas)))))
+
+(defun csallet-candidate-down ()
+  (interactive)
+  (csallet-with-current-source canvas
+    (let ((next-fn (or (ov-val canvas 'csallet-next-candidate-function)
+                       'csallet-next-candidate))
+          (last-candidate-fn (or (ov-val canvas 'csallet-last-candidate-p-function)
+                                 'csallet-last-candidate-p)))
+      ;; if we are at the very last line of the source (which is kept
+      ;; empty), jump to next source instead
+      (if (funcall last-candidate-fn canvas)
+          (--when-let (ov-next (1- (ov-end canvas)))
+            (goto-char (ov-beg it))
+            (forward-line 1)
+            (csallet--set-window-point))
+        (funcall next-fn canvas)))))
+
+(defun csallet--maybe-update-keymap ()
+  "Setup current source map as transient map in the minibuffer"
+  (with-csallet-buffer
+    (-when-let* ((ov (ov-at))
+                 (keymap (ov-val ov 'keymap)))
+      ;; Fix #466; we use here set-transient-map
+      ;; to not overhide other minor-mode-map's.
+      (if (fboundp 'set-transient-map)
+          (set-transient-map keymap)
+        (set-temporary-overlay-map keymap)))))
 
 (defvar csallet--minibuffer-post-command-hook nil
   "Closure used to update sallet window on minibuffer events.
@@ -526,7 +611,8 @@ The closure is stored in function slot.")
             (let ((prompt (buffer-substring-no-properties 5 (point-max))))
               (unless (equal old-prompt prompt)
                 (setq old-prompt prompt)
-                (csallet--run-sources prompt sources))))))
+                (csallet--run-sources prompt sources)))
+            (csallet--maybe-update-keymap))))
   (add-hook 'post-command-hook 'csallet--minibuffer-post-command-hook nil t))
 
 (defun csallet--run-sources (prompt sources)
