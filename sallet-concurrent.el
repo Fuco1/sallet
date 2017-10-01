@@ -204,7 +204,7 @@ candidate and user-data)."
         (list :candidates (nreverse re)
               :finished (= 0 (length processable-candidates)))))))
 
-(defun csallet-make-buffered-updater (sallet-buffer comparator renderer)
+(defun csallet-make-buffered-updater (comparator renderer)
   (let ((sorted-candidates nil)
         (processable-candidates nil)
         (comparator (lambda (a b)
@@ -225,8 +225,8 @@ candidate and user-data)."
             (insert (funcall renderer candidate))))
         (list :finished (= 0 (length processable-candidates)))))))
 
-(defun csallet-occur-updater (sallet-buffer comparator renderer)
-  (csallet-make-buffered-updater sallet-buffer comparator renderer))
+(defun csallet-occur-updater (comparator renderer)
+  (csallet-make-buffered-updater comparator renderer))
 
 ;; copied from org-combine-plists
 (defun csallet--merge-plists (&rest plists)
@@ -430,7 +430,6 @@ cancelled."
          (csallet-occur-generator prompt current-buffer)
          (csallet-occur-matcher prompt)
          (csallet-occur-updater
-          (get-buffer-create "*sallet-concurrent*")
           (-lambda ((a) (b)) (< (length a) (length b)))
           'csallet-occur-render-candidate))))))
 
@@ -438,7 +437,7 @@ cancelled."
   (interactive)
   (csallet (csallet-source-occur)))
 
-(defun csallet-buffer-updater (sallet-buffer renderer)
+(defun csallet-buffer-updater (renderer)
   (csallet-make-buffered-stage
    (lambda (candidate)
      (insert (funcall renderer candidate) "\n"))))
@@ -466,9 +465,7 @@ cancelled."
      canvas
      (csallet-make-cached-generator 'sallet-buffer-candidates)
      (csallet-buffer-matcher prompt)
-     (csallet-buffer-updater
-      (get-buffer-create "*sallet-concurrent*")
-      'csallet-buffer-render-candidate))))
+     (csallet-buffer-updater 'csallet-buffer-render-candidate))))
 
 (defun csallet-buffer ()
   (interactive)
