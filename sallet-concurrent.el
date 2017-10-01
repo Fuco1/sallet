@@ -330,12 +330,13 @@ cancelled."
                       (cl-incf total-generated generated-count)
                       (cl-incf total-matched matched-count)
                       (csallet-at-header canvas
-                        (delete-region (point) (1+ (line-end-position)))
-                        (insert (propertize
-                                 (format " • source [%d/%d]\n"
-                                         total-matched
-                                         total-generated)
-                                 'face 'sallet-source-header)))
+                        (put-text-property
+                         (point) (1+ (line-end-position))
+                         'display (propertize
+                                   (format " • source [%d/%d]\n"
+                                           total-matched
+                                           total-generated)
+                                   'face 'sallet-source-header)))
                       (list :candidates candidates))))
                  (deferred:nextc it self))))))
         (`cancel
