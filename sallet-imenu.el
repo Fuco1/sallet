@@ -74,7 +74,7 @@
   (let ((initial (symbol-name (symbol-at-point)))
         (cands (--map (if (cddr it) it (-snoc it ""))
                       (--remove
-                       (or (not (markerp (cadr it)))
+                       (or (not (integer-or-marker-p (cadr it)))
                            (< (cadr it) 0))
                        (sallet--imenu-flatten (imenu--make-index-alist))))))
     (if initial
@@ -88,6 +88,8 @@
   (candidates sallet-imenu-candidates)
   (matcher (sallet-make-matcher
             (lambda (c i p)
+              ;; TODO: maybe just search in name and tags by default
+              ;; but prioritize matches in the name first
               (sallet-compose-filters-by-pattern
                '(("\\`/\\(.*\\)" 1 sallet-filter-imenu-tags-flx)
                  (t sallet-filter-flx-then-substring)) c i p))))
