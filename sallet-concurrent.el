@@ -225,9 +225,6 @@ candidate and user-data)."
             (insert (plist-get (cadr candidate) :rendered-candidate) "\n")))
         (list :finished (= 0 (length processable-candidates)))))))
 
-(defun csallet-occur-updater (comparator renderer)
-  (csallet-make-buffered-updater comparator renderer))
-
 ;; copied from org-combine-plists
 (defun csallet--merge-plists (&rest plists)
   "Create a single property list from all plists in PLISTS.
@@ -268,9 +265,14 @@ ones and overrule settings in the other lists."
 
 (cl-defun csallet-make-pipeline (canvas
                                  generator
-                                 matcher
-                                 updater
                                  &key
+                                 (matcher
+                                  (lambda (candidates _)
+                                    `(:candidates ,candidates)))
+                                 (updater
+                                  (csallet-make-buffered-stage
+                                   (-lambda ((_ (&plist :rendered-candidate rc)))
+                                     (insert rc "\n"))))
                                  (renderer (-lambda ((candidate)) candidate))
                                  on-start
                                  on-cancel)
@@ -415,11 +417,7 @@ cancelled."
            "ag" buffer "ag"
            "--nocolor" "--literal" "--line-number" "--smart-case"
            "--nogroup" "--column" "--" prompt)))
-      'identity prompt)
-     (lambda (candidates _) `(:candidates ,candidates))
-     (csallet-make-buffered-stage
-      (-lambda ((candidate))
-        (insert candidate "\n"))))))
+      'identity prompt))))
 
 (defun csallet-ag ()
   (interactive)
@@ -434,11 +432,7 @@ cancelled."
         (when (> (length prompt) 0)
           (start-process "locate" buffer "locate"
                          "--all" "--ignore-case" prompt)))
-      'identity prompt)
-     (lambda (candidates _) `(:candidates ,candidates))
-     (csallet-make-buffered-stage
-      (-lambda ((candidate))
-        (insert candidate "\n"))))))
+      'identity prompt))))
 
 (defun csallet-locate ()
   (interactive)
@@ -451,19 +445,13 @@ cancelled."
         (csallet-make-pipeline
          canvas
          (csallet-occur-generator prompt current-buffer)
-         (csallet-occur-matcher prompt)
-         (csallet-occur-updater
-          (-lambda ((a) (b)) (< (length a) (length b)))
-          'csallet-occur-render-candidate))))))
+         :matcher (csallet-occur-matcher prompt)
+         :updater (csallet-make-buffered-updater
+                   (-lambda ((a) (b)) (< (length a) (length b)))))))))
 
 (defun csallet-occur ()
   (interactive)
   (csallet (csallet-source-occur)))
-
-(defun csallet-buffer-updater (renderer)
-  (csallet-make-buffered-stage
-   (lambda (candidate)
-     (insert (funcall renderer candidate) "\n"))))
 
 (defun csallet-buffer-render-candidate (candidate)
   (sallet-buffer-renderer (car candidate) nil (cadr candidate)))
@@ -487,8 +475,8 @@ cancelled."
     (csallet-make-pipeline
      canvas
      (csallet-make-cached-generator 'sallet-buffer-candidates)
-     (csallet-buffer-matcher prompt)
-     (csallet-buffer-updater 'csallet-buffer-render-candidate))))
+     :matcher (csallet-buffer-matcher prompt)
+     :renderer 'csallet-buffer-render-candidate)))
 
 (defun csallet-buffer ()
   (interactive)
