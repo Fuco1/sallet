@@ -393,12 +393,50 @@ cancelled."
          (narrow-to-region (point) (1- (overlay-end ,canvas)))
          ,@body))))
 
-(defmacro csallet-with-current-source (ov-variable &rest body)
-  "Bind the current canvas to OV-VARIABLE, then execute BODY in candidate buffer."
+(defmacro csallet-with-current-source (context &rest body)
+  "Bind CONTEXT in the current canvas then execute BODY in candidate buffer.
+
+If CONTEXT is a symbol, then bind the current canvas to it.
+
+If CONTEXT is a list, bind the properties according to the following map:
+
+- :action -> bind current default action
+- :candidate -> bind current candidate
+- :canvas -> bind current canvas
+
+If the property keyword is followed by a symbol, this is used as
+the variable, otherwise it is derived from the keyword by
+dropping the leading colon."
   (declare (indent 1) (debug (symbolp body)))
-  `(with-csallet-buffer
-     (let ((,ov-variable (ov-at)))
-       ,@body)))
+  (let ((properties nil)
+        (bindings nil))
+    (cond
+     ((symbolp context)
+      (push `(:canvas . ,context) properties))
+     ((listp context)
+      (while context
+        (pcase context
+          (`(,prop ,(and maybe-variable
+                         (guard (and (not (keywordp maybe-variable))
+                                     (symbolp maybe-variable)))) . ,_)
+           (push `(,prop . ,maybe-variable) properties)
+           (!cdr context)
+           (!cdr context))
+          (`(,prop . ,_)
+           (push `(,prop . ,(intern (substring (symbol-name prop) 1))) properties)
+           (!cdr context))))))
+    (setq bindings
+          (-map
+           (-lambda ((prop . var))
+             (pcase prop
+               (:action `(,var (ov-val (ov-at) 'csallet-default-action)))
+               (:candidate `(,var (get-text-property (point) 'csallet-candidate)))
+               (:canvas `(,var (ov-at)))
+               (:header `(,var (ov-val (ov-at) 'csallet-header-format)))))
+           properties))
+    `(with-csallet-buffer
+       (let ,bindings
+         ,@body))))
 
 (defmacro csallet-at-header (canvas &rest body)
   (declare (indent 1))
