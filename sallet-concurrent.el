@@ -300,7 +300,8 @@ ON-CANCEL is a list of functions executed after the pipeline is
 cancelled."
   (let ((current-deferred)
         (total-generated 0)
-        (total-matched 0))
+        (total-matched 0)
+        (tick 0))
     (when (and (listp generator)
                (plist-member generator :constructor)
                (plist-member generator :destructor))
@@ -317,7 +318,9 @@ cancelled."
              (unless done
                (deferred:$
                  (setq current-deferred (deferred:wait 1))
-                 (deferred:nextc it (lambda (_) `(:finished t)))
+                 (deferred:nextc it (lambda (_)
+                                      (cl-incf tick)
+                                      `(:finished t)))
                  (deferred:nextc it (csallet-bind-processor generator))
                  (deferred:nextc it
                    (csallet-bind-processor
