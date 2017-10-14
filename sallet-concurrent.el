@@ -391,7 +391,10 @@ cancelled."
       (overlay-put canvas 'display nil))
     (csallet-with-canvas canvas
       (goto-char (point-max))
-      (funcall stage candidates pipeline-data))))
+      (funcall stage candidates pipeline-data))
+    ;; TODO: move this logic elsewhere
+    (when (= (with-csallet-buffer (point)) (ov-beg canvas))
+      (csallet-candidate-down))))
 
 (defmacro csallet-with-canvas (canvas &rest body)
   (declare (indent 1))
