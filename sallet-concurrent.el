@@ -528,9 +528,13 @@ dropping the leading colon."
        candidates indices pattern))
     prompt)))
 
+(defun csallet-buffer-action (candidate)
+  (switch-to-buffer candidate))
+
 (defun csallet-source-buffer ()
   (lambda (prompt canvas)
     (ov-put canvas
+            'csallet-default-action 'csallet-buffer-action
             'csallet-header-format " • Buffers [%m/%g]%S\n")
     (csallet-make-pipeline
      canvas
@@ -573,6 +577,10 @@ dropping the leading colon."
       (mapc 'csallet--cleanup-source csallet--running-sources)
     (setq csallet--running-sources nil)))
 
+(defun csallet-default-action ()
+  (csallet-with-current-source (:candidate :action)
+    (funcall action candidate)))
+
 (defun csallet (&rest sources)
   (condition-case _var
       (minibuffer-with-setup-hook (lambda () (csallet--minibuffer-setup sources))
@@ -590,6 +598,7 @@ dropping the leading colon."
            (define-key map (kbd "C-v") 'csallet-scroll-up)
            (define-key map (kbd "M-v") 'csallet-scroll-down)
            map))
+        (csallet-default-action)
         (csallet--cleanup))
     (quit (csallet--cleanup))
     (error (csallet--cleanup))))
