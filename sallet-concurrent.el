@@ -2,6 +2,7 @@
 
 (require 'deferred)
 (require 'sallet-core)
+(require 'ov)
 
 (defun -insert-by! (item comparator list)
   "Insert new ITEM according to COMPARATOR into a sorted LIST."
@@ -345,19 +346,29 @@ cancelled."
                    (csallet-bind-processor
                     (csallet--run-in-canvas updater canvas)))
                  (deferred:nextc it
+                   ;; TODO: Make a "side-effect" processor which
+                   ;; automatically passes candidates to the output
+                   ;; without changing them
                    (csallet-bind-processor
                     (-lambda (candidates (&plist :generated-count generated-count
-                                                 :matched-count matched-count))
+                                                 :matched-count matched-count
+                                                 :finished finished))
                       (cl-incf total-generated generated-count)
                       (cl-incf total-matched matched-count)
                       (csallet-at-header canvas
-                        (put-text-property
-                         (point) (1+ (line-end-position))
-                         'display (propertize
-                                   (format " • source [%d/%d]\n"
-                                           total-matched
-                                           total-generated)
-                                   'face 'sallet-source-header))
+                        (csallet-with-current-source (:header)
+                          (let ((spinner (aref "-\\|/" (mod tick 4))))
+                            (put-text-property
+                             (point) (1+ (line-end-position))
+                             'display (propertize
+                                       (format-spec
+                                        (or header " • source [%m/%g]%S\n")
+                                        `((?m . ,total-matched)
+                                          (?g . ,total-generated)
+                                          (?s . ,spinner)
+                                          (?S . ,(if finished ""
+                                                   (format " (%c)" spinner)))))
+                                       'face 'sallet-source-header))))
                         (put-text-property
                          (point) (1+ (line-end-position))
                          'csallet-header t))
@@ -469,6 +480,9 @@ dropping the leading colon."
 
 (defun csallet-source-locate ()
   (lambda (prompt canvas)
+    (ov-put canvas
+            'csallet-header-format
+            (format " • locate --all --ignore-case %s [%%m/%%g]%%S\n" prompt))
     (csallet-make-pipeline
      canvas
      (csallet-make-process-generator
@@ -516,6 +530,8 @@ dropping the leading colon."
 
 (defun csallet-source-buffer ()
   (lambda (prompt canvas)
+    (ov-put canvas
+            'csallet-header-format " • Buffers [%m/%g]%S\n")
     (csallet-make-pipeline
      canvas
      (csallet-make-cached-generator 'sallet-buffer-candidates)
