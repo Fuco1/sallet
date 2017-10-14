@@ -556,7 +556,7 @@ dropping the leading colon."
   (get-buffer-create "*sallet-concurrent*"))
 
 (defmacro with-csallet-buffer (&rest body)
-  "Eval BODY inside `helm-buffer'."
+  "Eval BODY inside csallet buffer."
   (declare (indent 0) (debug t))
   `(with-current-buffer (csallet--get-buffer)
      ,@body))
