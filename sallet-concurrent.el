@@ -204,7 +204,7 @@ candidate and user-data)."
         (list :candidates (nreverse re)
               :finished (= 0 (length processable-candidates)))))))
 
-(defun csallet-make-buffered-updater (comparator renderer)
+(defun csallet-make-buffered-updater (comparator)
   (let ((sorted-candidates nil)
         (processable-candidates nil)
         (comparator (lambda (a b)
@@ -222,7 +222,7 @@ candidate and user-data)."
             (goto-char (point-min))
             (setq sorted-candidates
                   (-insert-by! candidate comparator sorted-candidates))
-            (insert (funcall renderer candidate))))
+            (insert (plist-get (cadr candidate) :rendered-candidate) "\n")))
         (list :finished (= 0 (length processable-candidates)))))))
 
 (defun csallet-occur-updater (comparator renderer)
@@ -271,6 +271,7 @@ ones and overrule settings in the other lists."
                                  matcher
                                  updater
                                  &key
+                                 (renderer (-lambda ((candidate)) candidate))
                                  on-start
                                  on-cancel)
   "Make an asynchronous pipeline.
@@ -320,6 +321,18 @@ cancelled."
                  (deferred:nextc it
                    (csallet-bind-processor
                     (csallet--candidate-counter :matched-count)))
+                 (deferred:nextc it
+                   (csallet-bind-processor
+                    (csallet-make-buffered-stage
+                     (-lambda ((input &as candidate user-data))
+                       (let ((rendered-candidate
+                              (propertize
+                               (funcall renderer input)
+                               'csallet-candidate candidate)))
+                         (setq user-data (plist-put
+                                          user-data
+                                          :rendered-candidate rendered-candidate))
+                         (list candidate user-data))))))
                  (deferred:nextc it
                    (csallet-bind-processor
                     (csallet--run-in-canvas updater canvas)))
