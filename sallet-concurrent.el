@@ -115,7 +115,9 @@ The return value is a plist with two keys:
                 :finished (not continue))))
       :destructor (lambda ()
                     (when (and process (process-live-p process))
-                      (kill-process process))))))
+                      (kill-process process))
+                    (when (buffer-live-p buffer)
+                      (kill-buffer buffer))))))
 
 (defun csallet-make-buffered-stage (processor)
   "Make a buffered stage function out of PROCESSOR.
