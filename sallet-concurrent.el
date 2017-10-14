@@ -531,9 +531,25 @@ dropping the leading colon."
 (defun csallet-buffer-action (candidate)
   (switch-to-buffer candidate))
 
+(defun csallet-buffer-preview-buffer (candidate)
+  (display-buffer candidate `(display-buffer-use-some-window)))
+
+(defun csallet-make-source-keymap (&rest actions)
+  (let ((map (make-sparse-keymap)))
+    (-each actions
+      (-lambda ((key command))
+        (define-key map (kbd key)
+          (lambda ()
+            (interactive)
+            (csallet-with-current-source (:candidate)
+              (funcall command candidate))))))
+    map))
+
 (defun csallet-source-buffer ()
   (lambda (prompt canvas)
     (ov-put canvas
+            'keymap (csallet-make-source-keymap
+                     '("C-o" csallet-buffer-preview-buffer))
             'csallet-default-action 'csallet-buffer-action
             'csallet-header-format " • Buffers [%m/%g]%S\n")
     (csallet-make-pipeline
