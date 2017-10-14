@@ -251,13 +251,14 @@ ones and overrule settings in the other lists."
                    :pipeline-data next-pipeline-data)
              (funcall processor candidates pipeline-data))
             (next-finished (if (plist-member data :finished)
-                               (setq next-finished (plist-get data :finished))
+                               (plist-get data :finished)
                              t)))
       (list :candidates next-candidates
             :finished (and finished next-finished)
             :pipeline-data (csallet--merge-plists
                             pipeline-data
-                            next-pipeline-data)))))
+                            next-pipeline-data
+                            (list :finished (and finished next-finished)))))))
 
 (defun csallet--candidate-counter (property-name)
   "Return a function counting input candidates and saving the count in PROPERTY-NAME."
