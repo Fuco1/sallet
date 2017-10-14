@@ -662,8 +662,7 @@ dropping the leading colon."
   (with-csallet-buffer
     (-when-let* ((ov (ov-at))
                  (keymap (ov-val ov 'keymap)))
-      ;; Fix #466; we use here set-transient-map
-      ;; to not overhide other minor-mode-map's.
+      ;; We use set-transient-map here to not hide minor-mode-map.
       (if (fboundp 'set-transient-map)
           (set-transient-map keymap)
         (set-temporary-overlay-map keymap)))))
