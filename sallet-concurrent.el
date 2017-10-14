@@ -372,15 +372,15 @@ cancelled."
            (deferred:cancel this))
          (--each on-cancel (funcall it)))))))
 
-(defun csallet--run-in-canvas (processor canvas)
-  "Run PROCESSOR in CANVAS."
+(defun csallet--run-in-canvas (stage canvas)
+  "Run STAGE in CANVAS."
   (lambda (candidates pipeline-data)
     ;; enable visibility when we render the first candidate
     (when (> (length candidates) 0)
       (overlay-put canvas 'display nil))
     (csallet-with-canvas canvas
       (goto-char (point-max))
-      (funcall processor candidates pipeline-data))))
+      (funcall stage candidates pipeline-data))))
 
 (defmacro csallet-with-canvas (canvas &rest body)
   (declare (indent 1))
