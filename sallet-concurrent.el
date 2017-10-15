@@ -302,7 +302,18 @@ cancelled."
   (let ((current-deferred)
         (total-generated 0)
         (total-matched 0)
-        (tick 0))
+        (tick 0)
+        (renderer
+         (csallet-make-buffered-stage
+          (-lambda ((input &as candidate user-data))
+            (let ((rendered-candidate
+                   (propertize
+                    (funcall renderer input)
+                    'csallet-candidate candidate)))
+              (setq user-data (plist-put
+                               user-data
+                               :rendered-candidate rendered-candidate))
+              (list candidate user-data))))))
     (when (and (listp generator)
                (plist-member generator :constructor)
                (plist-member generator :destructor))
@@ -330,18 +341,7 @@ cancelled."
                  (deferred:nextc it
                    (csallet-bind-processor
                     (csallet--candidate-counter :matched-count)))
-                 (deferred:nextc it
-                   (csallet-bind-processor
-                    (csallet-make-buffered-stage
-                     (-lambda ((input &as candidate user-data))
-                       (let ((rendered-candidate
-                              (propertize
-                               (funcall renderer input)
-                               'csallet-candidate candidate)))
-                         (setq user-data (plist-put
-                                          user-data
-                                          :rendered-candidate rendered-candidate))
-                         (list candidate user-data))))))
+                 (deferred:nextc it (csallet-bind-processor renderer))
                  (deferred:nextc it
                    (csallet-bind-processor
                     (csallet--run-in-canvas updater canvas)))
