@@ -602,6 +602,7 @@ dropping the leading colon."
 
 (defun csallet (&rest sources)
   (switch-to-buffer (csallet--get-buffer))
+  (bury-buffer (csallet--get-buffer))
   (condition-case _var
       (minibuffer-with-setup-hook (lambda () (csallet--minibuffer-setup sources))
         (csallet--run-sources "" sources)
