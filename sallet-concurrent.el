@@ -600,6 +600,14 @@ dropping the leading colon."
   (csallet-with-current-source (:candidate :action)
     (funcall action candidate)))
 
+(defun csallet--window-cleanup ()
+  "Called after we exit csallet session."
+  (kill-buffer (csallet--get-buffer))
+  (csallet--cleanup)
+  (--each (buffer-list)
+    (when (string-match-p "\\` \\*Minibuf-[0-9]+\\*\\'"(buffer-name it))
+      (remove-hook 'post-command-hook 'csallet--minibuffer-post-command-hook t))))
+
 (defun csallet (&rest sources)
   (switch-to-buffer (csallet--get-buffer))
   (bury-buffer (csallet--get-buffer))
@@ -620,9 +628,9 @@ dropping the leading colon."
            (define-key map (kbd "M-v") 'csallet-scroll-down)
            map))
         (csallet-default-action)
-        (csallet--cleanup))
-    (quit (csallet--cleanup))
-    (error (csallet--cleanup))))
+        (csallet--window-cleanup))
+    (quit (csallet--window-cleanup))
+    (error (csallet--window-cleanup))))
 
 (defun csallet--set-window-point ()
   (set-window-point (get-buffer-window (csallet--get-buffer)) (point)))
