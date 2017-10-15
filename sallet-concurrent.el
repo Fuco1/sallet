@@ -552,7 +552,7 @@ dropping the leading colon."
   (lambda (prompt canvas)
     (ov-put canvas
             'keymap (csallet-make-source-keymap
-                     '("C-o" csallet-buffer-preview-buffer))
+                     '("C-z" csallet-buffer-preview-buffer))
             'csallet-default-action 'csallet-buffer-action
             'csallet-header-format " • Buffers [%m/%g]%S\n")
     (csallet-make-pipeline
