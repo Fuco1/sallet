@@ -4,6 +4,15 @@
 (require 'sallet-core)
 (require 'ov)
 
+(defcustom csallet-spinner-string "⣷⣯⣟⡿⢿⣻⣽⣾"
+  "String of characters used to loop as a spinner."
+  :type '(radio
+          (const :tag "Basic ASCII (-\\|/)" "-\\|/")
+          (const :tag "Unicode Braille Positive (⠈⠐⠠⢀⡀⠄⠂⠁)" "⠈⠐⠠⢀⡀⠄⠂⠁")
+          (const :tag "Unicode Braille Negative (⣷⣯⣟⡿⢿⣻⣽⣾)" "⣷⣯⣟⡿⢿⣻⣽⣾")
+          (const :tag "Unicode Arrows (←↖↑↗→↘↓↙)" "←↖↑↗→↘↓↙")
+          (string :tag "Custom")))
+
 (defun -insert-by! (item comparator list)
   "Insert new ITEM according to COMPARATOR into a sorted LIST."
   (if (not list)
@@ -365,7 +374,13 @@ cancelled."
                                :finished finished))
                       (csallet-at-header canvas
                         (csallet-with-current-source (:header)
-                          (let ((spinner (aref "-\\|/" (mod tick 4))))
+                          ;; TODO: make spinner update time consistent
+                          ;; (100ms delay?)
+                          ;; TODO: make the string customizable:
+                          ;; https://stackoverflow.com/questions/2685435/cooler-ascii-spinners
+                          (let ((spinner
+                                 (aref csallet-spinner-string
+                                       (mod tick (length csallet-spinner-string)))))
                             (put-text-property
                              (point) (1+ (line-end-position))
                              'display (propertize
