@@ -608,6 +608,12 @@ dropping the leading colon."
   `(with-current-buffer (csallet--get-buffer)
      ,@body))
 
+(defmacro with-csallet-window (&rest body)
+  "Eval BODY inside csallet buffer."
+  (declare (indent 0) (debug t))
+  `(with-selected-window (get-buffer-window (csallet--get-buffer))
+     ,@body))
+
 (defvar csallet--running-sources nil)
 
 (defun csallet--cleanup-source (running-source)
