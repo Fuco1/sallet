@@ -412,7 +412,8 @@ cancelled."
   (lambda (candidates pipeline-data)
     ;; enable visibility when we render the first candidate
     (when (> (length candidates) 0)
-      (overlay-put canvas 'display nil))
+      (overlay-put canvas 'display nil)
+      (overlay-put canvas 'csallet-visible t))
     (csallet-with-canvas canvas
       (goto-char (point-max))
       (funcall stage candidates pipeline-data))
@@ -715,6 +716,30 @@ dropping the leading colon."
             (forward-line 1)
             (csallet--set-window-point))
         (funcall next-fn canvas)))))
+
+(defun csallet-candidate-next-source ()
+  (interactive)
+  (csallet-with-current-source canvas
+    (let ((next (or (ov-next 'csallet-visible)
+                    (progn
+                      (goto-char (point-min))
+                      (if (ov-val (ov-at) 'csallet-visible)
+                          (ov-at)
+                        (ov-next 'csallet-visible))))))
+      (when next
+        (goto-char (ov-beg next))
+        (forward-line 1)
+        (csallet--set-window-point)))))
+
+(defun csallet-scroll-up ()
+  (interactive)
+  (with-csallet-window
+    (scroll-up)))
+
+(defun csallet-scroll-down ()
+  (interactive)
+  (with-csallet-window
+    (scroll-down)))
 
 (defun csallet--maybe-update-keymap ()
   "Setup current source map as transient map in the minibuffer"
