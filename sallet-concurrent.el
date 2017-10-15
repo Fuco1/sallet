@@ -262,10 +262,19 @@ ones and overrule settings in the other lists."
                             (list :finished (and finished next-finished)))))))
 
 (defun csallet--candidate-counter (property-name)
-  "Return a function counting input candidates and saving the count in PROPERTY-NAME."
-  (lambda (candidates _)
-    (list :candidates candidates
-          :pipeline-data `(,property-name ,(length candidates)))))
+  "Return a function counting input candidates and saving the count in PROPERTY-NAME.
+
+The total that has passed in all pipeline cycles is saved in
+PROPERTY-NAME with the suffix -total appended."
+  (let ((total 0)
+        (total-property-name (intern (concat (symbol-name property-name)
+                                             "-total"))))
+    (lambda (candidates _)
+      (let ((count (length candidates)))
+        (list :candidates candidates
+              :pipeline-data
+          (list property-name count
+                total-property-name (cl-incf total count)))))))
 
 (cl-defun csallet-make-pipeline (canvas
                                  generator
@@ -300,8 +309,9 @@ ON-START is a list of functions executed before the pipeline starts.
 ON-CANCEL is a list of functions executed after the pipeline is
 cancelled."
   (let ((current-deferred)
-        (total-generated 0)
-        (total-matched 0)
+        (generated-counter (csallet--candidate-counter :generated-count))
+        (matched-counter (csallet--candidate-counter :matched-count))
+        (rendered-counter (csallet--candidate-counter :rendered-count))
         (tick 0)
         (renderer
          (csallet-make-buffered-stage
@@ -334,14 +344,11 @@ cancelled."
                                       (cl-incf tick)
                                       `(:finished t)))
                  (deferred:nextc it (csallet-bind-processor generator))
-                 (deferred:nextc it
-                   (csallet-bind-processor
-                    (csallet--candidate-counter :generated-count)))
+                 (deferred:nextc it (csallet-bind-processor generated-counter))
                  (deferred:nextc it (csallet-bind-processor matcher))
-                 (deferred:nextc it
-                   (csallet-bind-processor
-                    (csallet--candidate-counter :matched-count)))
+                 (deferred:nextc it (csallet-bind-processor matched-counter))
                  (deferred:nextc it (csallet-bind-processor renderer))
+                 (deferred:nextc it (csallet-bind-processor rendered-counter))
                  (deferred:nextc it
                    (csallet-bind-processor
                     (csallet--run-in-canvas updater canvas)))
@@ -350,11 +357,12 @@ cancelled."
                    ;; automatically passes candidates to the output
                    ;; without changing them
                    (csallet-bind-processor
-                    (-lambda (candidates (&plist :generated-count generated-count
-                                                 :matched-count matched-count
-                                                 :finished finished))
-                      (cl-incf total-generated generated-count)
-                      (cl-incf total-matched matched-count)
+                    (-lambda (candidates
+                              (&plist
+                               :generated-count-total generated-count-total
+                               :matched-count-total matched-count-total
+                               :rendered-count-total rendered-count-total
+                               :finished finished))
                       (csallet-at-header canvas
                         (csallet-with-current-source (:header)
                           (let ((spinner (aref "-\\|/" (mod tick 4))))
@@ -363,8 +371,9 @@ cancelled."
                              'display (propertize
                                        (format-spec
                                         (or header " • source [%m/%g]%S\n")
-                                        `((?m . ,total-matched)
-                                          (?g . ,total-generated)
+                                        `((?m . ,matched-count-total)
+                                          (?g . ,generated-count-total)
+                                          (?r . ,rendered-count-total)
                                           (?s . ,spinner)
                                           (?S . ,(if finished ""
                                                    (format " (%c)" spinner)))))
@@ -554,7 +563,7 @@ dropping the leading colon."
             'keymap (csallet-make-source-keymap
                      '("C-z" csallet-buffer-preview-buffer))
             'csallet-default-action 'csallet-buffer-action
-            'csallet-header-format " • Buffers [%m/%g]%S\n")
+            'csallet-header-format " • Buffers [%m/%g/%r]%S\n")
     (csallet-make-pipeline
      canvas
      (csallet-make-cached-generator 'sallet-buffer-candidates)
