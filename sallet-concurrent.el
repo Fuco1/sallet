@@ -588,7 +588,42 @@ dropping the leading colon."
 
 (defun csallet-buffer ()
   (interactive)
-  (csallet (csallet-source-buffer)))
+  (csallet
+   (csallet-source-buffer)
+   (csallet-source-autobookmarks)))
+
+(defun csallet-autobookmarks-action (candidate)
+  (abm-restore-killed-buffer candidate))
+
+(defun csallet-autobookmarks-render-candidate (candidate)
+  (sallet-autobookmarks-renderer (car candidate) nil (cadr candidate)))
+
+(defun csallet-autobookmarks-matcher (prompt)
+  (csallet-make-buffered-stage
+   (csallet-sallet-filter-wrapper
+    (lambda (candidates indices pattern)
+      (sallet-compose-filters-by-pattern
+       '(("\\`//\\(.*\\)" 1 sallet-filter-autobookmark-path-substring)
+         ("\\`/\\(.*\\)" 1 sallet-filter-autobookmark-path-flx)
+         ("\\`\\*\\(.*\\)" 1 sallet-filter-autobookmark-mode-flx)
+         (t sallet-filter-flx-then-substring))
+       candidates indices pattern))
+    prompt)))
+
+(defun csallet-source-autobookmarks ()
+  (lambda (prompt canvas)
+    (ov-put canvas
+            'csallet-default-action 'csallet-autobookmarks-action
+            'csallet-header-format " • Autobookmarks [%m/%g/%r]%S\n")
+    (csallet-make-pipeline
+     canvas
+     (csallet-make-cached-generator 'sallet-autobookmarks-candidates)
+     :matcher (csallet-autobookmarks-matcher prompt)
+     :renderer 'csallet-autobookmarks-render-candidate)))
+
+(defun csallet-autobookmarks ()
+  (interactive)
+  (csallet (csallet-source-autobookmarks)))
 
 (defun csallet-mixed ()
   (interactive)
