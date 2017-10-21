@@ -124,11 +124,11 @@ Any other non-prefixed pattern is matched using the following rules:
    (lambda (bookmark)
      (-when-let (name
                  (cond
-                  ((assoc 'defaults (cdr bookmark))
-                   (cadr (assoc 'defaults (cdr bookmark))))
                   ((assoc 'filename (cdr bookmark))
                    (f-filename
-                    (cdr (assoc 'filename (cdr bookmark)))))))
+                    (cdr (assoc 'filename (cdr bookmark)))))
+                  ((assoc 'defaults (cdr bookmark))
+                   (cadr (assoc 'defaults (cdr bookmark))))))
        (when (string-match-p "/\\'" (car bookmark))
          (setq name (concat name "/")))
        (-snoc (cons name bookmark)
