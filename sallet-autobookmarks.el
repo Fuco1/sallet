@@ -119,26 +119,30 @@ Any other non-prefixed pattern is matched using the following rules:
                                         (cdr it)))))))))
              sallet-autobookmarks--name-to-major-mode-cache)))
 
+(defun sallet-autobookmarks--candidates-comparator (a b)
+  (-let (((_ _ . (&alist 'time a)) a)
+         ((_ _ . (&alist 'time b)) b))
+    (time-less-p b a)))
+
+(defun sallet-autobookmarks--candidate-creator (bookmark)
+  (-when-let (name
+              (cond
+               ((assoc 'filename (cdr bookmark))
+                (f-filename
+                 (cdr (assoc 'filename (cdr bookmark)))))
+               ((assoc 'defaults (cdr bookmark))
+                (cadr (assoc 'defaults (cdr bookmark))))))
+    (when (string-match-p "/\\'" (car bookmark))
+      (setq name (concat name "/")))
+    (-snoc (cons name bookmark)
+           (cons
+            'abm-auto-major-mode
+            (sallet-autobookmarks--name-to-major-mode name)))))
+
 (defun sallet-autobookmarks-candidates ()
-  (-keep
-   (lambda (bookmark)
-     (-when-let (name
-                 (cond
-                  ((assoc 'filename (cdr bookmark))
-                   (f-filename
-                    (cdr (assoc 'filename (cdr bookmark)))))
-                  ((assoc 'defaults (cdr bookmark))
-                   (cadr (assoc 'defaults (cdr bookmark))))))
-       (when (string-match-p "/\\'" (car bookmark))
-         (setq name (concat name "/")))
-       (-snoc (cons name bookmark)
-              (cons
-               'abm-auto-major-mode
-               (sallet-autobookmarks--name-to-major-mode name)))))
-   (-sort (-lambda ((_ . (&alist 'time a))
-                    (_ . (&alist 'time b)))
-            (time-less-p b a))
-          (abm-recent-buffers))))
+  (-sort 'sallet-autobookmarks--candidates-comparator
+         (-keep 'sallet-autobookmarks--candidate-creator
+                (abm-recent-buffers))))
 
 (sallet-defsource autobookmarks nil
   "Files saved with `autobookmarks-mode'."

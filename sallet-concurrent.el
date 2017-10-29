@@ -638,9 +638,13 @@ dropping the leading colon."
             'csallet-header-format " • Autobookmarks [%m/%g/%r]%S\n")
     (csallet-make-pipeline
      canvas
-     (csallet-make-cached-generator 'sallet-autobookmarks-candidates)
+     (csallet-make-mapped-generator
+      'abm-recent-buffers
+      (lambda (c) (list (sallet-autobookmarks--candidate-creator c))))
      :matcher (csallet-autobookmarks-matcher prompt)
-     :renderer 'csallet-autobookmarks-render-candidate)))
+     :renderer 'csallet-autobookmarks-render-candidate
+     :updater (csallet-make-sorting-updater
+               (-on 'sallet-autobookmarks--candidates-comparator 'car)))))
 
 (defun csallet-autobookmarks ()
   (interactive)
