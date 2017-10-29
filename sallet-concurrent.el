@@ -74,6 +74,26 @@ additional candidates and declares itself as finished."
                           (prog1 (funcall generator)
                             (setq already-run t)))))))
 
+(defun csallet-make-mapped-generator (generator fn)
+  "Make mapped generator.
+
+GENERATOR is a function which returns a simple list of
+candidates, all of them in a single invocation.
+
+FN is then applied to each candidate as they are streamed to the
+following stages.
+
+The assumption here is that the GENERATOR function returns very
+fast but the FN processing each candidate might be slow."
+  (let ((stage (csallet-make-buffered-stage fn))
+        (already-run nil))
+    (lambda (_ pipeline-data)
+      (funcall stage
+               (unless already-run
+                 (prog1 (funcall generator)
+                   (setq already-run t)))
+               pipeline-data))))
+
 (defun csallet-make-process-generator (process-creator processor prompt)
   "Make a generator processing process output line by line.
 
