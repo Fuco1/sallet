@@ -527,11 +527,15 @@ dropping the leading colon."
   (interactive)
   (csallet (csallet-source-ag)))
 
+(defun csallet-locate-action (candidate)
+  (sallet-locate-action nil candidate))
+
 (defun csallet-source-locate ()
   (lambda (prompt canvas)
     (ov-put canvas
             'csallet-header-format
-            (format " • locate --all --ignore-case %s [%%m/%%g]%%S\n" prompt))
+            (format " • locate --all --ignore-case %s [%%m/%%g]%%S\n" prompt)
+            'csallet-default-action 'csallet-locate-action)
     (csallet-make-pipeline
      canvas
      (csallet-make-process-generator
@@ -611,7 +615,9 @@ dropping the leading colon."
   (interactive)
   (csallet
    (csallet-source-buffer)
-   (csallet-source-autobookmarks)))
+   (csallet-source-autobookmarks)
+   (csallet-source-locate)
+   ))
 
 (defun csallet-autobookmarks-action (candidate)
   (abm-restore-killed-buffer candidate))
