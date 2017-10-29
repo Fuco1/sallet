@@ -208,7 +208,7 @@ candidate and user-data)."
           (lambda (candidate)
             (let ((index (funcall indexer candidate)))
               (setq sorted-candidates
-                    (-insert-at index candidate sorted-candidates ))
+                    (-insert-at index candidate sorted-candidates))
               (let* ((user-data (cadr candidate))
                      (user-data (plist-put user-data :index index)))
                 (push (list (car candidate) user-data) re))
