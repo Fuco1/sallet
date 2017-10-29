@@ -436,6 +436,11 @@ directories."
             (list :is-file (f-file? candidate)))))))
      indices)))
 
+(defun sallet-locate-action (_source c)
+  (if (sallet--find-file-in-emacs-p c)
+      (find-file c)
+    (call-process "xdg-open" nil 0 nil c)))
+
 (sallet-defsource locate (asyncio)
   "Run locate(1).
 
@@ -475,10 +480,7 @@ is opened through xdg-open(1)."
                (plist-get user-data :regexp-matches)
                candidate)))
   (header "locate")
-  (action (lambda (_source c)
-            (if (sallet--find-file-in-emacs-p c)
-                (find-file c)
-              (call-process "xdg-open" nil 0 nil c)))))
+  (action sallet-locate-action))
 
 (defun sallet-locate ()
   "Run locate sallet."
