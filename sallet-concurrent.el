@@ -226,7 +226,7 @@ candidate and user-data)."
                         result))))
     (lambda (additional-candidates pipeline-data)
       (setq processable-candidates (-concat processable-candidates additional-candidates))
-      (let ((end-time (time-add (current-time) (list 0 0 50000 0))))
+      (let ((end-time (time-add (current-time) (list 0 0 25000 0))))
         (-each-while processable-candidates
             (lambda (_) (time-less-p (current-time) end-time))
           (-lambda (candidate)
