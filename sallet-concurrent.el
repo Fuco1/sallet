@@ -216,7 +216,7 @@ candidate and user-data)."
         (list :candidates (nreverse re)
               :finished (= 0 (length processable-candidates)))))))
 
-(defun csallet-make-buffered-updater (comparator)
+(defun csallet-make-sorting-updater (comparator)
   (let ((sorted-candidates nil)
         (processable-candidates nil)
         (comparator (lambda (a b)
@@ -532,7 +532,7 @@ dropping the leading colon."
          canvas
          (csallet-occur-generator prompt current-buffer)
          :matcher (csallet-occur-matcher prompt)
-         :updater (csallet-make-buffered-updater
+         :updater (csallet-make-sorting-updater
                    (-lambda ((a) (b)) (< (length a) (length b)))))))))
 
 (defun csallet-occur ()
