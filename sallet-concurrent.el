@@ -172,12 +172,13 @@ PROMPT is the patter passed to FILTER.
 Return a function taking in csallet candidate (a list of
 candidate and user-data)."
   (lambda (candidate)
-    (-when-let (((_ . user-data))
-                (funcall filter
-                         (vector (sallet-car-maybe candidate))
-                         (list (list 0 (sallet-list-maybe candidate 'cadr)))
-                         prompt))
-      (list candidate user-data))))
+    (-when-let (ok (funcall filter
+                            (vector (sallet-car-maybe candidate))
+                            (list (list 0 (sallet-list-maybe candidate 'cadr)))
+                            prompt))
+      (list
+       (sallet-car-maybe candidate)
+       (sallet-list-maybe (car ok) 'cdr)))))
 
 (defun csallet-occur-filter (candidate user-data pattern)
   (when (string-match-p (regexp-quote pattern) candidate)
