@@ -846,9 +846,10 @@ The closure is stored in function slot.")
   (let ((canvases
          (with-csallet-buffer
            (save-excursion
-             (--map
+             (--map-indexed
               (let ((canvas (make-overlay (point) (progn (insert "\n\n") (point)))))
                 (overlay-put canvas 'display "")
+                (overlay-put canvas 'csallet-index it-index)
                 ;; (overlay-put canvas 'face (list :background (ov--random-color)))
                 canvas)
               sources)))))
