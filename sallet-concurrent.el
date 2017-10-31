@@ -428,6 +428,10 @@ cancelled."
            (deferred:cancel this))
          (--each on-cancel (funcall it)))))))
 
+(defun csallet--get-canvases ()
+  (with-csallet-buffer
+    (ov-in 'csallet-index)))
+
 (defun csallet--run-in-canvas (stage canvas)
   "Run STAGE in CANVAS."
   (lambda (candidates pipeline-data)
@@ -439,8 +443,9 @@ cancelled."
       (goto-char (point-max))
       (funcall stage candidates pipeline-data))
     ;; TODO: move this logic elsewhere
-    (when (= (with-csallet-buffer (point)) (ov-beg canvas))
-      (csallet-candidate-down))))
+    (--when-let (--find (ov-val it 'csallet-visible) (csallet--get-canvases))
+      (when (= (with-csallet-buffer (point)) (ov-beg it))
+        (csallet-candidate-down)))))
 
 (defmacro csallet-with-canvas (canvas &rest body)
   (declare (indent 1))
