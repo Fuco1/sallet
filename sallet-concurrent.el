@@ -535,6 +535,34 @@ dropping the leading colon."
 (defun csallet-locate-action (candidate)
   (sallet-locate-action nil candidate))
 
+(defun csallet-locate-matcher (prompt)
+  (csallet-make-buffered-stage
+   (csallet-sallet-filter-wrapper
+    (lambda (candidates indices pattern)
+      (sallet-compose-filters-by-pattern
+       '(("\\`/\\(.*\\)" 1 sallet-locate-filter-substring)
+         ("\\`\\.\\(.*\\)" 1 sallet-filter-file-extension)
+         (t sallet-locate-filter-substring))
+       candidates indices pattern))
+    prompt)))
+
+(defun csallet-locate-render-candidate (candidate)
+  (sallet-locate-renderer (car candidate) nil (cadr candidate)))
+
+(defun csallet-locate-generator (prompt canvas)
+  (csallet-make-process-generator
+   (lambda (buffer prompt)
+     (cl-letf (((symbol-function 'sallet-source-set-header)
+                (lambda (_source header)
+                  (ov-put canvas
+                          'csallet-header-format
+                          (format " • %s [%%m/%%g]%%S\n" header)))))
+       (funcall
+        (sallet-process-creator-min-prompt-length
+         (sallet-locate-make-process-creator nil buffer))
+        prompt)))
+   'identity prompt))
+
 (defun csallet-source-locate ()
   (lambda (prompt canvas)
     (ov-put canvas
@@ -543,12 +571,9 @@ dropping the leading colon."
             'csallet-default-action 'csallet-locate-action)
     (csallet-make-pipeline
      canvas
-     (csallet-make-process-generator
-      (lambda (buffer prompt)
-        (when (> (length prompt) 0)
-          (start-process "locate" buffer "locate"
-                         "--all" "--ignore-case" prompt)))
-      'identity prompt))))
+     (csallet-locate-generator prompt canvas)
+     :matcher (csallet-locate-matcher prompt)
+     :renderer 'csallet-locate-render-candidate)))
 
 (defun csallet-locate ()
   (interactive)
