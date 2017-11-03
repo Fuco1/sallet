@@ -728,11 +728,18 @@ dropping the leading colon."
            (define-key map (kbd "C-o") 'csallet-candidate-next-source)
            (define-key map (kbd "C-v") 'csallet-scroll-up)
            (define-key map (kbd "M-v") 'csallet-scroll-down)
+           (define-key map (kbd "C-s") 'csallet-isearch)
            map))
         (csallet-default-action)
         (csallet--window-cleanup))
     (quit (csallet--window-cleanup))
     (error (csallet--window-cleanup))))
+
+(defun csallet-isearch ()
+  "Run `isearch' in the sallet candidate window."
+  (interactive)
+  (with-csallet-window
+    (isearch-forward-regexp)))
 
 (defun csallet--set-window-point ()
   (set-window-point (get-buffer-window (csallet--get-buffer)) (point)))
