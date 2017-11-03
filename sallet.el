@@ -441,6 +441,11 @@ directories."
       (find-file c)
     (call-process "xdg-open" nil 0 nil c)))
 
+(defun sallet-locate-renderer (candidate _ user-data)
+  (sallet-fontify-regexp-matches
+   (plist-get user-data :regexp-matches)
+   candidate))
+
 (sallet-defsource locate (asyncio)
   "Run locate(1).
 
@@ -475,10 +480,7 @@ is opened through xdg-open(1)."
                             (t (and a (not b)))))
                        t))
                    c)))
-  (renderer (lambda (candidate _ user-data)
-              (sallet-fontify-regexp-matches
-               (plist-get user-data :regexp-matches)
-               candidate)))
+  (renderer sallet-locate-renderer)
   (header "locate")
   (action sallet-locate-action))
 
