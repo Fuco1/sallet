@@ -371,7 +371,7 @@ the `default-directory'."
   (sallet (list sallet-source-ag-files)))
 
 ;; TODO: restart the process only if args change
-(defun sallet-locate-make-process-creator (source)
+(defun sallet-locate-make-process-creator (source &optional buffer)
   "Return a process creator for locate sallet.
 
 SOURCE is the invoked sallet source."
@@ -391,7 +391,7 @@ SOURCE is the invoked sallet source."
                      (car tokens))
                    (when all? (cdr tokens))))))
       (sallet-source-set-header source (concat "locate " (s-join " " args)))
-      (apply 'start-process "locate" nil "locate" args))))
+      (apply 'start-process "locate" buffer "locate" args))))
 
 (defun sallet-locate-filter-substring (candidates indices pattern)
   "Match CANDIDATES at INDICES against PATTERN.
