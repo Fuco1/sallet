@@ -621,12 +621,14 @@ dropping the leading colon."
 (defun csallet-make-source-keymap (&rest actions)
   (let ((map (make-sparse-keymap)))
     (-each actions
-      (-lambda ((key command))
+      (-lambda ((key command refreshp))
         (define-key map (kbd key)
           (lambda ()
             (interactive)
             (csallet-with-current-source (:candidate)
-              (funcall command candidate))))))
+              (funcall command candidate)
+              (when refreshp
+                (csallet--minibuffer-post-command-hook :force)))))))
     map))
 
 (defun csallet-source-buffer ()
