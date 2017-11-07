@@ -864,7 +864,8 @@ The closure is stored in function slot.")
   "Setup `post-command-hook' in minibuffer to update sallet STATE."
   (fset 'csallet--minibuffer-post-command-hook
         (let ((old-prompt ""))
-          (lambda ()
+          (lambda (&optional force)
+            "If FORCE is non-nil force refresh even if the input did not change."
             (let ((prompt (buffer-substring-no-properties 5 (point-max))))
               (unless (equal old-prompt prompt)
                 (setq old-prompt prompt)
