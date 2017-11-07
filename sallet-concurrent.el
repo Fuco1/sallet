@@ -468,6 +468,7 @@ If CONTEXT is a list, bind the properties according to the following map:
 - :action -> bind current default action
 - :candidate -> bind current candidate
 - :canvas -> bind current canvas
+- :header -> bind current source header
 
 If the property keyword is followed by a symbol, this is used as
 the variable, otherwise it is derived from the keyword by
