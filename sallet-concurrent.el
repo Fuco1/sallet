@@ -618,6 +618,9 @@ dropping the leading colon."
 (defun csallet-buffer-preview-buffer (candidate)
   (display-buffer candidate `(display-buffer-use-some-window)))
 
+(defun csallet-buffer-kill-buffers (candidate)
+  (kill-buffer candidate))
+
 (defun csallet-make-source-keymap (&rest actions)
   (let ((map (make-sparse-keymap)))
     (-each actions
@@ -634,8 +637,10 @@ dropping the leading colon."
 (defun csallet-source-buffer ()
   (lambda (prompt canvas)
     (ov-put canvas
+            ;; TODO: use hydra for this
             'keymap (csallet-make-source-keymap
-                     '("C-z" csallet-buffer-preview-buffer))
+                     '("C-z" csallet-buffer-preview-buffer)
+                     '("M-k" csallet-buffer-kill-buffers :refresh))
             'csallet-default-action 'csallet-buffer-action
             'csallet-header-format " • Buffers [%m/%g/%r]%S\n")
     (csallet-make-pipeline
@@ -757,11 +762,22 @@ dropping the leading colon."
            (define-key map (kbd "C-v") 'csallet-scroll-up)
            (define-key map (kbd "M-v") 'csallet-scroll-down)
            (define-key map (kbd "C-s") 'csallet-isearch)
+           (define-key map (kbd "C-SPC") 'csallet-mark)
            map))
         (csallet-default-action)
         (csallet--window-cleanup))
     (quit (csallet--window-cleanup))
     (error (csallet--window-cleanup))))
+
+(defun csallet-mark ()
+  "Mark the current candidate."
+  (interactive)
+  (csallet-with-current-source _canvas
+    (put-text-property (line-beginning-position) (line-end-position)
+                       'csallet-marked t)
+    (add-face-text-property (line-beginning-position) (line-end-position)
+                            'dired-marked))
+  (csallet-candidate-down))
 
 (defun csallet-isearch ()
   "Run `isearch' in the sallet candidate window."
