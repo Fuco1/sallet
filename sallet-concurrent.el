@@ -649,10 +649,29 @@ dropping the leading colon."
      :matcher (csallet-buffer-matcher prompt)
      :renderer 'csallet-buffer-render-candidate)))
 
+(defun csallet-source-similar-buffer ()
+  (let ((current-buffer (current-buffer)))
+    (lambda (prompt canvas)
+      (ov-put canvas
+              ;; TODO: use hydra for this
+              'keymap (csallet-make-source-keymap
+                       '("C-z" csallet-buffer-preview-buffer)
+                       '("M-k" csallet-buffer-kill-buffers :refresh))
+              'csallet-default-action 'csallet-buffer-action
+              'csallet-header-format " • Similar Buffers [%m/%g/%r]%S\n")
+      (csallet-make-pipeline
+       canvas
+       (csallet-make-cached-generator
+        (lambda ()
+          (sallet-buffer-similar-buffers-candidates current-buffer)))
+       :matcher (csallet-buffer-matcher prompt)
+       :renderer 'csallet-buffer-render-candidate))))
+
 (defun csallet-buffer ()
   (interactive)
   (csallet
    (csallet-source-buffer)
+   (csallet-source-similar-buffer)
    (csallet-source-autobookmarks)
    (csallet-source-locate)
    ))
@@ -920,3 +939,5 @@ The closure is stored in function slot.")
   (-when-let (pipeline (funcall source prompt canvas))
     (funcall pipeline 'start)
     pipeline))
+
+(provide 'sallet-concurrent)
