@@ -835,7 +835,7 @@ dropping the leading colon."
       ;; if we are at the very first candidate of the source, jump to
       ;; previous source instead
       (if (funcall first-candidate-fn canvas)
-          (--when-let (ov-prev (1+ (ov-beg canvas)))
+          (--when-let (ov-prev 'csallet-visible)
             (when (not (equal it canvas))
               (goto-char (ov-end it))
               (forward-line -2)
@@ -852,7 +852,7 @@ dropping the leading colon."
       ;; if we are at the very last line of the source (which is kept
       ;; empty), jump to next source instead
       (if (funcall last-candidate-fn canvas)
-          (--when-let (ov-next (1- (ov-end canvas)))
+          (--when-let (ov-next 'csallet-visible)
             (goto-char (ov-beg it))
             (forward-line 1)
             (csallet--set-window-point))
