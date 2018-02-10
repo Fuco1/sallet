@@ -124,6 +124,27 @@ Any other non-prefixed pattern is matched using the following rules:
          ((_ _ . (&alist 'time b)) b))
     (time-less-p b a)))
 
+(defun sallet-autobookmarks--uniquify (candidates)
+  (let* ((duplicates (--select (> (length (cdr it)) 1)
+                               (-group-by 'car candidates)))
+         (duplicates-paths
+          (-mapcat (-lambda ((key . group))
+                     (f-uniquify-alist
+                      (--map (f-slash
+                              (f-expand
+                               (cdr (assoc 'filename (cdr it)))))
+                             group)))
+                   duplicates)))
+    (-map (-lambda ((row &as name . bookmark))
+            (-if-let ((_ . uniquified)
+                      (assoc (f-slash
+                              (f-expand
+                               (cdr (assoc 'filename bookmark))))
+                             duplicates-paths))
+                (cons uniquified bookmark)
+              row))
+          candidates)))
+
 (defun sallet-autobookmarks--candidate-creator (bookmark)
   (-when-let (name
               (cond
@@ -140,9 +161,10 @@ Any other non-prefixed pattern is matched using the following rules:
             (sallet-autobookmarks--name-to-major-mode name)))))
 
 (defun sallet-autobookmarks-candidates ()
-  (-sort 'sallet-autobookmarks--candidates-comparator
-         (-keep 'sallet-autobookmarks--candidate-creator
-                (abm-recent-buffers))))
+  (sallet-autobookmarks--uniquify
+   (-sort 'sallet-autobookmarks--candidates-comparator
+          (-keep 'sallet-autobookmarks--candidate-creator
+                 (abm-recent-buffers)))))
 
 (sallet-defsource autobookmarks nil
   "Files saved with `autobookmarks-mode'."

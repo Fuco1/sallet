@@ -701,9 +701,12 @@ dropping the leading colon."
             'csallet-header-format " • Autobookmarks [%m/%g/%r]%S\n")
     (csallet-make-pipeline
      canvas
-     (csallet-make-mapped-generator
-      'abm-recent-buffers
-      (lambda (c) (list (sallet-autobookmarks--candidate-creator c))))
+     (csallet-make-cached-generator
+      (lambda ()
+        (-map 'list
+              (sallet-autobookmarks--uniquify
+               (-keep 'sallet-autobookmarks--candidate-creator
+                      (abm-recent-buffers))))))
      :matcher (csallet-autobookmarks-matcher prompt)
      :renderer 'csallet-autobookmarks-render-candidate
      :updater (csallet-make-sorting-updater
