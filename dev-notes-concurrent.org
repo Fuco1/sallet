@@ -1,0 +1,65 @@
+* Concurrent sallet
+
+The second evolution of sallet with concurrency built-in for everything.  This needs a little bit of architecture overhaul, especially what concerns generating candidates the rest of the pipeline
+
+* Basic overview
+
+The main principle behind the operation of this package is cooperative timesharing.  The candidates are generated and processed in stages and each stage is only allowed to run for a limited amount of time (usually 10ms) before yielding back to the input loop.  This ensures that the user input is picked up in "real time" (almost nobody can notice 10ms delay in typing) but in case there are no events in the Emacs input queue the processing immediately continues.
+
+This principle adds a bit of boilerplate and makes it a little bit more complicated to write the functions (really coroutines) for each stage in a manner conforming to this convention.  We provide some simple to use wrappers to make "cooperative buffered yielding functions" out of regular functions (see for example =csallet-make-buffered-stage=).
+
+The stages do not need to process all the candidates at once; they emit all they can process in the allocated time and then wait to be called again to continue.  They should therefore maintain all the internal state to be able to be restarted.  Closures are an excellent tool for this.
+
+* Pipeline
+
+All the functions of the pipeline follow the same general interface.  The functions in the pipeline are collectively called /stages/. On the input they take a list of =candidates= to process and =pipeline-data= (a plist which can thread arbitrary data through the thread) and on the output they return a plist with following keys (all are optional):
+
+- =:candidates= is a list of output candidates which are fed to the next stage of the pipeline.  In case the key is not present no candidates are passed to the next stage.
+- =:finished= is a boolean flag indicating if this stage is finished with processing, i.e. there are no buffered candidates waiting to be processed.  Defaults to =t=.
+- =:pipeline-data= is a plist of additional data which are to be threaded through the pipeline.  This is the conventional way for the stages to communicate with each other.  Later stages can add new keys or overwrite the old ones.
+
+We call the pipeline repeatedly in a loop until all the stages signal that they are done.  Each stage MAY run at different speed and process different amount of candidates at each iteration.  The stages themselves are responsible for buffering the candidates they could not process in the allocated time.
+
+Each stage MUST be able to be called repeatedly.
+
+The stages in the pipeline are the following:
+
+: generator -> matcher -> indexer -> updater
+
+The candidates flow from the generator to the updater and are updated or enriched on the way.
+
+** Generator
+
+Generators generate candidates.  It does not matter if they are synchronous or asynchronous or come from external processes etc.  Each generator is itself responsible for managing its own state.  There are in principle two kinds of generators:
+
+1. Return all the data in one call
+2. Generate the data over time
+
+In the first case we can usually write a simple function with no arguments (remember that we can close over current environment if we need some aditional inputs!).  This funciton is fully synchronous and returns either a precomputed list or is just so fast that there is no point in making it cooperative.  For an example of such a function look at =sallet-buffer-candidates= which comes from the regular synchronou sallet.  We can turn such a function into a CSallet compatible generator by wrapping it with =csallet-make-cached-generator=.
+
+The second kind emits candidates continously in multiple iterations.  A typical example is =csallet-occur-generator= which scans the current buffer for lines matching a pattern.  If the buffer is very large it might not be able to scan all of it at once.  It saves the point from which to continue internally and waits to be restarted to produce more candidates.  Once the end of buffer is reached it produces no more candidates and signals being finished by setting the =:finished= field to =t=.
+
+** Matcher
+** Sorter
+** Updater
+
+* The CSallet monad (optional reading)
+
+All the stages of the pipeline run inside something akin to a monad.  In Pseudo-Haskell we can express it as:
+
+#+BEGIN_SRC haskell
+data CSallet a = CSallet {
+    candidates :: a
+  , finished :: Bool
+  , pipelineData :: Map String Anything}
+
+instance Monad CSallet where
+  -- [a] -> CSallet [a]
+  return candidates = CSallet candidates True Map.empty
+  -- CSallet [c] -> ([c] -> CSallet [p]) -> CSallet [p]
+  (CSallet candidates finished pipelineData) >>= f =
+    let CSallet candidates' finished' pipelineData' = (f candidates pipelineData)
+    in CSallet candidates' (and finished finished') (Map.union pipelineData' pipelineData)
+#+END_SRC
+
+This is implemented in =csallet-bind-processor=.

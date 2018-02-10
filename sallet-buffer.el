@@ -241,24 +241,29 @@ Any other non-prefixed pattern is matched using the following rules:
   (header "Buffers")
   (renderer sallet-buffer-renderer))
 
+(defun sallet-buffer-similar-buffers-candidates (&optional current-buffer)
+  (let* ((current-name (cond
+                        ((and (featurep 'uniquify)
+                              (if current-buffer
+                                  (with-current-buffer current-buffer
+                                    (uniquify-buffer-base-name))
+                                (uniquify-buffer-base-name))))
+                        ((buffer-name current-buffer))))
+         (buffers
+          (--keep (let ((name (cond
+                               ((and (featurep 'uniquify)
+                                     (with-current-buffer it
+                                       (uniquify-buffer-base-name))))
+                               ((buffer-name it)))))
+                    (when (string= name current-name) (buffer-name it)))
+                  (buffer-list))))
+    (when (< 1 (length buffers))
+      (-cons* (cadr buffers) (car buffers) (cddr buffers)))))
+
 ;; TODO: remove duplication with `buffer' source
 (sallet-defsource similar-buffer (buffer)
   "Buffers with the same name but in a different file hierarchy."
-  (candidates (lambda ()
-                (let* ((current-name (cond
-                                      ((and (featurep 'uniquify)
-                                            (uniquify-buffer-base-name)))
-                                      ((buffer-name))))
-                       (buffers
-                        (--keep (let ((name (cond
-                                             ((and (featurep 'uniquify)
-                                                   (with-current-buffer it
-                                                     (uniquify-buffer-base-name))))
-                                             ((buffer-name it)))))
-                                  (when (string= name current-name) (buffer-name it)))
-                                (buffer-list))))
-                  (when (< 1 (length buffers))
-                    (-cons* (cadr buffers) (car buffers) (cddr buffers))))))
+  (candidates sallet-buffer-similar-buffers-candidates)
   (header "Similar buffers"))
 
 (provide 'sallet-buffer)

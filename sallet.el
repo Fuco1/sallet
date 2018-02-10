@@ -371,7 +371,7 @@ the `default-directory'."
   (sallet (list sallet-source-ag-files)))
 
 ;; TODO: restart the process only if args change
-(defun sallet-locate-make-process-creator (source)
+(defun sallet-locate-make-process-creator (source &optional buffer)
   "Return a process creator for locate sallet.
 
 SOURCE is the invoked sallet source."
@@ -391,7 +391,7 @@ SOURCE is the invoked sallet source."
                      (car tokens))
                    (when all? (cdr tokens))))))
       (sallet-source-set-header source (concat "locate " (s-join " " args)))
-      (apply 'start-process "locate" nil "locate" args))))
+      (apply 'start-process "locate" buffer "locate" args))))
 
 (defun sallet-locate-filter-substring (candidates indices pattern)
   "Match CANDIDATES at INDICES against PATTERN.
@@ -436,6 +436,16 @@ directories."
             (list :is-file (f-file? candidate)))))))
      indices)))
 
+(defun sallet-locate-action (_source c)
+  (if (sallet--find-file-in-emacs-p c)
+      (find-file c)
+    (call-process "xdg-open" nil 0 nil c)))
+
+(defun sallet-locate-renderer (candidate _ user-data)
+  (sallet-fontify-regexp-matches
+   (plist-get user-data :regexp-matches)
+   candidate))
+
 (sallet-defsource locate (asyncio)
   "Run locate(1).
 
@@ -470,15 +480,9 @@ is opened through xdg-open(1)."
                             (t (and a (not b)))))
                        t))
                    c)))
-  (renderer (lambda (candidate _ user-data)
-              (sallet-fontify-regexp-matches
-               (plist-get user-data :regexp-matches)
-               candidate)))
+  (renderer sallet-locate-renderer)
   (header "locate")
-  (action (lambda (_source c)
-            (if (sallet--find-file-in-emacs-p c)
-                (find-file c)
-              (call-process "xdg-open" nil 0 nil c)))))
+  (action sallet-locate-action))
 
 (defun sallet-locate ()
   "Run locate sallet."
