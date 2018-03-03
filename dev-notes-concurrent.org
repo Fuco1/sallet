@@ -63,3 +63,25 @@ instance Monad CSallet where
 #+END_SRC
 
 This is implemented in =csallet-bind-processor=.
+
+* Things we need to figure out and abstract
+
+** Generators from processes
+
+When we start the process it will put output to its output buffer
+which csallet will scan and generate candidates from.  When the prompt
+changes we might need to restart the process but /we also might nod
+need to restart/.  The mechanism should work such that in case of no
+need for process restart we only "reset" the candidates creator to
+scan the output buffer from the beginning again (because some
+additional filters might have changed).  Therefore we need to separate
+these actions:
+
+- process creator :: A function which starts the process and returns a
+     handle.  Should be responsible for prompt parsing/interpretation?
+- process restart predicate :: A function which decides if we need to
+     restart the process based on the input provided.
+- candidate creator :: Function which creates candidates from the
+     process output.  This should be a stage and should be ideally
+     handled most generically so tha we only need to plug in the above
+     two.
