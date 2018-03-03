@@ -477,15 +477,37 @@ cancelled."
 
 
 (defun csallet--run-in-canvas (stage canvas)
-  "Run STAGE in CANVAS."
-  (lambda (candidates pipeline-data)
-    ;; enable visibility when we render the first candidate
-    (when (> (length candidates) 0)
-      (overlay-put canvas 'display nil)
-      (overlay-put canvas 'csallet-visible t))
+  "Run STAGE in CANVAS.
+
+                      !!! DANGER !!!
+
+This function does way more than it should, in particular
+it handles a lot fo the redisplay logic between pipeline runs to
+reduce flicker.  So far this should only be used for updaters and
+nothing else as it assumes the STAGE is doing drawing."
+  (-lambda (candidates
+            (pipeline-data &as &plist :finished finished))
     (csallet-with-canvas canvas
+      ;; enable visibility when we render the first candidate
+      (when (> (length candidates) 0)
+        (csallet-canvas-show)
+        (setf (csallet-canvas-visible) t))
+      ;; if the source became visible or we are finished (meaning no
+      ;; more candidates will arrive), we need to redisplay the source
+      ;; which means delete all the old candidates.
+      (when (and (or finished
+                     (csallet-canvas-visible))
+                 (csallet-canvas-needs-redisplay))
+        (delete-region (point-min) (point-max))
+        (setf (csallet-canvas-needs-redisplay) nil))
+      ;; if we are finished and the sallet never became visible (no
+      ;; renderable candidates were ever produced) hide the header
+      (when (and finished (not (csallet-canvas-visible)))
+        (csallet-canvas-hide))
+      ;; draw the new batch of candidates
       (goto-char (point-max))
       (funcall stage candidates pipeline-data))
+    ;; Move the point to the first candidate of first visible source
     ;; TODO: move this logic elsewhere
     (--when-let (--find (ov-val it 'csallet-visible) (csallet--get-canvases))
       (when (= (with-csallet-buffer (point)) (ov-beg it))
@@ -801,6 +823,26 @@ dropping the leading colon."
   (csallet-with-current-source (:candidate :action)
     (funcall action candidate)))
 
+(defun csallet--window-setup (sources)
+  "Prepare candidate buffer and canvases for the SOURCES."
+  (with-csallet-buffer
+    (kill-all-local-variables)
+    (setq truncate-lines t)
+    (buffer-disable-undo)
+    ;; (setq cursor-type nil)
+    ;; Buffer should be empty at this point but just to be sure
+    (ov-clear)
+    (erase-buffer))
+  (with-csallet-buffer
+    (save-excursion
+      (--map-indexed
+       (let ((canvas (make-overlay (point) (progn (insert "\n\n") (point)))))
+         (overlay-put canvas 'display "")
+         (overlay-put canvas 'csallet-index it-index)
+         ;; (overlay-put canvas 'face (list :background (ov--random-color)))
+         canvas)
+       sources))))
+
 (defun csallet--window-cleanup ()
   "Called after we exit csallet session."
   (kill-buffer (csallet--get-buffer))
@@ -812,28 +854,30 @@ dropping the leading colon."
 (defun csallet (&rest sources)
   (switch-to-buffer (csallet--get-buffer))
   (bury-buffer (csallet--get-buffer))
-  (condition-case _var
-      (minibuffer-with-setup-hook (lambda () (csallet--minibuffer-setup sources))
-        (csallet--run-sources "" sources)
-        (csallet--maybe-update-keymap)
-        ;; TODO: add support to pass maps
-        ;; TODO: propertize prompt
-        (read-from-minibuffer
-         ">>> " nil
-         (let ((map (make-sparse-keymap)))
-           (set-keymap-parent map minibuffer-local-map)
-           (define-key map (kbd "C-n") 'csallet-candidate-down)
-           (define-key map (kbd "C-p") 'csallet-candidate-up)
-           (define-key map (kbd "C-o") 'csallet-candidate-next-source)
-           (define-key map (kbd "C-v") 'csallet-scroll-up)
-           (define-key map (kbd "M-v") 'csallet-scroll-down)
-           (define-key map (kbd "C-s") 'csallet-isearch)
-           (define-key map (kbd "C-SPC") 'csallet-mark)
-           map))
-        (csallet-default-action)
-        (csallet--window-cleanup))
-    (quit (csallet--window-cleanup))
-    (error (csallet--window-cleanup))))
+  (let ((canvases (csallet--window-setup sources)))
+    (condition-case _var
+        (minibuffer-with-setup-hook (lambda () (csallet--minibuffer-setup
+                                                canvases sources))
+          (csallet--run-sources "" canvases sources)
+          (csallet--maybe-update-keymap)
+          ;; TODO: add support to pass maps
+          ;; TODO: propertize prompt
+          (read-from-minibuffer
+           ">>> " nil
+           (let ((map (make-sparse-keymap)))
+             (set-keymap-parent map minibuffer-local-map)
+             (define-key map (kbd "C-n") 'csallet-candidate-down)
+             (define-key map (kbd "C-p") 'csallet-candidate-up)
+             (define-key map (kbd "C-o") 'csallet-candidate-next-source)
+             (define-key map (kbd "C-v") 'csallet-scroll-up)
+             (define-key map (kbd "M-v") 'csallet-scroll-down)
+             (define-key map (kbd "C-s") 'csallet-isearch)
+             (define-key map (kbd "C-SPC") 'csallet-mark)
+             map))
+          (csallet-default-action)
+          (csallet--window-cleanup))
+      (quit (csallet--window-cleanup))
+      (error (csallet--window-cleanup)))))
 
 (defun csallet-mark ()
   "Mark the current candidate."
@@ -944,7 +988,7 @@ dropping the leading colon."
 
 The closure is stored in function slot.")
 
-(defun csallet--minibuffer-setup (sources)
+(defun csallet--minibuffer-setup (canvases sources)
   "Setup `post-command-hook' in minibuffer to update sallet STATE."
   (fset 'csallet--minibuffer-post-command-hook
         (let ((old-prompt ""))
@@ -953,34 +997,20 @@ The closure is stored in function slot.")
             (let ((prompt (buffer-substring-no-properties 5 (point-max))))
               (unless (equal old-prompt prompt)
                 (setq old-prompt prompt)
-                (csallet--run-sources prompt sources)))
+                (csallet--run-sources prompt canvases sources)))
             (csallet--maybe-update-keymap))))
   (add-hook 'post-command-hook 'csallet--minibuffer-post-command-hook nil t))
 
-(defun csallet--run-sources (prompt sources)
+(defun csallet--run-sources (prompt canvases sources)
   (csallet--cleanup)
-  (with-csallet-buffer
-    (kill-all-local-variables)
-    (setq truncate-lines t)
-    (buffer-disable-undo)
-    ;; (setq cursor-type nil)
-    (ov-clear)
-    (erase-buffer))
-  (let ((canvases
-         (with-csallet-buffer
-           (save-excursion
-             (--map-indexed
-              (let ((canvas (make-overlay (point) (progn (insert "\n\n") (point)))))
-                (overlay-put canvas 'display "")
-                (overlay-put canvas 'csallet-index it-index)
-                ;; (overlay-put canvas 'face (list :background (ov--random-color)))
-                canvas)
-              sources)))))
-    (setq csallet--running-sources
-          (-map
-           (-lambda ((canvas . source))
-             (csallet--run-source source prompt canvas))
-           (-zip canvases sources)))))
+  (ov-put canvases
+          'csallet-needs-redisplay t
+          'csallet-visible nil)
+  (setq csallet--running-sources
+        (-map
+         (-lambda ((canvas . source))
+           (csallet--run-source source prompt canvas))
+         (-zip canvases sources))))
 
 (defun csallet--run-source (source prompt canvas)
   (-when-let (pipeline (funcall source prompt canvas))
