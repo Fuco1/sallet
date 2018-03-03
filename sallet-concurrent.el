@@ -4,6 +4,43 @@
 (require 'sallet-core)
 (require 'ov)
 
+
+;;; Canvas operating methods
+
+(defun csallet-canvas-hide (&optional canvas)
+  "Hide CANVAS."
+  (ov-put (or canvas (ov-at)) 'display ""))
+
+(defun csallet-canvas-show (&optional canvas)
+  "Show CANVAS."
+  (ov-put (or canvas (ov-at)) 'display nil))
+
+(defun csallet-canvas-visible (&optional canvas)
+  "Return non-nil if CANVAS is visible.
+
+A canvas is visible if at least one candidate of the associated
+source has been rendered."
+  (ov-val (or canvas (ov-at)) 'csallet-visible))
+(gv-define-setter csallet-canvas-visible (val &optional canvas)
+  `(ov-put (or ,canvas (ov-at)) 'csallet-visible ,val))
+
+(defun csallet-canvas-needs-redisplay (&optional canvas)
+  "Return non-nil if CANVAS needs redisplay.
+
+Canvases are reused for the same `csallet' run between the
+corresponding sources/pipelines.  When the new pipeline first
+generates candidates we need to redisplay the canvas which
+involves removing all the old candidates and dawing new ones.
+
+This has to happen in an atomic step with respect to redisplay to
+avoid flicker."
+  (ov-val (or canvas (ov-at)) 'csallet-needs-redisplay))
+(gv-define-setter csallet-canvas-needs-redisplay (val &optional canvas)
+  `(ov-put (or ,canvas (ov-at)) 'csallet-needs-redisplay ,val))
+
+
+;;; Core
+
 (defcustom csallet-spinner-string "⣷⣯⣟⡿⢿⣻⣽⣾"
   "String of characters used to loop as a spinner."
   :type '(radio
