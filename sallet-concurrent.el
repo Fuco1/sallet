@@ -387,37 +387,10 @@ cancelled."
                    ;; automatically passes candidates to the output
                    ;; without changing them
                    (csallet-bind-processor
-                    (-lambda (candidates
-                              (&plist
-                               :generated-count-total generated-count-total
-                               :matched-count-total matched-count-total
-                               :rendered-count-total rendered-count-total
-                               :finished finished))
-                      (csallet-at-header canvas
-                        (csallet-with-current-source (:header)
-                          ;; TODO: make spinner update time consistent
-                          ;; (100ms delay?)
-                          ;; TODO: make the string customizable:
-                          ;; https://stackoverflow.com/questions/2685435/cooler-ascii-spinners
-                          (let ((spinner
-                                 (aref csallet-spinner-string
-                                       (mod tick (length csallet-spinner-string)))))
-                            (put-text-property
-                             (point) (1+ (line-end-position))
-                             'display (propertize
-                                       (format-spec
-                                        (or header " • source [%m/%g]%S\n")
-                                        `((?m . ,matched-count-total)
-                                          (?g . ,generated-count-total)
-                                          (?r . ,rendered-count-total)
-                                          (?s . ,spinner)
-                                          (?S . ,(if finished ""
-                                                   (format " (%c)" spinner)))))
-                                       'face 'sallet-source-header))))
-                        (put-text-property
-                         (point) (1+ (line-end-position))
-                         'csallet-header t))
-                      (list :candidates candidates))))
+                    (lambda (candidates pipeline-data)
+                      (csallet--update-header
+                       canvas tick
+                       candidates pipeline-data))))
                  (deferred:nextc it self))))))
         (`cancel
          (let ((this current-deferred)
@@ -431,6 +404,39 @@ cancelled."
 (defun csallet--get-canvases ()
   (with-csallet-buffer
     (ov-in 'csallet-index)))
+
+(defun csallet--update-header (canvas tick candidates pipeline-data)
+  (-let (((&plist
+           :generated-count-total generated-count-total
+           :matched-count-total matched-count-total
+           :rendered-count-total rendered-count-total
+           :finished finished) pipeline-data))
+    (csallet-at-header canvas
+      (csallet-with-current-source (:header)
+        ;; TODO: make spinner update time consistent
+        ;; (100ms delay?)
+        ;; TODO: make the string customizable:
+        ;; https://stackoverflow.com/questions/2685435/cooler-ascii-spinners
+        (let ((spinner
+               (aref csallet-spinner-string
+                     (mod tick (length csallet-spinner-string)))))
+          (put-text-property
+           (point) (1+ (line-end-position))
+           'display (propertize
+                     (format-spec
+                      (or header " • source [%m/%g]%S\n")
+                      `((?m . ,(or matched-count-total 0))
+                        (?g . ,(or generated-count-total 0))
+                        (?r . ,(or rendered-count-total 0))
+                        (?s . ,spinner)
+                        (?S . ,(if finished ""
+                                 (format " (%c)" spinner)))))
+                     'face 'sallet-source-header))))
+      (put-text-property
+       (point) (1+ (line-end-position))
+       'csallet-header t))
+    (list :candidates candidates)))
+
 
 (defun csallet--run-in-canvas (stage canvas)
   "Run STAGE in CANVAS."
