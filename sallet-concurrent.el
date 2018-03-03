@@ -351,8 +351,9 @@ PROPERTY-NAME with the suffix -total appended."
                                     `(:candidates ,candidates)))
                                  (updater
                                   (csallet-make-buffered-stage
-                                   (-lambda ((_ (&plist :rendered-candidate rc)))
-                                     (insert rc "\n"))))
+                                   (-lambda ((candidate &as _ (&plist :rendered-candidate rc)))
+                                     (insert rc "\n")
+                                     candidate)))
                                  (renderer (-lambda ((candidate)) candidate))
                                  on-start
                                  on-cancel)
@@ -400,16 +401,16 @@ cancelled."
       (pcase op
         (`start
          (--each on-start (funcall it))
-         (deferred:nextc (deferred:succeed nil)
-           (deferred:lambda (done)
-             (when (consp done)
-               (setq done (plist-get done :finished)))
-             (unless done
+         (deferred:nextc (deferred:succeed `(:finished nil))
+           (deferred:lambda (input)
+             (unless (plist-get input :finished)
                (deferred:$
                  (setq current-deferred (deferred:wait 1))
                  (deferred:nextc it (lambda (_)
                                       (cl-incf tick)
-                                      `(:finished t)))
+                                      `(:finished t
+                                        :candidates
+                                        ,(plist-get input :candidates))))
                  (deferred:nextc it (csallet-bind-processor generator))
                  (deferred:nextc it (csallet-bind-processor generated-counter))
                  (deferred:nextc it (csallet-bind-processor matcher))
