@@ -186,7 +186,7 @@ The return value is a plist with two keys:
                     (when (buffer-live-p buffer)
                       (kill-buffer buffer))))))
 
-(defun csallet-make-buffered-stage (processor)
+(defun csallet-make-buffered-stage (processor &optional initial-candidates)
   "Make a buffered stage function out of PROCESSOR.
 
 PROCESSOR is a function taking in one candidate and returning
@@ -199,7 +199,7 @@ the candidates can not be processed in the allocated time (10ms)
 they are buffered internally.  On the next invocation the
 passed-in candidates are added to the end of the buffer and the
 buffered candidates are processed first."
-  (let ((processable-candidates nil))
+  (let ((processable-candidates initial-candidates))
     (lambda (additional-candidates pipeline-data)
       (setq processable-candidates
             (-concat processable-candidates additional-candidates))
