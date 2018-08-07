@@ -789,6 +789,36 @@ dropping the leading colon."
    (csallet-source-locate)
    (csallet-source-ag)))
 
+(defun csallet-insert-char-matcher (prompt)
+  (csallet-make-buffered-stage
+   (csallet-sallet-filter-wrapper (sallet-make-tokenized-filter 'sallet-filter-substring) prompt)))
+
+(defvar csallet-insert-char-cache (ucs-names))
+
+(defun csallet-source-insert-char ()
+  (let ((current-buffer (current-buffer)))
+    (lambda (prompt canvas)
+      (ov-put canvas
+              'csallet-default-action
+              (-lambda ((candidate &as _ c))
+                (push candidate csallet-insert-char-cache)
+                (with-current-buffer current-buffer
+                  (insert-char c)
+                  (forward-char)))
+              'csallet-header-format " • Insert character [%m/%g/%r]%S\n")
+      (csallet-make-pipeline
+       canvas
+       (csallet-make-cached-generator
+        (lambda ()
+          (-map (-lambda ((name . char)) (list (list name char)))
+                csallet-insert-char-cache)))
+       :matcher (csallet-insert-char-matcher prompt)
+       :renderer (-lambda (((c))) c)))))
+
+(defun csallet-insert-char ()
+  (interactive)
+  (csallet (csallet-source-insert-char)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; RUNTIME
 
