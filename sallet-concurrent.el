@@ -896,58 +896,47 @@ dropping the leading colon."
     (isearch-forward-regexp)))
 
 (defun csallet--set-window-point ()
+  "Set window point position to point in csallet buffer."
   (set-window-point (get-buffer-window (csallet--get-buffer)) (point)))
 
 (defun csallet-next-candidate (_canvas)
-  (forward-line 1)
-  (csallet--set-window-point))
+  "Move the point to the next candidate.
+
+Return non-nil if there are no more candidates."
+  (while (and (not (eobp))
+              (goto-char (1+ (next-single-char-property-change (point) 'csallet-candidate)))
+              (not (get-text-property (point) 'csallet-candidate))))
+  (beginning-of-line)
+  (csallet--set-window-point)
+  (eobp))
 
 (defun csallet-previous-candidate (_canvas)
-  (forward-line -1)
-  (csallet--set-window-point))
+  "Move the point to the previous candidate.
 
-(defun csallet-first-candidate-p (canvas)
-  (save-excursion
-    (forward-line -1)
-    (get-text-property (point) 'csallet-header)))
-
-(defun csallet-last-candidate-p (canvas)
-  (save-excursion
-    (forward-line 1)
-    (= (point) (1- (ov-end canvas)))))
+Return non-nil if there are no more candidates."
+  (while (and (not (bobp))
+              (goto-char (1- (previous-single-char-property-change (point) 'csallet-candidate)))
+              (not (get-text-property (point) 'csallet-candidate))))
+  (beginning-of-line)
+  (csallet--set-window-point)
+  (bobp))
 
 (defun csallet-candidate-up ()
   (interactive)
   (csallet-with-current-source canvas
     (let ((prev-fn (or (ov-val canvas 'csallet-previous-candidate-function)
-                       'csallet-previous-candidate))
-          (first-candidate-fn (or (ov-val canvas 'csallet-first-candidate-p-function)
-                                  'csallet-first-candidate-p)))
-      ;; if we are at the very first candidate of the source, jump to
-      ;; previous source instead
-      (if (funcall first-candidate-fn canvas)
-          (--when-let (ov-prev 'csallet-visible)
-            (when (not (equal it canvas))
-              (goto-char (ov-end it))
-              (forward-line -2)
-              (csallet--set-window-point)))
-        (funcall prev-fn canvas)))))
+                       'csallet-previous-candidate)))
+      (funcall prev-fn canvas))))
 
 (defun csallet-candidate-down ()
   (interactive)
   (csallet-with-current-source canvas
-    (let ((next-fn (or (ov-val canvas 'csallet-next-candidate-function)
-                       'csallet-next-candidate))
-          (last-candidate-fn (or (ov-val canvas 'csallet-last-candidate-p-function)
-                                 'csallet-last-candidate-p)))
-      ;; if we are at the very last line of the source (which is kept
-      ;; empty), jump to next source instead
-      (if (funcall last-candidate-fn canvas)
-          (--when-let (ov-next 'csallet-visible)
-            (goto-char (ov-beg it))
-            (forward-line 1)
-            (csallet--set-window-point))
-        (funcall next-fn canvas)))))
+    (if canvas
+        (let ((next-fn (or (ov-val canvas 'csallet-next-candidate-function)
+                           'csallet-next-candidate)))
+          (when (funcall next-fn canvas)
+            (csallet-candidate-next-source)))
+      (csallet-candidate-next-source))))
 
 (defun csallet-candidate-next-source ()
   (interactive)
