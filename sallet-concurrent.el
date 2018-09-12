@@ -646,6 +646,45 @@ dropping the leading colon."
   (interactive)
   (csallet (csallet-source-locate)))
 
+(defun csallet-find-matcher (prompt)
+  (csallet-make-buffered-stage
+   (csallet-sallet-filter-wrapper
+    (sallet-make-tokenized-filter 'sallet-filter-flx-then-substring)
+    prompt)))
+
+(defun csallet-find-action (proj-dir)
+  (lambda (candidate)
+    (let ((default-directory proj-dir))
+      (sallet-locate-action nil candidate))))
+
+(defun csallet-find-generator (prompt canvas proj-dir)
+  (csallet-make-process-generator
+   (lambda (buffer prompt)
+     (funcall
+      (sallet-process-creator-min-prompt-length
+       (sallet-process-creator-first-token-only
+        (lambda (prompt)
+          (let ((default-directory proj-dir))
+            (start-process
+             "find" buffer "find"
+             (or (car (sallet--smart-case prompt "-iname")) "-name")
+             (format "*%s*" prompt))))))
+      prompt))
+   'identity prompt))
+
+(defun csallet-source-find ()
+  (let ((proj-dir (locate-dominating-file default-directory ".git")))
+    (lambda (prompt canvas)
+      (ov-put canvas
+              'csallet-header-format
+              (format " • find %s [%%m/%%g]%%S\n" prompt)
+              'csallet-default-action (csallet-find-action proj-dir))
+      (csallet-make-pipeline
+       canvas
+       (csallet-find-generator prompt canvas proj-dir)
+       :matcher (csallet-find-matcher prompt)
+       :renderer 'csallet-locate-render-candidate))))
+
 (defun csallet-source-occur ()
   (let ((current-buffer (current-buffer)))
     (lambda (prompt canvas)
@@ -739,6 +778,7 @@ dropping the leading colon."
    (csallet-source-buffer)
    (csallet-source-similar-buffer)
    (csallet-source-autobookmarks)
+   (csallet-source-find)
    (csallet-source-locate)
    ))
 
