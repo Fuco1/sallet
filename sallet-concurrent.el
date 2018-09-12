@@ -609,7 +609,7 @@ dropping the leading colon."
       (sallet-compose-filters-by-pattern
        '(("\\`/\\(.*\\)" 1 sallet-locate-filter-substring)
          ("\\`\\.\\(.*\\)" 1 sallet-filter-file-extension)
-         (t sallet-locate-filter-substring))
+         (t sallet-filter-substring))
        candidates indices pattern))
     prompt)))
 
