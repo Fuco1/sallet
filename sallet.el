@@ -156,8 +156,7 @@ restarted."
   (let ((old ""))
     (lambda (prompt)
       (let ((input (split-string prompt " ")))
-        (when (or (not old)
-                  (not (equal (car input) old)))
+        (when (not (equal (car input) old))
           (setq old (car input))
           (funcall process-creator (car input)))))))
 
