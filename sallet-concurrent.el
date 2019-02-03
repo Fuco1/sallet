@@ -232,7 +232,7 @@ candidate and user-data)."
   (lambda (candidate)
     (-when-let (ok (funcall filter
                             (vector (sallet-car-maybe candidate))
-                            (list (list 0 (sallet-list-maybe candidate 'cadr)))
+                            (list (cons 0 (car (cdr-safe candidate))))
                             prompt))
       (list
        (sallet-car-maybe candidate)
