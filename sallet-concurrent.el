@@ -131,6 +131,21 @@ fast but the FN processing each candidate might be slow."
                    (setq already-run t)))
                pipeline-data))))
 
+;; TODO: this should keep the process generated output between runs if
+;; the input doesn't change.  I don't know if it works.
+(defun csallet-make-buffered-process-generator (process-creator processor)
+  (let ((old "")
+        (generator nil))
+    (lambda (prompt)
+      (prog1 (if (or (not generator)
+                     ;; TODO: make this test customizable
+                     (equal old "")
+                     (not (equal prompt old)))
+                 (setq generator
+                       (csallet-make-process-generator process-creator processor prompt))
+               generator)
+        (setq old prompt)))))
+
 (defun csallet-make-process-generator (process-creator processor prompt)
   "Make a generator processing process output line by line.
 
@@ -229,13 +244,74 @@ PROMPT is the patter passed to FILTER.
 Return a function taking in csallet candidate (a list of
 candidate and user-data)."
   (lambda (candidate)
-    (-when-let (ok (funcall filter
-                            (vector (sallet-car-maybe candidate))
-                            (list (list 0 (sallet-list-maybe candidate 'cadr)))
-                            prompt))
-      (list
-       (sallet-car-maybe candidate)
-       (sallet-list-maybe (car ok) 'cdr)))))
+    (-when-let ((ok) (funcall filter
+                              (vector (sallet-car-maybe candidate))
+                              (list (if (cdr-safe candidate)
+                                        (list 0 (cadr candidate))
+                                      0))
+                              prompt))
+      (if (consp ok)
+          (list
+           (sallet-car-maybe candidate)
+           (cdr ok))
+        (list
+         (sallet-car-maybe candidate))))))
+
+;; This approach is probably doomed to fail because it depends on the
+;; speed/order of the processing of later stages => If I type too fast
+;; there is no time for candidates to match
+(defun csallet-find-file-generator (root)
+  ;; TODO: cache matched-dirs to prompt
+  (let ((matched-dirs (list (f-expand root)))
+        (candidate-generator nil)
+        (old ""))
+    (lambda (prompt)
+      (when (or (equal old "")
+                (not (equal old prompt)))
+        (setq old prompt)
+        (setq candidate-generator
+              (csallet-make-buffered-stage
+               (lambda (directory)
+                 (--map
+                  (list (f-relative it root))
+                  (f-entries directory)))
+               matched-dirs)))
+      (lambda (last-cycle-candidates pipeline-data)
+        (let ((additional-dirs nil))
+          (--each (--map (f-expand (car it))
+                         (-select (-compose 'f-dir? 'car) last-cycle-candidates))
+            (unless (member it matched-dirs)
+              (push it matched-dirs)
+              (push it additional-dirs)))
+          (funcall
+           (csallet-bind-processor
+            (lambda (candidates pipeline-data)
+              (list :candidates (-flatten-n 1 candidates)
+                    :pipeline-data pipeline-data)))
+           (funcall candidate-generator additional-dirs pipeline-data)))))))
+
+(defun csallet-source-find-file ()
+  (let ((generator (csallet-find-file-generator default-directory)))
+    (lambda (prompt canvas)
+      (csallet-make-pipeline
+       canvas
+       (funcall generator prompt)
+       :matcher (csallet-make-buffered-stage
+                 (lambda (candidate)
+                   (--when-let (sallet-predicate-flx
+                                (sallet-car-maybe candidate)
+                                (cons 0 (sallet-list-maybe candidate 'cadr))
+                                prompt)
+                     (list (sallet-car-maybe candidate)
+                           (cdr-safe it)))))
+       :renderer (-lambda ((candidate data))
+                   (sallet-fontify-flx-matches
+                    (plist-get data :flx-matches)
+                    candidate))))))
+
+(defun csallet-find-file ()
+  (interactive)
+  (csallet (csallet-source-find-file)))
 
 (defun csallet-occur-filter (candidate user-data pattern)
   (when (string-match-p (regexp-quote pattern) candidate)
@@ -310,7 +386,7 @@ ones and overrule settings in the other lists."
         (setq rtn (plist-put rtn p v))))
     rtn))
 
-(defun csallet-bind-processor (processor)
+(defun csallet-bind-processor (processor &optional stage-name)
   (-lambda ((&plist :candidates candidates
                     :finished finished
                     :pipeline-data pipeline-data))
@@ -411,12 +487,12 @@ cancelled."
                                       `(:finished t
                                         :candidates
                                         ,(plist-get input :candidates))))
-                 (deferred:nextc it (csallet-bind-processor generator))
-                 (deferred:nextc it (csallet-bind-processor generated-counter))
-                 (deferred:nextc it (csallet-bind-processor matcher))
-                 (deferred:nextc it (csallet-bind-processor matched-counter))
-                 (deferred:nextc it (csallet-bind-processor renderer))
-                 (deferred:nextc it (csallet-bind-processor rendered-counter))
+                 (deferred:nextc it (csallet-bind-processor generator "generator"))
+                 (deferred:nextc it (csallet-bind-processor generated-counter "generated-counter"))
+                 (deferred:nextc it (csallet-bind-processor matcher "matcher"))
+                 (deferred:nextc it (csallet-bind-processor matched-counter "matched-counter"))
+                 (deferred:nextc it (csallet-bind-processor renderer "renderer"))
+                 (deferred:nextc it (csallet-bind-processor rendered-counter "rendered-counter"))
                  (deferred:nextc it
                    (csallet-bind-processor
                     (csallet--run-in-canvas updater canvas)))
@@ -487,31 +563,31 @@ reduce flicker.  So far this should only be used for updaters and
 nothing else as it assumes the STAGE is doing drawing."
   (-lambda (candidates
             (pipeline-data &as &plist :finished finished))
-    (csallet-with-canvas canvas
-      ;; enable visibility when we render the first candidate
-      (when (> (length candidates) 0)
-        (csallet-canvas-show)
-        (setf (csallet-canvas-visible) t))
-      ;; if the source became visible or we are finished (meaning no
-      ;; more candidates will arrive), we need to redisplay the source
-      ;; which means delete all the old candidates.
-      (when (and (or finished
-                     (csallet-canvas-visible))
-                 (csallet-canvas-needs-redisplay))
-        (delete-region (point-min) (point-max))
-        (setf (csallet-canvas-needs-redisplay) nil))
-      ;; if we are finished and the sallet never became visible (no
-      ;; renderable candidates were ever produced) hide the header
-      (when (and finished (not (csallet-canvas-visible)))
-        (csallet-canvas-hide))
-      ;; draw the new batch of candidates
-      (goto-char (point-max))
-      (funcall stage candidates pipeline-data))
-    ;; Move the point to the first candidate of first visible source
-    ;; TODO: move this logic elsewhere
-    (--when-let (--find (ov-val it 'csallet-visible) (csallet--get-canvases))
-      (when (= (with-csallet-buffer (point)) (ov-beg it))
-        (csallet-candidate-down)))))
+    (prog1 (csallet-with-canvas canvas
+             ;; enable visibility when we render the first candidate
+             (when (> (length candidates) 0)
+               (csallet-canvas-show)
+               (setf (csallet-canvas-visible) t))
+             ;; if the source became visible or we are finished (meaning no
+             ;; more candidates will arrive), we need to redisplay the source
+             ;; which means delete all the old candidates.
+             (when (and (or finished
+                            (csallet-canvas-visible))
+                        (csallet-canvas-needs-redisplay))
+               (delete-region (point-min) (point-max))
+               (setf (csallet-canvas-needs-redisplay) nil))
+             ;; if we are finished and the sallet never became visible (no
+             ;; renderable candidates were ever produced) hide the header
+             (when (and finished (not (csallet-canvas-visible)))
+               (csallet-canvas-hide))
+             ;; draw the new batch of candidates
+             (goto-char (point-max))
+             (funcall stage candidates pipeline-data))
+      ;; Move the point to the first candidate of first visible source
+      ;; TODO: move this logic elsewhere
+      (--when-let (--find (ov-val it 'csallet-visible) (csallet--get-canvases))
+        (when (= (with-csallet-buffer (point)) (ov-beg it))
+          (csallet-candidate-down))))))
 
 (defmacro csallet-with-canvas (canvas &rest body)
   (declare (indent 1))
@@ -583,17 +659,19 @@ dropping the leading colon."
 ;;; SOURCES
 
 (defun csallet-source-ag ()
-  (lambda (prompt canvas)
-    (csallet-make-pipeline
-     canvas
-     (csallet-make-process-generator
-      (lambda (buffer prompt)
-        (when (> (length prompt) 0)
-          (start-process
-           "ag" buffer "ag"
-           "--nocolor" "--literal" "--line-number" "--smart-case"
-           "--nogroup" "--column" "--" prompt)))
-      'identity prompt))))
+  (let ((generator
+         (csallet-make-buffered-process-generator
+          (lambda (buffer prompt)
+            (when (> (length prompt) 0)
+              (start-process
+               "ag" buffer "ag"
+               "--nocolor" "--literal" "--line-number" "--smart-case"
+               "--nogroup" "--column" "--" prompt)))
+          'identity)))
+    (lambda (prompt canvas)
+      (csallet-make-pipeline
+       canvas
+       (funcall generator (car (split-string prompt " ")))))))
 
 (defun csallet-ag ()
   (interactive)
@@ -810,7 +888,7 @@ dropping the leading colon."
      (csallet-make-cached-generator
       (lambda ()
         (-map 'list
-              (sallet-autobookmarks--uniquify
+              (identity ;; sallet-autobookmarks--uniquify
                (-keep 'sallet-autobookmarks--candidate-creator
                       (abm-recent-buffers))))))
      :matcher (csallet-autobookmarks-matcher prompt)
