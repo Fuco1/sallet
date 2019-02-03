@@ -811,7 +811,8 @@ dropping the leading colon."
      (csallet-make-cached-generator
       (lambda ()
         (-map 'list
-              (sallet-autobookmarks--uniquify
+              ;; TODO: sallet-autobookmarks--uniquify
+              (identity
                (-keep 'sallet-autobookmarks--candidate-creator
                       (abm-recent-buffers))))))
      :matcher (csallet-autobookmarks-matcher prompt)
