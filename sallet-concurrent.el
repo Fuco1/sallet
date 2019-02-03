@@ -3,6 +3,7 @@
 (require 'deferred)
 (require 'sallet-core)
 (require 'ov)
+(require 'dash-functional)
 
 
 ;;; Canvas operating methods
