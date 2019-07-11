@@ -13,6 +13,7 @@
 (depends-on "shut-up" "0.3.2")
 (depends-on "ov" "1.0")
 (depends-on "cl-lib" "0.3")
+(depends-on "deferred" "0.5.1")
 
 (development
  (depends-on "buttercup"))
