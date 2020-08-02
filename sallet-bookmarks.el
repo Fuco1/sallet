@@ -49,25 +49,30 @@
     ("Dired" 'sallet-buffer-directory)
     ("File" 'sallet-buffer-ordinary)))
 
+(defun sallet-bookmarks-candidates ()
+  (bookmark-maybe-load-default-file)
+  (-map
+   (lambda (b)
+     (list
+      (car b)
+      (sallet--bookmarks-handler-to-desc (cdr (assq 'handler (cdr b))))
+      (or (cdr (assq 'filename (cdr b))) "")))
+   bookmark-alist))
+
+(defun sallet-bookmarks-renderer (data _ user-data)
+  (-let (((name type file) data))
+    (format "%-45s%15s  %s"
+            (sallet-fontify-flx-matches
+             (plist-get user-data :flx-matches)
+             (propertize name 'face
+                         (sallet--bookmarks-get-face type)))
+            type
+            (propertize file 'face 'sallet-buffer-default-directory))))
+
 (sallet-defsource bookmarks nil
-  (candidates (lambda ()
-                (bookmark-maybe-load-default-file)
-                (-map
-                 (lambda (b)
-                   (list
-                    (car b)
-                    (sallet--bookmarks-handler-to-desc (cdr (assq 'handler (cdr b))))
-                    (or (cdr (assq 'filename (cdr b))) "")))
-                 bookmark-alist)))
+  (candidates sallet-bookmarks-candidates)
   (matcher sallet-matcher-flx)
-  (renderer (-lambda ((name type file) _ user-data)
-              (format "%-45s%15s  %s"
-                      (sallet-fontify-flx-matches
-                       (plist-get user-data :flx-matches)
-                       (propertize name 'face
-                                   (sallet--bookmarks-get-face type)))
-                      type
-                      (propertize file 'face 'sallet-buffer-default-directory))))
+  (renderer sallet-bookmarks-renderer)
   (action (-lambda (_ (name))
             (bookmark-jump name 'switch-to-buffer)))
   (header "Bookmarks"))

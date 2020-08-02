@@ -701,6 +701,28 @@ dropping the leading colon."
   (interactive)
   (csallet (csallet-source-occur)))
 
+(defun csallet-bookmarks-matcher (prompt)
+  (csallet-make-buffered-stage
+   (lambda (candidate)
+     (funcall
+      (csallet-sallet-filter-wrapper 'sallet-filter-flx prompt)
+      (list candidate)))))
+
+(defun csallet-bookmarks-action (candidate)
+  (bookmark-jump (car candidate) 'switch-to-buffer))
+
+(defun csallet-source-bookmarks ()
+  (lambda (prompt canvas)
+    (ov-put canvas
+            'csallet-default-action 'csallet-bookmarks-action
+            'csallet-header-format " • Bookmarked files [%m/%g/%r]%S\n")
+    (csallet-make-pipeline
+     canvas
+     (csallet-make-cached-generator 'sallet-bookmarks-candidates)
+     :matcher (csallet-bookmarks-matcher prompt)
+     :renderer (lambda (c)
+                 (sallet-bookmarks-renderer (car c) nil (cadr c))))))
+
 (defun csallet-buffer-render-candidate (candidate)
   (sallet-buffer-renderer (car candidate) nil (cadr candidate)))
 
@@ -779,6 +801,7 @@ dropping the leading colon."
    (csallet-source-buffer)
    (csallet-source-similar-buffer)
    (csallet-source-autobookmarks)
+   (csallet-source-bookmarks)
    (csallet-source-find)
    (csallet-source-locate)
    ))
