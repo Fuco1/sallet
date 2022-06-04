@@ -35,7 +35,7 @@
   :group 'sallet)
 
 (defface sallet-source-header
-  '((t (:inherit highlight)))
+  '((t (:inherit highlight :extend t)))
   "Face used to fontify source header."
   :group 'sallet-faces)
 
