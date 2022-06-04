@@ -1007,13 +1007,17 @@ Return non-nil if there are no more candidates."
 (defun csallet-candidate-next-source ()
   (interactive)
   (csallet-with-current-source canvas
-    (let ((next (or (ov-next 'csallet-visible)
-                    (progn
-                      (goto-char (point-min))
-                      (if (ov-val (ov-at) 'csallet-visible)
-                          (ov-at)
-                        (ov-next 'csallet-visible))))))
-      (when next
+    (when-let ((next (or (ov-next 'csallet-visible)
+                         (progn
+                           (goto-char (point-min))
+                           (if (ov-val (ov-at) 'csallet-visible)
+                               (ov-at)
+                             (ov-next 'csallet-visible))))))
+      ;; skip empty sources
+      (if (string-match-p (rx bos (* (or whitespace "\n")) eos) (ov-string next))
+          (progn
+            (goto-char (1- (ov-end next)))
+            (csallet-candidate-next-source))
         (goto-char (ov-beg next))
         (forward-line 1)
         (csallet--set-window-point)))))
