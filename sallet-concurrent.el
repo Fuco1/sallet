@@ -4,6 +4,7 @@
 (require 'sallet-core)
 (require 'ov)
 (require 'dash-functional)
+(require 'projectile)
 
 
 ;;; Canvas operating methods
@@ -725,6 +726,24 @@ dropping the leading colon."
      :renderer (lambda (c)
                  (sallet-bookmarks-renderer (car c) nil (cadr c))))))
 
+(defun csallet-source-projectile-files ()
+  (lambda (prompt canvas)
+    (ov-put canvas
+            'csallet-default-action
+            (lambda (c)
+              (sallet-locate-action nil c))
+            'csallet-header-format " • Projectile files [%m/%g/%r]%S\n")
+    (csallet-make-pipeline
+     canvas
+     (csallet-make-cached-generator
+      (lambda ()
+        (projectile-project-files
+         (projectile-acquire-root))))
+     :matcher (csallet-bookmarks-matcher prompt)
+     :renderer (-lambda ((candidate user-data))
+                 (sallet-fontify-flx-matches
+                  (plist-get user-data :flx-matches) candidate)))))
+
 (defun csallet-buffer-render-candidate (candidate)
   (sallet-buffer-renderer (car candidate) nil (cadr candidate)))
 
@@ -803,6 +822,7 @@ dropping the leading colon."
   (csallet
    (csallet-source-buffer)
    (csallet-source-similar-buffer)
+   (csallet-source-projectile-files)
    (csallet-source-autobookmarks)
    (csallet-source-bookmarks)
    (csallet-source-find)

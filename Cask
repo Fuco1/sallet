@@ -14,6 +14,7 @@
 (depends-on "ov" "1.0")
 (depends-on "cl-lib" "0.3")
 (depends-on "deferred" "0.5.1")
+(depends-on "projectile")
 
 (development
  (depends-on "buttercup"))
