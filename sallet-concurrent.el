@@ -650,7 +650,7 @@ dropping the leading colon."
 (defun csallet-find-matcher (prompt)
   (csallet-make-buffered-stage
    (csallet-sallet-filter-wrapper
-    (sallet-make-tokenized-filter 'sallet-filter-flx-then-substring)
+    (sallet-make-tokenized-filter 'sallet-filter-flx)
     prompt)))
 
 (defun csallet-find-action (proj-dir)
@@ -684,7 +684,9 @@ dropping the leading colon."
        canvas
        (csallet-find-generator prompt canvas proj-dir)
        :matcher (csallet-find-matcher prompt)
-       :renderer 'csallet-locate-render-candidate))))
+       :renderer (-lambda ((candidate user-data))
+                   (sallet-fontify-flx-matches
+                    (plist-get user-data :flx-matches) candidate))))))
 
 (defun csallet-source-occur ()
   (let ((current-buffer (current-buffer)))
