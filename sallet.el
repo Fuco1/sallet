@@ -258,6 +258,7 @@ SOURCE is the invoked sallet source."
              (format "File in project %s" (oref source project-root))
              source))))
 
+;;;###autoload
 (defun sallet-gtags-files ()
   "Run gtags files sallet."
   (interactive)
@@ -330,6 +331,7 @@ SOURCE is the invoked sallet source."
       '(sallet-fontify-flx-matches . :flx-matches))))
   (action sallet-gtags-tags-action))
 
+;;;###autoload
 (defun sallet-gtags-tags ()
   "Run gtags tags sallet."
   (interactive)
@@ -876,6 +878,7 @@ customize the matching algorithm, you can extend sallet source
   (interactive)
   (sallet (list sallet-source-occur)))
 
+;;;###autoload
 (defun sallet-imenu ()
   "Run imenu sallet."
   (interactive)
@@ -940,6 +943,7 @@ STATE is a sallet state."
          (setq n (1+ n))
          (sallet-source-set-candidates source buffer))))))
 
+;;;###autoload
 (defun sallet-register-point ()
   "Sallet for point registers."
   (interactive)

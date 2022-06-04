@@ -795,6 +795,7 @@ dropping the leading colon."
        :matcher (csallet-buffer-matcher prompt)
        :renderer 'csallet-buffer-render-candidate))))
 
+;;;###autoload
 (defun csallet-buffer ()
   (interactive)
   (csallet
