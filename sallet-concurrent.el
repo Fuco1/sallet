@@ -574,6 +574,7 @@ dropping the leading colon."
          ,@body))))
 
 (defmacro csallet-at-header (canvas &rest body)
+  "Place the point on header in CANVAS and run BODY."
   (declare (indent 1))
   `(with-current-buffer (overlay-buffer ,canvas)
      (save-excursion
