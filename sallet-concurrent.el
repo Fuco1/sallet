@@ -512,8 +512,8 @@ nothing else as it assumes the STAGE is doing drawing."
       (funcall stage candidates pipeline-data))
     ;; Move the point to the first candidate of first visible source
     ;; TODO: move this logic elsewhere
-    (--when-let (--find (ov-val it 'csallet-visible) (csallet--get-canvases))
-      (when (= (with-csallet-buffer (point)) (ov-beg it))
+    (with-csallet-buffer
+      (while (not (csallet-at-candidate-p))
         (csallet-candidate-down)))))
 
 (defmacro csallet-with-canvas (canvas &rest body)
@@ -581,6 +581,19 @@ dropping the leading colon."
          (widen)
          (goto-char (overlay-start ,canvas))
          ,@body))))
+
+(defun csallet-at-header-p (&optional point)
+  "Return non-nil if POINT is at header.
+
+POINT defaults to (point)."
+  (get-text-property (or point (point)) 'csallet-header))
+
+(defun csallet-at-candidate-p (&optional point)
+  "Return non-nil if POINT is at candidate.
+
+POINT defaults to (point)."
+  (get-text-property (or point (point)) 'csallet-candidate))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SOURCES
