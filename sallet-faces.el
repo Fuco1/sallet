@@ -110,6 +110,12 @@ Directory buffers are those whose major mode is `dired-mode'."
   "Face used to fontify flx matches."
   :group 'sallet-faces)
 
+(defface sallet-selection
+  '((t (:inherit font-lock-variable-name-face :weight bold
+        :underline (:color foreground-color :style line))))
+  "Face used to highlight current selected candidate."
+  :group 'sallet-faces)
+
 
 ;;; Fontification helpers
 

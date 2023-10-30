@@ -9,22 +9,28 @@
 
 ;;; Canvas operating methods
 
+(defun csallet-current ()
+  "Return current canvas overlay."
+  (car (--filter
+        (overlay-get it 'csallet-canvas)
+        (overlays-at (point)))))
+
 (defun csallet-canvas-hide (&optional canvas)
   "Hide CANVAS."
-  (ov-put (or canvas (ov-at)) 'display ""))
+  (ov-put (or canvas (csallet-current)) 'display ""))
 
 (defun csallet-canvas-show (&optional canvas)
   "Show CANVAS."
-  (ov-put (or canvas (ov-at)) 'display nil))
+  (ov-put (or canvas (csallet-current)) 'display nil))
 
 (defun csallet-canvas-visible (&optional canvas)
   "Return non-nil if CANVAS is visible.
 
 A canvas is visible if at least one candidate of the associated
 source has been rendered."
-  (ov-val (or canvas (ov-at)) 'csallet-visible))
+  (ov-val (or canvas (csallet-current)) 'csallet-visible))
 (gv-define-setter csallet-canvas-visible (val &optional canvas)
-  `(ov-put (or ,canvas (ov-at)) 'csallet-visible ,val))
+  `(ov-put (or ,canvas (csallet-current)) 'csallet-visible ,val))
 
 (defun csallet-canvas-needs-redisplay (&optional canvas)
   "Return non-nil if CANVAS needs redisplay.
@@ -36,9 +42,9 @@ involves removing all the old candidates and dawing new ones.
 
 This has to happen in an atomic step with respect to redisplay to
 avoid flicker."
-  (ov-val (or canvas (ov-at)) 'csallet-needs-redisplay))
+  (ov-val (or canvas (csallet-current)) 'csallet-needs-redisplay))
 (gv-define-setter csallet-canvas-needs-redisplay (val &optional canvas)
-  `(ov-put (or ,canvas (ov-at)) 'csallet-needs-redisplay ,val))
+  `(ov-put (or ,canvas (csallet-current)) 'csallet-needs-redisplay ,val))
 
 
 ;;; Core
@@ -490,31 +496,32 @@ reduce flicker.  So far this should only be used for updaters and
 nothing else as it assumes the STAGE is doing drawing."
   (-lambda (candidates
             (pipeline-data &as &plist :finished finished))
-    (csallet-with-canvas canvas
-      ;; enable visibility when we render the first candidate
-      (when (> (length candidates) 0)
-        (csallet-canvas-show)
-        (setf (csallet-canvas-visible) t))
-      ;; if the source became visible or we are finished (meaning no
-      ;; more candidates will arrive), we need to redisplay the source
-      ;; which means delete all the old candidates.
-      (when (and (or finished
-                     (csallet-canvas-visible))
-                 (csallet-canvas-needs-redisplay))
-        (delete-region (point-min) (point-max))
-        (setf (csallet-canvas-needs-redisplay) nil))
-      ;; if we are finished and the sallet never became visible (no
-      ;; renderable candidates were ever produced) hide the header
-      (when (and finished (not (csallet-canvas-visible)))
-        (csallet-canvas-hide))
-      ;; draw the new batch of candidates
-      (goto-char (point-max))
-      (funcall stage candidates pipeline-data))
-    ;; Move the point to the first candidate of first visible source
-    ;; TODO: move this logic elsewhere
-    (with-csallet-buffer
-      (while (not (csallet-at-candidate-p))
-        (csallet-candidate-down)))))
+    (prog1 (csallet-with-canvas canvas
+             ;; enable visibility when we render the first candidate
+             (when (> (length candidates) 0)
+               (csallet-canvas-show)
+               (setf (csallet-canvas-visible) t))
+             ;; if the source became visible or we are finished (meaning no
+             ;; more candidates will arrive), we need to redisplay the source
+             ;; which means delete all the old candidates.
+             (when (and (or finished
+                            (csallet-canvas-visible))
+                        (csallet-canvas-needs-redisplay))
+               (delete-region (point-min) (point-max))
+               (setf (csallet-canvas-needs-redisplay) nil))
+             ;; if we are finished and the sallet never became visible (no
+             ;; renderable candidates were ever produced) hide the header
+             (when (and finished (not (csallet-canvas-visible)))
+               (csallet-canvas-hide))
+             ;; draw the new batch of candidates
+             (goto-char (point-max))
+             (funcall stage candidates pipeline-data))
+      ;; Move the point to the first candidate of first visible source
+      ;; TODO: move this logic elsewhere
+      (with-csallet-buffer
+        (when (not (csallet-at-candidate-p))
+          (csallet-next-candidate canvas))
+        (csallet-sync-highlight)))))
 
 (defmacro csallet-with-canvas (canvas &rest body)
   (declare (indent 1))
@@ -564,10 +571,10 @@ dropping the leading colon."
           (-map
            (-lambda ((prop . var))
              (pcase prop
-               (:action `(,var (ov-val (ov-at) 'csallet-default-action)))
+               (:action `(,var (ov-val (csallet-current) 'csallet-default-action)))
                (:candidate `(,var (get-text-property (point) 'csallet-candidate)))
-               (:canvas `(,var (ov-at)))
-               (:header `(,var (ov-val (ov-at) 'csallet-header-format)))))
+               (:canvas `(,var (csallet-current)))
+               (:header `(,var (ov-val (csallet-current) 'csallet-header-format)))))
            properties))
     `(with-csallet-buffer
        (let ,bindings
@@ -1038,12 +1045,22 @@ Return non-nil if there are no more candidates."
   (csallet--set-window-point)
   (bobp))
 
+(defun csallet-sync-highlight ()
+  (ov-clear 'sallet-selected-candidate-highlight)
+  (ov (point)
+      (or (1+ (next-single-char-property-change (point) 'csallet-candidate))
+          (point-max))
+      'face 'region
+      'sallet-selected-candidate-highlight t
+      'priority 1))
+
 (defun csallet-candidate-up ()
   (interactive)
   (csallet-with-current-source canvas
     (let ((prev-fn (or (ov-val canvas 'csallet-previous-candidate-function)
                        'csallet-previous-candidate)))
-      (funcall prev-fn canvas))))
+      (funcall prev-fn canvas)
+      (csallet-sync-highlight))))
 
 (defun csallet-candidate-down ()
   (interactive)
@@ -1053,17 +1070,18 @@ Return non-nil if there are no more candidates."
                            'csallet-next-candidate)))
           (when (funcall next-fn canvas)
             (csallet-candidate-next-source)))
-      (csallet-candidate-next-source))))
+      (csallet-candidate-next-source))
+    (csallet-sync-highlight)))
 
 (defun csallet-candidate-next-source ()
   (interactive)
   (csallet-with-current-source canvas
-    (when-let ((next (or (ov-next 'csallet-visible)
+    (when-let ((next (or (ov-next (1- (ov-end canvas)) 'csallet-visible t)
                          (progn
                            (goto-char (point-min))
-                           (if (ov-val (ov-at) 'csallet-visible)
-                               (ov-at)
-                             (ov-next 'csallet-visible))))))
+                           (if (ov-val (csallet-current) 'csallet-visible)
+                               (csallet-current)
+                             (ov-next 'csallet-visible t))))))
       ;; skip empty sources
       (if (string-match-p (rx bos (* (or whitespace "\n")) eos) (ov-string next))
           (progn
@@ -1071,7 +1089,8 @@ Return non-nil if there are no more candidates."
             (csallet-candidate-next-source))
         (goto-char (ov-beg next))
         (forward-line 1)
-        (csallet--set-window-point)))))
+        (csallet--set-window-point))
+      (csallet-sync-highlight))))
 
 (defun csallet-scroll-up ()
   (interactive)
@@ -1093,7 +1112,7 @@ Return non-nil if there are no more candidates."
 (defun csallet--maybe-update-keymap ()
   "Setup current source map as transient map in the minibuffer"
   (with-csallet-buffer
-    (-when-let* ((ov (ov-at))
+    (-when-let* ((ov (csallet-current))
                  (keymap (ov-val ov 'keymap)))
       ;; We use set-transient-map here to not hide minor-mode-map.
       (if (fboundp 'set-transient-map)
@@ -1121,6 +1140,7 @@ The closure is stored in function slot.")
 (defun csallet--run-sources (prompt canvases sources)
   (csallet--cleanup)
   (ov-put canvases
+          'csallet-canvas t
           'csallet-needs-redisplay t
           'csallet-visible nil)
   (setq csallet--running-sources
