@@ -162,6 +162,7 @@ The return value is a plist with two keys:
         (let ((end-time (time-add (current-time) (list 0 0 10000 0)))
               (re nil))
           (with-current-buffer buffer
+            (accept-process-output process 0 0)
             (when continue
               (goto-char continue)
               (while (and
