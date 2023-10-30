@@ -740,6 +740,17 @@ POINT defaults to (point)."
      :renderer (lambda (c)
                  (sallet-bookmarks-renderer (car c) nil (cadr c))))))
 
+(defun csallet-projectile-matcher (prompt)
+  (csallet-make-buffered-stage
+   (csallet-sallet-filter-wrapper
+    (lambda (candidates indices pattern)
+      (sallet-compose-filters-by-pattern
+       '(("\\`/\\(.*\\)" 1 sallet-locate-filter-substring)
+         ("\\`\\.\\(.*\\)" 1 sallet-filter-file-extension)
+         (t sallet-filter-substring))
+       candidates indices pattern))
+    prompt)))
+
 (defun csallet-source-projectile-files ()
   (lambda (prompt canvas)
     (ov-put canvas
@@ -753,10 +764,12 @@ POINT defaults to (point)."
       (lambda ()
         (projectile-project-files
          (projectile-acquire-root))))
-     :matcher (csallet-bookmarks-matcher prompt)
+     :matcher (csallet-projectile-matcher prompt)
      :renderer (-lambda ((candidate user-data))
-                 (sallet-fontify-flx-matches
-                  (plist-get user-data :flx-matches) candidate)))))
+                 (sallet-compose-fontifiers
+                  candidate user-data
+                  '(sallet-fontify-regexp-matches . :regexp-matches)
+                  '(sallet-fontify-flx-matches . :flx-matches))))))
 
 (defun csallet-buffer-render-candidate (candidate)
   (sallet-buffer-renderer (car candidate) nil (cadr candidate)))
