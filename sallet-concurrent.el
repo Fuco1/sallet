@@ -989,6 +989,7 @@ POINT defaults to (point)."
              (define-key map (kbd "M-v") 'csallet-scroll-down)
              (define-key map (kbd "C-s") 'csallet-isearch)
              (define-key map (kbd "C-SPC") 'csallet-mark)
+             (define-key map [remap beginning-of-buffer] 'csallet-beginning-of-buffer)
              map))
           (csallet-default-action)
           (csallet--window-cleanup))
@@ -1081,6 +1082,13 @@ Return non-nil if there are no more candidates."
   (interactive)
   (with-csallet-window
     (scroll-down)))
+
+(defun csallet-beginning-of-buffer ()
+  (interactive)
+  (with-csallet-window
+    (goto-char (point-min))
+    (csallet--set-window-point)
+    (csallet-candidate-down)))
 
 (defun csallet--maybe-update-keymap ()
   "Setup current source map as transient map in the minibuffer"
