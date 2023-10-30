@@ -757,7 +757,7 @@ POINT defaults to (point)."
     (ov-put canvas
             'csallet-default-action
             (lambda (c)
-              (sallet-locate-action nil c))
+              (sallet-locate-action nil (projectile-expand-root c)))
             'csallet-header-format " • Projectile files [%m/%g/%r]%S\n")
     (csallet-make-pipeline
      canvas
